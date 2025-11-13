@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DndProvider } from 'react-dnd';
-import { HTML5Backend } from 'react-dnd-html5-backend';
 import { pdfAPI, settingsAPI } from '../utils/api';
 import AdminGrid from '../components/AdminGrid';
 import UploadModal from '../components/UploadModal';
@@ -205,8 +203,7 @@ function AdminPage({ onLogout }) {
   }
 
   return (
-    <DndProvider backend={HTML5Backend}>
-      <div className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200">
+    <div className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200">
         {/* Header */}
         <header className="bg-white shadow-sm">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
@@ -322,8 +319,7 @@ function AdminPage({ onLogout }) {
             onSuccess={handleLabelSuccess}
           />
         )}
-      </div>
-    </DndProvider>
+    </div>
   );
 }
 

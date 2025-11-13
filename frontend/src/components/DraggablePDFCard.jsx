@@ -13,11 +13,11 @@ function DraggablePDFCard({
   return (
     <div
       draggable={editMode}
-      onDragStart={() => onDragStart(index)}
+      onDragStart={(e) => editMode && onDragStart(e, index)}
       onDragEnd={onDragEnd}
       className={`relative w-full h-full bg-white rounded-lg shadow-md overflow-hidden transition-all ${
         editMode ? 'cursor-move border-2 animate-border-pulse' : 'cursor-default border border-gray-200'
-      } ${isDragging ? 'opacity-50 scale-95' : ''}`}
+      } ${isDragging ? 'opacity-50' : ''}`}
     >
       <img
         src={`/thumbnails/${pdf.thumbnail}`}

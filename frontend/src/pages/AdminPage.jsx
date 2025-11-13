@@ -11,6 +11,8 @@ import useWebSocket from '../hooks/useWebSocket';
 
 function AdminPage({ onLogout }) {
   const [pdfs, setPdfs] = useState([]);
+  const [workingPdfs, setWorkingPdfs] = useState([]);
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [settings, setSettings] = useState({ grid_rows: 4, grid_cols: 6 });
   const [editMode, setEditMode] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
@@ -68,19 +70,47 @@ function AdminPage({ onLogout }) {
     navigate('/login');
   };
 
-  const handleReorder = async (newPdfs) => {
-    const reorderedPdfs = newPdfs.map((pdf, index) => ({
+  const handleReorder = (newPdfs) => {
+    // During edit mode, only update local working copy
+    setWorkingPdfs(newPdfs);
+    setHasUnsavedChanges(true);
+  };
+
+  const saveReorder = async (pdfsToSave) => {
+    const reorderedPdfs = pdfsToSave.map((pdf, index) => ({
       id: pdf.id,
       position: index + 1,
     }));
 
     try {
       await pdfAPI.reorder(reorderedPdfs);
-      setPdfs(newPdfs);
+      setPdfs(pdfsToSave);
+      setHasUnsavedChanges(false);
     } catch (error) {
       console.error('Error reordering PDFs:', error);
       // Reload on error
       loadData();
+      throw error;
+    }
+  };
+
+  const handleToggleEditMode = async () => {
+    if (editMode) {
+      // Exiting edit mode - save if there are changes
+      if (hasUnsavedChanges) {
+        try {
+          await saveReorder(workingPdfs);
+        } catch (error) {
+          alert('Failed to save changes. Please try again.');
+          return;
+        }
+      }
+      setEditMode(false);
+    } else {
+      // Entering edit mode - create working copy
+      setWorkingPdfs([...pdfs]);
+      setHasUnsavedChanges(false);
+      setEditMode(true);
     }
   };
 
@@ -177,14 +207,14 @@ function AdminPage({ onLogout }) {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
             <div className="flex flex-wrap gap-3">
               <button
-                onClick={() => setEditMode(!editMode)}
+                onClick={handleToggleEditMode}
                 className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                   editMode
                     ? 'bg-blue-600 text-white hover:bg-blue-700'
                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
                 }`}
               >
-                {editMode ? 'Done Editing' : 'Edit Mode'}
+                {editMode ? (hasUnsavedChanges ? 'Save Changes' : 'Done Editing') : 'Edit Mode'}
               </button>
               <button
                 onClick={() => setShowUpload(true)}
@@ -208,12 +238,13 @@ function AdminPage({ onLogout }) {
             <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
               <p className="text-blue-800 text-sm">
                 Drag and drop PDFs to reorder them. Click the tag icon to manage labels. Click the X to delete. Click the + button on empty slots to add placeholders.
+                {hasUnsavedChanges && <strong className="ml-2">Changes will be saved when you click "Save Changes".</strong>}
               </p>
             </div>
           )}
 
           <AdminGrid
-            pdfs={pdfs}
+            pdfs={editMode ? workingPdfs : pdfs}
             rows={settings.grid_rows}
             cols={settings.grid_cols}
             editMode={editMode}

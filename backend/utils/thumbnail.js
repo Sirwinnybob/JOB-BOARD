@@ -1,29 +1,33 @@
-const { pdfToPng } = require('pdf-to-png-converter');
+const Poppler = require('node-poppler');
 const path = require('path');
 const fs = require('fs').promises;
 
 async function generateThumbnail(pdfPath, outputDir, baseFilename) {
   try {
-    // Convert only the first page with high quality
-    const pages = await pdfToPng(pdfPath, {
-      disableFontFace: false,
-      useSystemFonts: false,
-      viewportScale: 2.0,
-      outputFilesFolder: outputDir,
-      strictPagesToProcess: true,
-      pagesToProcess: [1]
-    });
-
-    if (!pages || pages.length === 0) {
-      throw new Error('No pages generated from PDF');
-    }
-
-    // The library returns page data, we need to write it to file
+    const poppler = new Poppler();
     const finalName = `${baseFilename}.png`;
     const finalPath = path.join(outputDir, finalName);
 
-    // Write the PNG buffer to file
-    await fs.writeFile(finalPath, pages[0].content);
+    // Options for pdftocairo (converts PDF to PNG)
+    const options = {
+      firstPageToConvert: 1,
+      lastPageToConvert: 1,
+      pngFile: true,
+      scale: 2.0
+    };
+
+    // Convert PDF to PNG using system poppler-utils
+    await poppler.pdfToCairo(pdfPath, finalPath, options);
+
+    // pdftocairo adds -1 suffix, rename to clean name
+    const generatedPath = `${finalPath}-1.png`;
+    const fileExists = await fs.access(generatedPath).then(() => true).catch(() => false);
+
+    if (fileExists) {
+      await fs.rename(generatedPath, finalPath);
+    } else {
+      throw new Error('Thumbnail generation failed - output file not found');
+    }
 
     return finalName;
   } catch (error) {

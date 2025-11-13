@@ -402,6 +402,69 @@ npm test
 - Safari 14+
 - Mobile browsers (iOS Safari, Chrome Mobile)
 
+## Troubleshooting
+
+### HTTPS/WebSocket Issues
+
+If your application works over HTTP but **not over HTTPS**, this is almost always caused by **WebSocket (WSS) connection failures** through your NGINX reverse proxy.
+
+**Quick Fix for Nginx Proxy Manager Users:**
+
+1. **Disable "Cache Assets"** - This is the #1 cause of WSS failures
+2. **Enable "Websockets Support"**
+3. **Clear browser cache** and hard refresh (Ctrl+Shift+R)
+
+**Detailed Troubleshooting:**
+
+See [HTTPS_TROUBLESHOOTING.md](HTTPS_TROUBLESHOOTING.md) for:
+- Complete diagnostic steps
+- NGINX configuration examples
+- Browser console debugging
+- Command-line testing tools
+- Common issues and solutions
+
+**Quick Diagnostic:**
+
+```bash
+# Run the diagnostic script
+chmod +x test-https-wss.sh
+./test-https-wss.sh
+
+# Check browser console (F12) for WebSocket errors
+# Should see: "✅ WebSocket connected successfully"
+# Not: "❌ WebSocket error" or "Close code 1006"
+```
+
+**Most Common Causes:**
+1. ❌ **Cache Assets enabled** in Nginx Proxy Manager (breaks WebSocket)
+2. ❌ Websockets Support not enabled
+3. ❌ Missing WebSocket upgrade headers in NGINX config
+4. ❌ SSL certificate issues
+
+For detailed solutions, see [HTTPS_TROUBLESHOOTING.md](HTTPS_TROUBLESHOOTING.md).
+
+### Other Common Issues
+
+**Container won't start:**
+```bash
+docker logs job-board-app
+# Check for missing environment variables (JWT_SECRET, ADMIN_USERNAME, ADMIN_PASSWORD)
+```
+
+**502 Bad Gateway:**
+```bash
+# Verify container is running
+docker ps | grep job-board
+
+# Check backend health
+curl http://localhost:3000/api/health
+```
+
+**PDFs not uploading:**
+- Check client_max_body_size in NGINX (should be 50M)
+- Verify disk space: `df -h`
+- Check container logs for errors
+
 ## License
 
 MIT

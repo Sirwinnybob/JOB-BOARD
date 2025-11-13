@@ -1,15 +1,23 @@
 import React from 'react';
 import { Droppable, Draggable } from '@hello-pangea/dnd';
 
-function PendingSection({ pdfs, onMovePdfToBoard, onDelete }) {
+function PendingSection({ pdfs, onMovePdfToBoard, onDelete, onUploadToPending }) {
   if (pdfs.length === 0) {
     return (
       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-6">
-        <h2 className="text-lg font-semibold text-yellow-900 mb-2">
-          📥 PENDING PDFs
-        </h2>
+        <div className="flex justify-between items-center mb-2">
+          <h2 className="text-lg font-semibold text-yellow-900">
+            📥 PENDING PDFs
+          </h2>
+          <button
+            onClick={onUploadToPending}
+            className="px-3 py-1 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors font-medium"
+          >
+            + Upload to Pending
+          </button>
+        </div>
         <p className="text-sm text-yellow-700">
-          No pending PDFs. Upload PDFs in edit mode to add them here before placing them on the board.
+          No pending PDFs. Upload PDFs to pending using the button above.
         </p>
       </div>
     );
@@ -17,12 +25,22 @@ function PendingSection({ pdfs, onMovePdfToBoard, onDelete }) {
 
   return (
     <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-6">
-      <h2 className="text-lg font-semibold text-yellow-900 mb-4">
-        📥 PENDING PDFs ({pdfs.length})
-      </h2>
-      <p className="text-sm text-yellow-700 mb-4">
-        These PDFs are uploaded but not yet visible on the board. Click "Add to Board" to make them visible to others.
-      </p>
+      <div className="flex justify-between items-center mb-4">
+        <div>
+          <h2 className="text-lg font-semibold text-yellow-900">
+            📥 PENDING PDFs ({pdfs.length})
+          </h2>
+          <p className="text-sm text-yellow-700 mt-1">
+            These PDFs are uploaded but not yet visible on the board. Click "Add to Board" to make them visible to others.
+          </p>
+        </div>
+        <button
+          onClick={onUploadToPending}
+          className="px-3 py-1 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors font-medium whitespace-nowrap"
+        >
+          + Upload to Pending
+        </button>
+      </div>
 
       <Droppable droppableId="pending" direction="horizontal">
         {(provided, snapshot) => (

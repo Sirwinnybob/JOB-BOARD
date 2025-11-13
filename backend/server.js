@@ -247,6 +247,10 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
     const pdfPath = path.join(uploadDir, filename);
     const baseFilename = path.parse(filename).name;
 
+    // Get is_pending from request body (default to 1 if not provided)
+    const isPending = req.body.is_pending !== undefined ? parseInt(req.body.is_pending) : 1;
+    const targetPosition = req.body.position !== undefined ? parseInt(req.body.position) : null;
+
     // Generate thumbnail
     const thumbnailName = await generateThumbnail(pdfPath, thumbnailDir, baseFilename);
 
@@ -263,50 +267,56 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
       // Continue even if deletion fails
     }
 
-    // Get the highest position
-    db.get('SELECT MAX(position) as maxPos FROM pdfs', [], (err, row) => {
-      if (err) {
-        console.error('Database error:', err);
-        return res.status(500).json({ error: 'Database error' });
-      }
+    // Determine position
+    let newPosition;
+    if (targetPosition !== null) {
+      // Use specified position
+      newPosition = targetPosition;
+    } else {
+      // Get the highest position
+      const row = await new Promise((resolve, reject) => {
+        db.get('SELECT MAX(position) as maxPos FROM pdfs', [], (err, row) => {
+          if (err) reject(err);
+          else resolve(row);
+        });
+      });
+      newPosition = (row.maxPos || 0) + 1;
+    }
 
-      const newPosition = (row.maxPos || 0) + 1;
-
-      // Store null for filename since we no longer keep the PDF
-      db.run(
-        'INSERT INTO pdfs (filename, original_name, thumbnail, position, is_pending, page_count, images_base) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [null, originalName, thumbnailName, newPosition, 1, pageCount, imagesBase],
-        function (err) {
-          if (err) {
-            console.error('Database error:', err);
-            return res.status(500).json({ error: 'Database error' });
-          }
-
-          // Broadcast update to all clients
-          broadcastUpdate('pdf_uploaded', {
-            id: this.lastID,
-            filename: null,
-            original_name: originalName,
-            thumbnail: thumbnailName,
-            position: newPosition,
-            is_pending: 1,
-            page_count: pageCount,
-            images_base: imagesBase
-          });
-
-          res.json({
-            id: this.lastID,
-            filename: null,
-            original_name: originalName,
-            thumbnail: thumbnailName,
-            position: newPosition,
-            is_pending: 1,
-            page_count: pageCount,
-            images_base: imagesBase
-          });
+    // Store null for filename since we no longer keep the PDF
+    db.run(
+      'INSERT INTO pdfs (filename, original_name, thumbnail, position, is_pending, page_count, images_base) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [null, originalName, thumbnailName, newPosition, isPending, pageCount, imagesBase],
+      function (err) {
+        if (err) {
+          console.error('Database error:', err);
+          return res.status(500).json({ error: 'Database error' });
         }
-      );
-    });
+
+        // Broadcast update to all clients
+        broadcastUpdate('pdf_uploaded', {
+          id: this.lastID,
+          filename: null,
+          original_name: originalName,
+          thumbnail: thumbnailName,
+          position: newPosition,
+          is_pending: isPending,
+          page_count: pageCount,
+          images_base: imagesBase
+        });
+
+        res.json({
+          id: this.lastID,
+          filename: null,
+          original_name: originalName,
+          thumbnail: thumbnailName,
+          position: newPosition,
+          is_pending: isPending,
+          page_count: pageCount,
+          images_base: imagesBase
+        });
+      }
+    );
   } catch (error) {
     console.error('Error uploading PDF:', error);
     res.status(500).json({ error: 'Failed to process PDF' });

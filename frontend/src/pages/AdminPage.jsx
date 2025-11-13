@@ -18,6 +18,8 @@ function AdminPage({ onLogout }) {
   const [settings, setSettings] = useState({ grid_rows: 4, grid_cols: 6 });
   const [editMode, setEditMode] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
+  const [uploadTargetPosition, setUploadTargetPosition] = useState(null);
+  const [uploadToPending, setUploadToPending] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [showLabelModal, setShowLabelModal] = useState(false);
   const [selectedPdfForLabels, setSelectedPdfForLabels] = useState(null);
@@ -57,6 +59,12 @@ function AdminPage({ onLogout }) {
   // WebSocket connection for live updates
   const handleWebSocketMessage = useCallback((message) => {
     console.log('Admin received update:', message.type);
+    // Don't reload data during edit mode to preserve working copies
+    if (editMode) {
+      console.log('Skipping reload during edit mode');
+      return;
+    }
+
     // Reload data when any relevant update is received
     const relevantTypes = [
       'pdf_uploaded',
@@ -72,7 +80,7 @@ function AdminPage({ onLogout }) {
     if (relevantTypes.includes(message.type)) {
       loadData();
     }
-  }, [loadData]);
+  }, [loadData, editMode]);
 
   useWebSocket(handleWebSocketMessage, true);
 
@@ -168,7 +176,15 @@ function AdminPage({ onLogout }) {
 
   const handleUploadSuccess = () => {
     setShowUpload(false);
+    setUploadTargetPosition(null);
+    setUploadToPending(true);
     loadData();
+  };
+
+  const handleUploadToPending = () => {
+    setUploadTargetPosition(null);
+    setUploadToPending(true);
+    setShowUpload(true);
   };
 
   const handleSettingsSave = async (newSettings) => {
@@ -213,8 +229,10 @@ function AdminPage({ onLogout }) {
     }
   };
 
-  const handleUploadToPdf = (position) => {
-    // Position will be used after upload
+  const handleUploadToSlot = (position) => {
+    // Upload directly to this slot position
+    setUploadTargetPosition(position + 1); // Convert to 1-based position
+    setUploadToPending(false);
     setShowSlotMenu(null);
     setShowUpload(true);
   };
@@ -294,6 +312,13 @@ function AdminPage({ onLogout }) {
       // Moving from board to pending
       const newBoardPdfs = [...workingPdfs];
       const [movedPdf] = newBoardPdfs.splice(source.index, 1);
+
+      // Prevent placeholders from being moved to pending
+      if (movedPdf.is_placeholder) {
+        console.log('Cannot move placeholder to pending');
+        return;
+      }
+
       movedPdf.is_pending = 1;
 
       const newPendingPdfs = [...workingPendingPdfs];
@@ -356,10 +381,10 @@ function AdminPage({ onLogout }) {
               </button>
               {editMode && (
                 <button
-                  onClick={() => setShowUpload(true)}
+                  onClick={handleUploadToPending}
                   className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors"
                 >
-                  + Upload PDF
+                  + Upload to Pending
                 </button>
               )}
               <button
@@ -389,6 +414,7 @@ function AdminPage({ onLogout }) {
                   pdfs={workingPendingPdfs}
                   onMovePdfToBoard={handleMovePdfToBoard}
                   onDelete={handleDelete}
+                  onUploadToPending={handleUploadToPending}
                 />
               </>
             )}
@@ -405,7 +431,7 @@ function AdminPage({ onLogout }) {
               showSlotMenu={showSlotMenu}
               onSlotMenuClose={handleSlotMenuClose}
               onAddPlaceholder={handleAddPlaceholder}
-              onUploadToSlot={handleUploadToPdf}
+              onUploadToSlot={handleUploadToSlot}
               onMoveToPending={handleMovePdfToPending}
             />
           </DragDropContext>
@@ -414,8 +440,14 @@ function AdminPage({ onLogout }) {
         {/* Modals */}
         {showUpload && (
           <UploadModal
-            onClose={() => setShowUpload(false)}
+            onClose={() => {
+              setShowUpload(false);
+              setUploadTargetPosition(null);
+              setUploadToPending(true);
+            }}
             onSuccess={handleUploadSuccess}
+            targetPosition={uploadTargetPosition}
+            uploadToPending={uploadToPending}
           />
         )}
 

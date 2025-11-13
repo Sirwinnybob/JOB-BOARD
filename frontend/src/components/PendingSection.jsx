@@ -1,6 +1,50 @@
-import React from 'react';
+import React, { useState } from 'react';
 
-function PendingSection({ pdfs, onMovePdfToBoard, onDelete }) {
+function PendingSection({ pdfs, onMovePdfToBoard, onDelete, onReorderPending }) {
+  const [draggedIndex, setDraggedIndex] = useState(null);
+  const [dragOverIndex, setDragOverIndex] = useState(null);
+
+  const handleDragStart = (e, index) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/html', index);
+  };
+
+  const handleDragOver = (e, index) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+
+    if (draggedIndex === null || draggedIndex === index) return;
+    setDragOverIndex(index);
+  };
+
+  const handleDrop = (e, dropIndex) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (draggedIndex === null || draggedIndex === dropIndex) {
+      setDraggedIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
+
+    const newPdfs = [...pdfs];
+    const draggedPdf = newPdfs[draggedIndex];
+
+    // Remove from old position
+    newPdfs.splice(draggedIndex, 1);
+    // Insert at new position
+    newPdfs.splice(dropIndex, 0, draggedPdf);
+
+    onReorderPending(newPdfs);
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIndex(null);
+    setDragOverIndex(null);
+  };
   if (pdfs.length === 0) {
     return (
       <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-6">
@@ -24,11 +68,22 @@ function PendingSection({ pdfs, onMovePdfToBoard, onDelete }) {
       </p>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4">
-        {pdfs.map((pdf) => (
-          <div
-            key={pdf.id}
-            className="relative bg-white border-2 border-yellow-300 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow"
-          >
+        {pdfs.map((pdf, index) => {
+          const isDragging = draggedIndex === index;
+          const isDraggedOver = dragOverIndex === index && draggedIndex !== null && draggedIndex !== index;
+
+          return (
+            <div
+              key={pdf.id}
+              draggable={true}
+              onDragStart={(e) => handleDragStart(e, index)}
+              onDragOver={(e) => handleDragOver(e, index)}
+              onDrop={(e) => handleDrop(e, index)}
+              onDragEnd={handleDragEnd}
+              className={`relative bg-white border-2 border-yellow-300 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all cursor-move ${
+                isDragging ? 'opacity-40' : ''
+              } ${isDraggedOver ? 'scale-105 ring-4 ring-yellow-400 ring-opacity-50' : ''}`}
+            >
             {/* Thumbnail */}
             <div className="aspect-[5/7] bg-gray-100 flex items-center justify-center">
               {pdf.thumbnail ? (
@@ -81,8 +136,16 @@ function PendingSection({ pdfs, onMovePdfToBoard, onDelete }) {
                 Delete
               </button>
             </div>
+
+            {/* Drag indicator */}
+            {!isDragging && (
+              <div className="absolute top-2 left-2 bg-yellow-600 text-white rounded-full w-6 h-6 flex items-center justify-center shadow-lg text-xs">
+                ⋮⋮
+              </div>
+            )}
           </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* Bulk Actions */}

@@ -8,6 +8,7 @@ function DraggablePDFCard({
   onDragEnd,
   onDelete,
   onLabelClick,
+  onMoveToPending,
   isDragging,
 }) {
   return (
@@ -75,27 +76,53 @@ function DraggablePDFCard({
         </button>
       )}
 
-      {/* Delete button in edit mode */}
+      {/* Action buttons in edit mode */}
       {editMode && (
-        <button
-          onClick={() => onDelete(pdf.id)}
-          className="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg transition-colors z-10"
-          aria-label="Delete"
-        >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+        <>
+          {/* Move to Pending button */}
+          {onMoveToPending && (
+            <button
+              onClick={() => onMoveToPending(pdf.id)}
+              className="absolute top-2 right-12 bg-yellow-600 hover:bg-yellow-700 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg transition-colors z-10"
+              aria-label="Move to Pending"
+              title="Move to Pending"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
+              </svg>
+            </button>
+          )}
+          {/* Delete button */}
+          <button
+            onClick={() => onDelete(pdf.id)}
+            className="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg transition-colors z-10"
+            aria-label="Delete"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M6 18L18 6M6 6l12 12"
-            />
-          </svg>
-        </button>
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </>
       )}
 
       {/* Drag indicator */}

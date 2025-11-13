@@ -378,8 +378,8 @@ app.post('/api/pdfs/placeholder', authMiddleware, async (req, res) => {
     }
 
     db.run(
-      'INSERT INTO pdfs (filename, original_name, thumbnail, position, is_placeholder) VALUES (?, ?, ?, ?, ?)',
-      [null, null, null, position, 1],
+      'INSERT INTO pdfs (filename, original_name, thumbnail, position, is_placeholder, is_pending) VALUES (?, ?, ?, ?, ?, ?)',
+      [null, null, null, position, 1, 0],
       function (err) {
         if (err) {
           console.error('Database error:', err);
@@ -392,7 +392,8 @@ app.post('/api/pdfs/placeholder', authMiddleware, async (req, res) => {
           original_name: null,
           thumbnail: null,
           position: position,
-          is_placeholder: 1
+          is_placeholder: 1,
+          is_pending: 0
         };
 
         // Broadcast update to all clients

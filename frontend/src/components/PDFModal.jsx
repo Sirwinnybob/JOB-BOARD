@@ -3,6 +3,15 @@ import React, { useEffect, useState } from 'react';
 function PDFModal({ pdf, onClose }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [viewMode, setViewMode] = useState('images'); // 'images' or 'pdf'
+  const [darkMode, setDarkMode] = useState(() => {
+    // Check localStorage first, then fall back to system preference
+    const saved = localStorage.getItem('pdfViewerDarkMode');
+    if (saved !== null) {
+      return saved === 'true';
+    }
+    // Default to system preference
+    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
 
   // Determine if we have page images available
   const hasPageImages = pdf.page_count && pdf.images_base;
@@ -15,6 +24,11 @@ function PDFModal({ pdf, onClose }) {
       document.body.style.overflow = 'unset';
     };
   }, []);
+
+  // Save dark mode preference to localStorage
+  useEffect(() => {
+    localStorage.setItem('pdfViewerDarkMode', darkMode.toString());
+  }, [darkMode]);
 
   // Close on Escape key and handle arrow keys for pagination
   useEffect(() => {
@@ -56,16 +70,34 @@ function PDFModal({ pdf, onClose }) {
           </div>
           <div className="flex items-center gap-2">
             {hasPageImages && (
-              <button
-                onClick={() => setViewMode(viewMode === 'images' ? 'pdf' : 'images')}
-                className="text-white hover:text-gray-300 transition-colors px-3 py-2 bg-purple-600 rounded-lg text-sm font-medium flex items-center gap-2"
-                title={viewMode === 'images' ? 'View PDF' : 'View Images'}
-              >
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-                <span className="hidden sm:inline">{viewMode === 'images' ? 'PDF' : 'Images'}</span>
-              </button>
+              <>
+                <button
+                  onClick={() => setViewMode(viewMode === 'images' ? 'pdf' : 'images')}
+                  className="text-white hover:text-gray-300 transition-colors px-3 py-2 bg-purple-600 rounded-lg text-sm font-medium flex items-center gap-2"
+                  title={viewMode === 'images' ? 'View PDF' : 'View Images'}
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                  <span className="hidden sm:inline">{viewMode === 'images' ? 'PDF' : 'Images'}</span>
+                </button>
+                <button
+                  onClick={() => setDarkMode(!darkMode)}
+                  className="text-white hover:text-gray-300 transition-colors px-3 py-2 bg-gray-700 rounded-lg text-sm font-medium flex items-center gap-2"
+                  title={darkMode ? 'Light Mode' : 'Dark Mode'}
+                >
+                  {darkMode ? (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                    </svg>
+                  )}
+                  <span className="hidden sm:inline">{darkMode ? 'Light' : 'Dark'}</span>
+                </button>
+              </>
             )}
             <a
               href={`/uploads/${pdf.filename}`}
@@ -117,11 +149,16 @@ function PDFModal({ pdf, onClose }) {
           {hasPageImages && viewMode === 'images' ? (
             <>
               {/* Image Viewer */}
-              <div className="flex-1 flex items-center justify-center bg-gray-100 p-4 overflow-auto">
+              <div className={`flex-1 flex items-center justify-center p-4 overflow-auto transition-colors ${
+                darkMode ? 'bg-gray-900' : 'bg-gray-100'
+              }`}>
                 <img
                   src={`/thumbnails/${pdf.images_base}-${currentPage}.png`}
                   alt={`${pdf.original_name} - Page ${currentPage}`}
-                  className="max-w-full max-h-full object-contain"
+                  className="max-w-full max-h-full object-contain transition-all"
+                  style={{
+                    filter: darkMode ? 'invert(1)' : 'none'
+                  }}
                   onError={(e) => {
                     e.target.onerror = null;
                     e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" fill="gray"%3EImage not found%3C/text%3E%3C/svg%3E';

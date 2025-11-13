@@ -5,6 +5,7 @@ services:
     image: winnybob/job-board:latest
     container_name: job-board-app
     restart: unless-stopped
+    pull_policy: always
     ports:
       - "3000:3000"
     environment:

@@ -50,8 +50,12 @@ function broadcastUpdate(type, data = {}) {
 }
 
 // Middleware
+// Configure helmet with relaxed settings for local network access
 app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" }
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  crossOriginOpenerPolicy: false, // Disable COOP to avoid HTTP issues
+  crossOriginEmbedderPolicy: false, // Disable COEP
+  contentSecurityPolicy: false // Disable CSP for now
 }));
 app.use(cors());
 app.use(express.json());

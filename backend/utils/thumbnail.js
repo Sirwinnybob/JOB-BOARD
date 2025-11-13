@@ -1,28 +1,29 @@
-const poppler = require('pdf-poppler');
+const { pdfToPng } = require('pdf-to-png-converter');
 const path = require('path');
 const fs = require('fs').promises;
 
 async function generateThumbnail(pdfPath, outputDir, baseFilename) {
-  const opts = {
-    format: 'png',
-    out_dir: outputDir,
-    out_prefix: baseFilename,
-    page: 1,
-    scale: 200
-  };
-
   try {
-    await poppler.convert(pdfPath, opts);
+    // Convert only the first page with high quality
+    const pages = await pdfToPng(pdfPath, {
+      disableFontFace: false,
+      useSystemFonts: false,
+      viewportScale: 2.0,
+      outputFilesFolder: outputDir,
+      strictPagesToProcess: true,
+      pagesToProcess: [1]
+    });
 
-    // pdf-poppler generates files with pattern: baseFilename-1.png
-    const thumbnailName = `${baseFilename}-1.png`;
-    const generatedPath = path.join(outputDir, thumbnailName);
+    if (!pages || pages.length === 0) {
+      throw new Error('No pages generated from PDF');
+    }
 
-    // Rename to simpler format
+    // The library returns page data, we need to write it to file
     const finalName = `${baseFilename}.png`;
     const finalPath = path.join(outputDir, finalName);
 
-    await fs.rename(generatedPath, finalPath);
+    // Write the PNG buffer to file
+    await fs.writeFile(finalPath, pages[0].content);
 
     return finalName;
   } catch (error) {

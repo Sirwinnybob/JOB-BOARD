@@ -1,0 +1,20 @@
+{
+  "name": "job-board-app",
+  "version": "1.0.0",
+  "description": "Production-ready job board with PDF preview grid",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
+  "scripts": {
+    "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "build:frontend": "cd frontend && npm run build",
+    "start": "cd backend && npm start"
+  },
+  "keywords": ["job-board", "pdf", "docker"],
+  "author": "",
+  "license": "MIT"
+}

@@ -4,28 +4,42 @@ import PlaceholderCard from './PlaceholderCard';
 
 function AdminGrid({ pdfs, rows, cols, editMode, onReorder, onDelete, onLabelClick, onAddPlaceholder }) {
   const [draggedItem, setDraggedItem] = useState(null);
+  const [hoverIndex, setHoverIndex] = useState(null);
 
   const totalSlots = rows * cols;
 
   const handleDragStart = (index) => {
     setDraggedItem(index);
+    setHoverIndex(null);
   };
 
   const handleDragOver = (e, index) => {
     e.preventDefault();
     if (draggedItem === null || draggedItem === index) return;
 
+    // Only update the hover index for visual feedback
+    // Don't modify the array until drop
+    setHoverIndex(index);
+  };
+
+  const handleDrop = (e, index) => {
+    e.preventDefault();
+    if (draggedItem === null || draggedItem === index) return;
+
+    // Only now do we actually reorder the array
     const newPdfs = [...pdfs];
     const draggedPdf = newPdfs[draggedItem];
     newPdfs.splice(draggedItem, 1);
     newPdfs.splice(index, 0, draggedPdf);
 
-    setDraggedItem(index);
     onReorder(newPdfs);
+    setDraggedItem(null);
+    setHoverIndex(null);
   };
 
   const handleDragEnd = () => {
     setDraggedItem(null);
+    setHoverIndex(null);
   };
 
   const gridStyle = {
@@ -37,14 +51,17 @@ function AdminGrid({ pdfs, rows, cols, editMode, onReorder, onDelete, onLabelCli
     <div className="grid gap-4 w-full" style={gridStyle}>
       {Array.from({ length: totalSlots }).map((_, index) => {
         const pdf = pdfs[index];
+        const isHovered = hoverIndex === index && draggedItem !== null;
 
         return (
           <div
             key={pdf?.id || index}
             onDragOver={(e) => editMode && handleDragOver(e, index)}
+            onDrop={(e) => editMode && handleDrop(e, index)}
             className="aspect-[5/7] transition-all duration-300 ease-in-out"
             style={{
-              transform: draggedItem === index ? 'scale(0.95)' : 'scale(1)',
+              transform: draggedItem === index ? 'scale(0.95)' : isHovered ? 'scale(1.05)' : 'scale(1)',
+              opacity: draggedItem === index ? 0.5 : 1,
             }}
           >
             {pdf ? (

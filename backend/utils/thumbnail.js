@@ -1,4 +1,4 @@
-const Poppler = require('node-poppler');
+const Poppler = require('node-poppler').default;
 const path = require('path');
 const fs = require('fs').promises;
 

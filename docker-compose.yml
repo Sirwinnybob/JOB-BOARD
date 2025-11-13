@@ -15,11 +15,8 @@ services:
       - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-changeme}
     volumes:
-      # Persistent storage for PDFs and thumbnails
-      - ./data/uploads:/app/uploads
-      - ./data/thumbnails:/app/thumbnails
-      # Database file (not the entire /app directory!)
-      - ./data/database.sqlite:/app/database.sqlite
+      # Persistent storage for database, PDFs and thumbnails
+      - ./data:/app/data
       # Optional: Mount SSL certificates for HTTPS (if not using reverse proxy)
       # - /path/to/certs:/certs:ro
     networks:

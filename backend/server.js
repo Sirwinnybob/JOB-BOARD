@@ -63,11 +63,13 @@ const limiter = rateLimit({
 });
 app.use(limiter);
 
-// Ensure directories exist
-const uploadDir = path.join(__dirname, 'uploads');
-const thumbnailDir = path.join(__dirname, 'thumbnails');
+// Ensure directories exist - use /app/data for persistent storage (mounted as volume)
+const dataDir = process.env.DATA_DIR || path.join(__dirname, '../data');
+const uploadDir = path.join(dataDir, 'uploads');
+const thumbnailDir = path.join(dataDir, 'thumbnails');
 
 (async () => {
+  await fs.mkdir(dataDir, { recursive: true });
   await fs.mkdir(uploadDir, { recursive: true });
   await fs.mkdir(thumbnailDir, { recursive: true });
 })();

@@ -40,12 +40,8 @@ COPY backend/utils ./utils
 # Copy built frontend from previous stage
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
-# Create necessary directories
-RUN mkdir -p uploads thumbnails && \
-    chmod 755 uploads thumbnails
-
-# Create .gitkeep files
-RUN touch uploads/.gitkeep thumbnails/.gitkeep
+# Create data directory for persistent storage
+RUN mkdir -p data && chmod 755 data
 
 # Expose port
 EXPOSE 3000

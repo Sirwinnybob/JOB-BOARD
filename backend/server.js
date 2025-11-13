@@ -77,7 +77,10 @@ const thumbnailDir = path.join(dataDir, 'thumbnails');
 // Serve static files
 app.use('/uploads', express.static(uploadDir));
 app.use('/thumbnails', express.static(thumbnailDir));
-app.use(express.static(path.join(__dirname, '../frontend/dist')));
+
+// Frontend static files (in Docker: /app/frontend/dist, in dev: ../frontend/dist)
+const frontendPath = process.env.FRONTEND_PATH || path.join(__dirname, '../frontend/dist');
+app.use(express.static(frontendPath));
 
 // Configure multer for PDF uploads
 const storage = multer.diskStorage({
@@ -502,7 +505,7 @@ app.get('/api/health', (req, res) => {
 
 // Serve React app for all other routes
 app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
+  res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
 server.listen(PORT, '0.0.0.0', () => {

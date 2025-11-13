@@ -50,6 +50,9 @@ COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 # Create data directory for persistent storage
 RUN mkdir -p data && chmod 755 data
 
+# Set environment variable for frontend path
+ENV FRONTEND_PATH=/app/frontend/dist
+
 # Expose port
 EXPOSE 3000
 

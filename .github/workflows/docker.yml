@@ -28,4 +28,5 @@ jobs:
         push: true
         tags: winnybob/job-board:latest
         platforms: linux/amd64
-        no-cache: true
+        cache-from: type=gha
+        cache-to: type=gha,mode=max

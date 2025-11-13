@@ -117,8 +117,7 @@ const thumbnailDir = path.join(dataDir, 'thumbnails');
   await fs.mkdir(thumbnailDir, { recursive: true });
 })();
 
-// Serve static files
-app.use('/uploads', express.static(uploadDir));
+// Serve static files (images only - PDFs are converted and discarded)
 app.use('/thumbnails', express.static(thumbnailDir));
 
 // Frontend static files (in Docker: /app/frontend/dist, in dev: ../frontend/dist)
@@ -255,6 +254,15 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
     const imagesBase = `${baseFilename}-pages`;
     const { pageCount } = await generatePdfImages(pdfPath, thumbnailDir, imagesBase);
 
+    // Delete the original PDF file after generating images
+    try {
+      await fs.unlink(pdfPath);
+      console.log(`Deleted original PDF file: ${filename}`);
+    } catch (unlinkErr) {
+      console.error('Error deleting PDF file:', unlinkErr);
+      // Continue even if deletion fails
+    }
+
     // Get the highest position
     db.get('SELECT MAX(position) as maxPos FROM pdfs', [], (err, row) => {
       if (err) {
@@ -264,9 +272,10 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
 
       const newPosition = (row.maxPos || 0) + 1;
 
+      // Store null for filename since we no longer keep the PDF
       db.run(
         'INSERT INTO pdfs (filename, original_name, thumbnail, position, is_pending, page_count, images_base) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [filename, originalName, thumbnailName, newPosition, 1, pageCount, imagesBase],
+        [null, originalName, thumbnailName, newPosition, 1, pageCount, imagesBase],
         function (err) {
           if (err) {
             console.error('Database error:', err);
@@ -276,7 +285,7 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
           // Broadcast update to all clients
           broadcastUpdate('pdf_uploaded', {
             id: this.lastID,
-            filename,
+            filename: null,
             original_name: originalName,
             thumbnail: thumbnailName,
             position: newPosition,
@@ -287,7 +296,7 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
 
           res.json({
             id: this.lastID,
-            filename,
+            filename: null,
             original_name: originalName,
             thumbnail: thumbnailName,
             position: newPosition,
@@ -318,10 +327,10 @@ app.delete('/api/pdfs/:id', authMiddleware, async (req, res) => {
         return res.status(404).json({ error: 'PDF not found' });
       }
 
-      // Delete files only if it's not a placeholder
+      // Delete image files only if it's not a placeholder
       if (!row.is_placeholder) {
         try {
-          await fs.unlink(path.join(uploadDir, row.filename));
+          // Delete thumbnail image
           await fs.unlink(path.join(thumbnailDir, row.thumbnail));
 
           // Delete all generated page images if they exist
@@ -336,7 +345,7 @@ app.delete('/api/pdfs/:id', authMiddleware, async (req, res) => {
             }
           }
         } catch (fileErr) {
-          console.error('Error deleting files:', fileErr);
+          console.error('Error deleting image files:', fileErr);
         }
       }
 

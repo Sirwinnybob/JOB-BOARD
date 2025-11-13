@@ -4,8 +4,6 @@ function DraggablePDFCard({
   pdf,
   index,
   editMode,
-  onDragStart,
-  onDragEnd,
   onDelete,
   onLabelClick,
   onMoveToPending,
@@ -13,9 +11,6 @@ function DraggablePDFCard({
 }) {
   return (
     <div
-      draggable={editMode}
-      onDragStart={(e) => editMode && onDragStart(e, index)}
-      onDragEnd={onDragEnd}
       className={`relative w-full h-full bg-white rounded-lg shadow-md overflow-hidden transition-all ${
         editMode ? 'cursor-move border-2 animate-border-pulse' : 'cursor-default border border-gray-200'
       } ${isDragging ? 'opacity-50' : ''}`}

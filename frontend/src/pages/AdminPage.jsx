@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { DragDropContext } from '@hello-pangea/dnd';
 import { pdfAPI, settingsAPI } from '../utils/api';
 import AdminGrid from '../components/AdminGrid';
 import UploadModal from '../components/UploadModal';
@@ -22,7 +23,6 @@ function AdminPage({ onLogout }) {
   const [selectedPdfForLabels, setSelectedPdfForLabels] = useState(null);
   const [showSlotMenu, setShowSlotMenu] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [draggedPdfInfo, setDraggedPdfInfo] = useState(null); // { pdf, source: 'board' | 'pending', index }
   const navigate = useNavigate();
 
   const loadData = useCallback(async () => {
@@ -247,65 +247,62 @@ function AdminPage({ onLogout }) {
     setHasUnsavedChanges(true);
   };
 
-  // Unified drag handlers for cross-component dragging
-  const handleDragStart = (pdf, source, index) => {
-    setDraggedPdfInfo({ pdf, source, index });
-  };
+  // Unified drag handler for @hello-pangea/dnd
+  const handleDragEnd = (result) => {
+    const { source, destination } = result;
 
-  const handleDragEnd = () => {
-    setDraggedPdfInfo(null);
-  };
+    // Dropped outside a valid droppable
+    if (!destination) {
+      return;
+    }
 
-  const handleDropOnBoard = (targetIndex) => {
-    if (!draggedPdfInfo) return;
+    // Dropped in the same position
+    if (source.droppableId === destination.droppableId && source.index === destination.index) {
+      return;
+    }
 
-    const { pdf, source, index: sourceIndex } = draggedPdfInfo;
+    const sourceId = source.droppableId;
+    const destId = destination.droppableId;
 
-    if (source === 'board') {
+    if (sourceId === 'board' && destId === 'board') {
       // Reordering within board
       const newPdfs = [...workingPdfs];
-      newPdfs.splice(sourceIndex, 1);
-      newPdfs.splice(targetIndex, 0, pdf);
+      const [movedPdf] = newPdfs.splice(source.index, 1);
+      newPdfs.splice(destination.index, 0, movedPdf);
       setWorkingPdfs(newPdfs);
-    } else if (source === 'pending') {
-      // Moving from pending to board
-      pdf.is_pending = 0;
-      const newPendingPdfs = workingPendingPdfs.filter(p => p.id !== pdf.id);
-      const newBoardPdfs = [...workingPdfs];
-      newBoardPdfs.splice(targetIndex, 0, pdf);
-
-      setWorkingPendingPdfs(newPendingPdfs);
-      setWorkingPdfs(newBoardPdfs);
-    }
-
-    setHasUnsavedChanges(true);
-    setDraggedPdfInfo(null);
-  };
-
-  const handleDropOnPending = (targetIndex) => {
-    if (!draggedPdfInfo) return;
-
-    const { pdf, source, index: sourceIndex } = draggedPdfInfo;
-
-    if (source === 'pending') {
+      setHasUnsavedChanges(true);
+    } else if (sourceId === 'pending' && destId === 'pending') {
       // Reordering within pending
       const newPdfs = [...workingPendingPdfs];
-      newPdfs.splice(sourceIndex, 1);
-      newPdfs.splice(targetIndex, 0, pdf);
+      const [movedPdf] = newPdfs.splice(source.index, 1);
+      newPdfs.splice(destination.index, 0, movedPdf);
       setWorkingPendingPdfs(newPdfs);
-    } else if (source === 'board') {
-      // Moving from board to pending
-      pdf.is_pending = 1;
-      const newBoardPdfs = workingPdfs.filter(p => p.id !== pdf.id);
+      setHasUnsavedChanges(true);
+    } else if (sourceId === 'pending' && destId === 'board') {
+      // Moving from pending to board
       const newPendingPdfs = [...workingPendingPdfs];
-      newPendingPdfs.splice(targetIndex, 0, pdf);
+      const [movedPdf] = newPendingPdfs.splice(source.index, 1);
+      movedPdf.is_pending = 0;
+
+      const newBoardPdfs = [...workingPdfs];
+      newBoardPdfs.splice(destination.index, 0, movedPdf);
+
+      setWorkingPendingPdfs(newPendingPdfs);
+      setWorkingPdfs(newBoardPdfs);
+      setHasUnsavedChanges(true);
+    } else if (sourceId === 'board' && destId === 'pending') {
+      // Moving from board to pending
+      const newBoardPdfs = [...workingPdfs];
+      const [movedPdf] = newBoardPdfs.splice(source.index, 1);
+      movedPdf.is_pending = 1;
+
+      const newPendingPdfs = [...workingPendingPdfs];
+      newPendingPdfs.splice(destination.index, 0, movedPdf);
 
       setWorkingPdfs(newBoardPdfs);
       setWorkingPendingPdfs(newPendingPdfs);
+      setHasUnsavedChanges(true);
     }
-
-    setHasUnsavedChanges(true);
-    setDraggedPdfInfo(null);
   };
 
   if (loading) {
@@ -377,47 +374,41 @@ function AdminPage({ onLogout }) {
 
         {/* Main Content */}
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          {editMode && (
-            <>
-              <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
-                <p className="text-blue-800 text-sm">
-                  Drag and drop PDFs to reorder them. Click the tag icon to manage labels. Click the X to delete. Click the + button on empty slots to add placeholders.
-                  {hasUnsavedChanges && <strong className="ml-2">Changes will be saved when you click "Save Changes".</strong>}
-                </p>
-              </div>
+          <DragDropContext onDragEnd={handleDragEnd}>
+            {editMode && (
+              <>
+                <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                  <p className="text-blue-800 text-sm">
+                    Drag and drop PDFs to reorder them. Click the tag icon to manage labels. Click the X to delete. Click the + button on empty slots to add placeholders.
+                    {hasUnsavedChanges && <strong className="ml-2">Changes will be saved when you click "Save Changes".</strong>}
+                  </p>
+                </div>
 
-              {/* Pending Section - Only visible in edit mode */}
-              <PendingSection
-                pdfs={workingPendingPdfs}
-                onMovePdfToBoard={handleMovePdfToBoard}
-                onDelete={handleDelete}
-                onDragStart={handleDragStart}
-                onDragEnd={handleDragEnd}
-                onDrop={handleDropOnPending}
-                draggedPdfInfo={draggedPdfInfo}
-              />
-            </>
-          )}
+                {/* Pending Section - Only visible in edit mode */}
+                <PendingSection
+                  pdfs={workingPendingPdfs}
+                  onMovePdfToBoard={handleMovePdfToBoard}
+                  onDelete={handleDelete}
+                />
+              </>
+            )}
 
-          <AdminGrid
-            pdfs={editMode ? workingPdfs : pdfs}
-            rows={settings.grid_rows}
-            cols={settings.grid_cols}
-            editMode={editMode}
-            onReorder={handleReorder}
-            onDelete={handleDelete}
-            onLabelClick={handleLabelClick}
-            onSlotMenuOpen={handleSlotMenuOpen}
-            showSlotMenu={showSlotMenu}
-            onSlotMenuClose={handleSlotMenuClose}
-            onAddPlaceholder={handleAddPlaceholder}
-            onUploadToSlot={handleUploadToPdf}
-            onMoveToPending={handleMovePdfToPending}
-            onDragStart={handleDragStart}
-            onDragEnd={handleDragEnd}
-            onDrop={handleDropOnBoard}
-            draggedPdfInfo={draggedPdfInfo}
-          />
+            <AdminGrid
+              pdfs={editMode ? workingPdfs : pdfs}
+              rows={settings.grid_rows}
+              cols={settings.grid_cols}
+              editMode={editMode}
+              onReorder={handleReorder}
+              onDelete={handleDelete}
+              onLabelClick={handleLabelClick}
+              onSlotMenuOpen={handleSlotMenuOpen}
+              showSlotMenu={showSlotMenu}
+              onSlotMenuClose={handleSlotMenuClose}
+              onAddPlaceholder={handleAddPlaceholder}
+              onUploadToSlot={handleUploadToPdf}
+              onMoveToPending={handleMovePdfToPending}
+            />
+          </DragDropContext>
         </main>
 
         {/* Modals */}

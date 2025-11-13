@@ -14,9 +14,9 @@ async function generateThumbnail(pdfPath, outputDir, baseFilename) {
     // -png: output as PNG
     // -f 1 -l 1: first page to last page (page 1 only)
     // -singlefile: don't add page numbers to filename
-    // -r 150: resolution 150 DPI
+    // -r 200: resolution 200 DPI for better thumbnail quality
     const outputBase = finalPath.replace('.png', '');
-    const command = `pdftocairo -png -f 1 -l 1 -singlefile -r 150 "${pdfPath}" "${outputBase}"`;
+    const command = `pdftocairo -png -f 1 -l 1 -singlefile -r 200 "${pdfPath}" "${outputBase}"`;
 
     await execAsync(command);
 
@@ -44,12 +44,12 @@ async function generatePdfImages(pdfPath, outputDir, baseFilename) {
       throw new Error('Could not determine PDF page count');
     }
 
-    // Generate images for all pages
+    // Generate high-resolution images for all pages
     // -png: output as PNG
-    // -r 150: resolution 150 DPI (good balance between quality and file size)
+    // -r 300: resolution 300 DPI for high-quality images
     // Without -singlefile, pdftocairo will generate baseFilename-1.png, baseFilename-2.png, etc.
     const outputBase = path.join(outputDir, baseFilename);
-    const command = `pdftocairo -png -r 150 "${pdfPath}" "${outputBase}"`;
+    const command = `pdftocairo -png -r 300 "${pdfPath}" "${outputBase}"`;
 
     await execAsync(command);
 

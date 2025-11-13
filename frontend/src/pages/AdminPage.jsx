@@ -12,6 +12,7 @@ function AdminPage({ onLogout }) {
   const [pdfs, setPdfs] = useState([]);
   const [pendingPdfs, setPendingPdfs] = useState([]);
   const [workingPdfs, setWorkingPdfs] = useState([]);
+  const [workingPendingPdfs, setWorkingPendingPdfs] = useState([]);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [settings, setSettings] = useState({ grid_rows: 4, grid_cols: 6 });
   const [editMode, setEditMode] = useState(false);
@@ -19,7 +20,9 @@ function AdminPage({ onLogout }) {
   const [showSettings, setShowSettings] = useState(false);
   const [showLabelModal, setShowLabelModal] = useState(false);
   const [selectedPdfForLabels, setSelectedPdfForLabels] = useState(null);
+  const [showSlotMenu, setShowSlotMenu] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [draggedPdfInfo, setDraggedPdfInfo] = useState(null); // { pdf, source: 'board' | 'pending', index }
   const navigate = useNavigate();
 
   const loadData = useCallback(async () => {
@@ -107,16 +110,43 @@ function AdminPage({ onLogout }) {
       // Exiting edit mode - save if there are changes
       if (hasUnsavedChanges) {
         try {
+          // Save reordering
           await saveReorder(workingPdfs);
+
+          // Save pending status changes
+          const statusChanges = [];
+
+          // Check for PDFs moved to/from pending
+          workingPdfs.forEach(pdf => {
+            const original = pdfs.find(p => p.id === pdf.id);
+            if (original && original.is_pending !== pdf.is_pending) {
+              statusChanges.push(pdfAPI.updateStatus(pdf.id, pdf.is_pending));
+            }
+          });
+
+          workingPendingPdfs.forEach(pdf => {
+            const original = pendingPdfs.find(p => p.id === pdf.id);
+            if (original && original.is_pending !== pdf.is_pending) {
+              statusChanges.push(pdfAPI.updateStatus(pdf.id, pdf.is_pending));
+            }
+          });
+
+          if (statusChanges.length > 0) {
+            await Promise.all(statusChanges);
+          }
+
+          await loadData();
         } catch (error) {
           alert('Failed to save changes. Please try again.');
           return;
         }
       }
       setEditMode(false);
+      setHasUnsavedChanges(false);
     } else {
-      // Entering edit mode - create working copy
+      // Entering edit mode - create working copies
       setWorkingPdfs([...pdfs]);
+      setWorkingPendingPdfs([...pendingPdfs]);
       setHasUnsavedChanges(false);
       setEditMode(true);
     }
@@ -164,9 +194,18 @@ function AdminPage({ onLogout }) {
     loadData();
   };
 
+  const handleSlotMenuOpen = (position) => {
+    setShowSlotMenu(position);
+  };
+
+  const handleSlotMenuClose = () => {
+    setShowSlotMenu(null);
+  };
+
   const handleAddPlaceholder = async (position) => {
     try {
       await pdfAPI.createPlaceholder(position + 1);
+      setShowSlotMenu(null);
       loadData();
     } catch (error) {
       console.error('Error creating placeholder:', error);
@@ -174,24 +213,99 @@ function AdminPage({ onLogout }) {
     }
   };
 
-  const handleMovePdfToBoard = async (pdfId) => {
-    try {
-      await pdfAPI.updateStatus(pdfId, false);
-      loadData();
-    } catch (error) {
-      console.error('Error moving PDF to board:', error);
-      alert('Failed to move PDF to board');
-    }
+  const handleUploadToPdf = (position) => {
+    // Position will be used after upload
+    setShowSlotMenu(null);
+    setShowUpload(true);
   };
 
-  const handleMovePdfToPending = async (pdfId) => {
-    try {
-      await pdfAPI.updateStatus(pdfId, true);
-      loadData();
-    } catch (error) {
-      console.error('Error moving PDF to pending:', error);
-      alert('Failed to move PDF to pending');
+  const handleMovePdfToBoard = (pdfId) => {
+    // Move from pending to board (working copies only, not saved yet)
+    const pdfToMove = workingPendingPdfs.find(pdf => pdf.id === pdfId);
+    if (!pdfToMove) return;
+
+    // Update is_pending flag
+    pdfToMove.is_pending = 0;
+
+    // Remove from pending and add to board
+    setWorkingPendingPdfs(workingPendingPdfs.filter(pdf => pdf.id !== pdfId));
+    setWorkingPdfs([...workingPdfs, pdfToMove]);
+    setHasUnsavedChanges(true);
+  };
+
+  const handleMovePdfToPending = (pdfId) => {
+    // Move from board to pending (working copies only, not saved yet)
+    const pdfToMove = workingPdfs.find(pdf => pdf.id === pdfId);
+    if (!pdfToMove) return;
+
+    // Update is_pending flag
+    pdfToMove.is_pending = 1;
+
+    // Remove from board and add to pending
+    setWorkingPdfs(workingPdfs.filter(pdf => pdf.id !== pdfId));
+    setWorkingPendingPdfs([...workingPendingPdfs, pdfToMove]);
+    setHasUnsavedChanges(true);
+  };
+
+  // Unified drag handlers for cross-component dragging
+  const handleDragStart = (pdf, source, index) => {
+    setDraggedPdfInfo({ pdf, source, index });
+  };
+
+  const handleDragEnd = () => {
+    setDraggedPdfInfo(null);
+  };
+
+  const handleDropOnBoard = (targetIndex) => {
+    if (!draggedPdfInfo) return;
+
+    const { pdf, source, index: sourceIndex } = draggedPdfInfo;
+
+    if (source === 'board') {
+      // Reordering within board
+      const newPdfs = [...workingPdfs];
+      newPdfs.splice(sourceIndex, 1);
+      newPdfs.splice(targetIndex, 0, pdf);
+      setWorkingPdfs(newPdfs);
+    } else if (source === 'pending') {
+      // Moving from pending to board
+      pdf.is_pending = 0;
+      const newPendingPdfs = workingPendingPdfs.filter(p => p.id !== pdf.id);
+      const newBoardPdfs = [...workingPdfs];
+      newBoardPdfs.splice(targetIndex, 0, pdf);
+
+      setWorkingPendingPdfs(newPendingPdfs);
+      setWorkingPdfs(newBoardPdfs);
     }
+
+    setHasUnsavedChanges(true);
+    setDraggedPdfInfo(null);
+  };
+
+  const handleDropOnPending = (targetIndex) => {
+    if (!draggedPdfInfo) return;
+
+    const { pdf, source, index: sourceIndex } = draggedPdfInfo;
+
+    if (source === 'pending') {
+      // Reordering within pending
+      const newPdfs = [...workingPendingPdfs];
+      newPdfs.splice(sourceIndex, 1);
+      newPdfs.splice(targetIndex, 0, pdf);
+      setWorkingPendingPdfs(newPdfs);
+    } else if (source === 'board') {
+      // Moving from board to pending
+      pdf.is_pending = 1;
+      const newBoardPdfs = workingPdfs.filter(p => p.id !== pdf.id);
+      const newPendingPdfs = [...workingPendingPdfs];
+      newPendingPdfs.splice(targetIndex, 0, pdf);
+
+      setWorkingPdfs(newBoardPdfs);
+      setWorkingPendingPdfs(newPendingPdfs);
+    }
+
+    setHasUnsavedChanges(true);
+    setDraggedPdfInfo(null);
   };
 
   if (loading) {
@@ -274,9 +388,13 @@ function AdminPage({ onLogout }) {
 
               {/* Pending Section - Only visible in edit mode */}
               <PendingSection
-                pdfs={pendingPdfs}
+                pdfs={workingPendingPdfs}
                 onMovePdfToBoard={handleMovePdfToBoard}
                 onDelete={handleDelete}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
+                onDrop={handleDropOnPending}
+                draggedPdfInfo={draggedPdfInfo}
               />
             </>
           )}
@@ -289,7 +407,16 @@ function AdminPage({ onLogout }) {
             onReorder={handleReorder}
             onDelete={handleDelete}
             onLabelClick={handleLabelClick}
+            onSlotMenuOpen={handleSlotMenuOpen}
+            showSlotMenu={showSlotMenu}
+            onSlotMenuClose={handleSlotMenuClose}
             onAddPlaceholder={handleAddPlaceholder}
+            onUploadToSlot={handleUploadToPdf}
+            onMoveToPending={handleMovePdfToPending}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            onDrop={handleDropOnBoard}
+            draggedPdfInfo={draggedPdfInfo}
           />
         </main>
 

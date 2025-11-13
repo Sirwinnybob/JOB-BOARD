@@ -33,4 +33,41 @@ async function generateThumbnail(pdfPath, outputDir, baseFilename) {
   }
 }
 
-module.exports = { generateThumbnail };
+async function generatePdfImages(pdfPath, outputDir, baseFilename) {
+  try {
+    // First, get the page count
+    const pageCountCommand = `pdfinfo "${pdfPath}" | grep Pages: | awk '{print $2}'`;
+    const { stdout: pageCountStr } = await execAsync(pageCountCommand);
+    const pageCount = parseInt(pageCountStr.trim(), 10);
+
+    if (!pageCount || pageCount < 1) {
+      throw new Error('Could not determine PDF page count');
+    }
+
+    // Generate images for all pages
+    // -png: output as PNG
+    // -r 150: resolution 150 DPI (good balance between quality and file size)
+    // Without -singlefile, pdftocairo will generate baseFilename-1.png, baseFilename-2.png, etc.
+    const outputBase = path.join(outputDir, baseFilename);
+    const command = `pdftocairo -png -r 150 "${pdfPath}" "${outputBase}"`;
+
+    await execAsync(command);
+
+    // Verify the files were created
+    const firstPagePath = path.join(outputDir, `${baseFilename}-1.png`);
+    const fileExists = await fs.access(firstPagePath).then(() => true).catch(() => false);
+    if (!fileExists) {
+      throw new Error('PDF image generation failed - output files not found');
+    }
+
+    return {
+      pageCount,
+      baseFilename,
+    };
+  } catch (error) {
+    console.error('Error generating PDF images:', error);
+    throw error;
+  }
+}
+
+module.exports = { generateThumbnail, generatePdfImages };

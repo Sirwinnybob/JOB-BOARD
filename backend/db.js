@@ -56,6 +56,26 @@ db.serialize(() => {
     }
   });
 
+  // Add page_count column to existing tables (migration)
+  db.run(`
+    ALTER TABLE pdfs ADD COLUMN page_count INTEGER
+  `, (err) => {
+    // Ignore error if column already exists
+    if (err && !err.message.includes('duplicate column name')) {
+      console.error('Error adding page_count column:', err);
+    }
+  });
+
+  // Add images_base column to existing tables (migration)
+  db.run(`
+    ALTER TABLE pdfs ADD COLUMN images_base TEXT
+  `, (err) => {
+    // Ignore error if column already exists
+    if (err && !err.message.includes('duplicate column name')) {
+      console.error('Error adding images_base column:', err);
+    }
+  });
+
   // Settings table
   db.run(`
     CREATE TABLE IF NOT EXISTS settings (

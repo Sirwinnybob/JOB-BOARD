@@ -12,7 +12,7 @@ const path = require('path');
 const fs = require('fs').promises;
 const db = require('./db');
 const authMiddleware = require('./middleware/auth');
-const { generateThumbnail } = require('./utils/thumbnail');
+const { generateThumbnail, generatePdfImages } = require('./utils/thumbnail');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -251,6 +251,10 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
     // Generate thumbnail
     const thumbnailName = await generateThumbnail(pdfPath, thumbnailDir, baseFilename);
 
+    // Generate full PDF images for viewing
+    const imagesBase = `${baseFilename}-pages`;
+    const { pageCount } = await generatePdfImages(pdfPath, thumbnailDir, imagesBase);
+
     // Get the highest position
     db.get('SELECT MAX(position) as maxPos FROM pdfs', [], (err, row) => {
       if (err) {
@@ -261,8 +265,8 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
       const newPosition = (row.maxPos || 0) + 1;
 
       db.run(
-        'INSERT INTO pdfs (filename, original_name, thumbnail, position, is_pending) VALUES (?, ?, ?, ?, ?)',
-        [filename, originalName, thumbnailName, newPosition, 1],
+        'INSERT INTO pdfs (filename, original_name, thumbnail, position, is_pending, page_count, images_base) VALUES (?, ?, ?, ?, ?, ?, ?)',
+        [filename, originalName, thumbnailName, newPosition, 1, pageCount, imagesBase],
         function (err) {
           if (err) {
             console.error('Database error:', err);
@@ -276,7 +280,9 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
             original_name: originalName,
             thumbnail: thumbnailName,
             position: newPosition,
-            is_pending: 1
+            is_pending: 1,
+            page_count: pageCount,
+            images_base: imagesBase
           });
 
           res.json({
@@ -285,7 +291,9 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
             original_name: originalName,
             thumbnail: thumbnailName,
             position: newPosition,
-            is_pending: 1
+            is_pending: 1,
+            page_count: pageCount,
+            images_base: imagesBase
           });
         }
       );
@@ -315,6 +323,18 @@ app.delete('/api/pdfs/:id', authMiddleware, async (req, res) => {
         try {
           await fs.unlink(path.join(uploadDir, row.filename));
           await fs.unlink(path.join(thumbnailDir, row.thumbnail));
+
+          // Delete all generated page images if they exist
+          if (row.images_base && row.page_count) {
+            for (let i = 1; i <= row.page_count; i++) {
+              try {
+                await fs.unlink(path.join(thumbnailDir, `${row.images_base}-${i}.png`));
+              } catch (pageErr) {
+                // Ignore if page image doesn't exist
+                console.error(`Error deleting page ${i}:`, pageErr);
+              }
+            }
+          }
         } catch (fileErr) {
           console.error('Error deleting files:', fileErr);
         }
@@ -378,8 +398,8 @@ app.post('/api/pdfs/placeholder', authMiddleware, async (req, res) => {
     }
 
     db.run(
-      'INSERT INTO pdfs (filename, original_name, thumbnail, position, is_placeholder) VALUES (?, ?, ?, ?, ?)',
-      [null, null, null, position, 1],
+      'INSERT INTO pdfs (filename, original_name, thumbnail, position, is_placeholder, is_pending) VALUES (?, ?, ?, ?, ?, ?)',
+      [null, null, null, position, 1, 0],
       function (err) {
         if (err) {
           console.error('Database error:', err);
@@ -392,7 +412,8 @@ app.post('/api/pdfs/placeholder', authMiddleware, async (req, res) => {
           original_name: null,
           thumbnail: null,
           position: position,
-          is_placeholder: 1
+          is_placeholder: 1,
+          is_pending: 0
         };
 
         // Broadcast update to all clients

@@ -186,47 +186,51 @@ app.post('/api/auth/login', async (req, res) => {
 // PDF Routes
 app.get('/api/pdfs', async (req, res) => {
   try {
-    db.all(
-      'SELECT * FROM pdfs ORDER BY position ASC',
-      [],
-      (err, rows) => {
-        if (err) {
-          console.error('Database error:', err);
-          return res.status(500).json({ error: 'Database error' });
-        }
+    const { includePending } = req.query;
+    const shouldIncludePending = includePending === 'true';
 
-        // Fetch labels for each PDF
-        const pdfsWithLabels = [];
-        let completed = 0;
+    // Build query based on whether to include pending PDFs
+    const query = shouldIncludePending
+      ? 'SELECT * FROM pdfs ORDER BY position ASC'
+      : 'SELECT * FROM pdfs WHERE is_pending = 0 OR is_pending IS NULL ORDER BY position ASC';
 
-        if (rows.length === 0) {
-          return res.json([]);
-        }
-
-        rows.forEach(pdf => {
-          db.all(
-            `SELECT l.* FROM labels l
-             INNER JOIN pdf_labels pl ON l.id = pl.label_id
-             WHERE pl.pdf_id = ?`,
-            [pdf.id],
-            (err, labels) => {
-              if (err) {
-                console.error('Error fetching labels:', err);
-                labels = [];
-              }
-              pdfsWithLabels.push({ ...pdf, labels: labels || [] });
-              completed++;
-
-              if (completed === rows.length) {
-                // Sort by position
-                pdfsWithLabels.sort((a, b) => a.position - b.position);
-                res.json(pdfsWithLabels);
-              }
-            }
-          );
-        });
+    db.all(query, [], (err, rows) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Database error' });
       }
-    );
+
+      // Fetch labels for each PDF
+      const pdfsWithLabels = [];
+      let completed = 0;
+
+      if (rows.length === 0) {
+        return res.json([]);
+      }
+
+      rows.forEach(pdf => {
+        db.all(
+          `SELECT l.* FROM labels l
+           INNER JOIN pdf_labels pl ON l.id = pl.label_id
+           WHERE pl.pdf_id = ?`,
+          [pdf.id],
+          (err, labels) => {
+            if (err) {
+              console.error('Error fetching labels:', err);
+              labels = [];
+            }
+            pdfsWithLabels.push({ ...pdf, labels: labels || [] });
+            completed++;
+
+            if (completed === rows.length) {
+              // Sort by position
+              pdfsWithLabels.sort((a, b) => a.position - b.position);
+              res.json(pdfsWithLabels);
+            }
+          }
+        );
+      });
+    });
   } catch (error) {
     console.error('Error fetching PDFs:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -257,8 +261,8 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
       const newPosition = (row.maxPos || 0) + 1;
 
       db.run(
-        'INSERT INTO pdfs (filename, original_name, thumbnail, position) VALUES (?, ?, ?, ?)',
-        [filename, originalName, thumbnailName, newPosition],
+        'INSERT INTO pdfs (filename, original_name, thumbnail, position, is_pending) VALUES (?, ?, ?, ?, ?)',
+        [filename, originalName, thumbnailName, newPosition, 1],
         function (err) {
           if (err) {
             console.error('Database error:', err);
@@ -271,7 +275,8 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
             filename,
             original_name: originalName,
             thumbnail: thumbnailName,
-            position: newPosition
+            position: newPosition,
+            is_pending: 1
           });
 
           res.json({
@@ -279,7 +284,8 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
             filename,
             original_name: originalName,
             thumbnail: thumbnailName,
-            position: newPosition
+            position: newPosition,
+            is_pending: 1
           });
         }
       );
@@ -397,6 +403,40 @@ app.post('/api/pdfs/placeholder', authMiddleware, async (req, res) => {
     );
   } catch (error) {
     console.error('Error creating placeholder:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.put('/api/pdfs/:id/status', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { is_pending } = req.body;
+
+    if (is_pending === undefined || is_pending === null) {
+      return res.status(400).json({ error: 'is_pending is required' });
+    }
+
+    db.run(
+      'UPDATE pdfs SET is_pending = ? WHERE id = ?',
+      [is_pending ? 1 : 0, id],
+      function (err) {
+        if (err) {
+          console.error('Database error:', err);
+          return res.status(500).json({ error: 'Database error' });
+        }
+
+        if (this.changes === 0) {
+          return res.status(404).json({ error: 'PDF not found' });
+        }
+
+        // Broadcast update to all clients
+        broadcastUpdate('pdf_status_updated', { id, is_pending: is_pending ? 1 : 0 });
+
+        res.json({ success: true, id, is_pending: is_pending ? 1 : 0 });
+      }
+    );
+  } catch (error) {
+    console.error('Error updating PDF status:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

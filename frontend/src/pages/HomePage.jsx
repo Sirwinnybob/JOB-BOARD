@@ -43,6 +43,7 @@ function HomePage() {
       'pdf_deleted',
       'pdfs_reordered',
       'pdf_labels_updated',
+      'pdf_status_updated',
       'label_created',
       'label_deleted',
       'settings_updated'

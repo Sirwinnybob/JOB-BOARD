@@ -3,43 +3,66 @@ import DraggablePDFCard from './DraggablePDFCard';
 import PlaceholderCard from './PlaceholderCard';
 
 function AdminGrid({ pdfs, rows, cols, editMode, onReorder, onDelete, onLabelClick, onAddPlaceholder }) {
-  const [draggedItem, setDraggedItem] = useState(null);
-  const [hoverIndex, setHoverIndex] = useState(null);
+  const [draggedIndex, setDraggedIndex] = useState(null);
+  const [dragOverIndex, setDragOverIndex] = useState(null);
 
   const totalSlots = rows * cols;
 
-  const handleDragStart = (index) => {
-    setDraggedItem(index);
-    setHoverIndex(null);
+  const handleDragStart = (e, index) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/html', index);
   };
 
   const handleDragOver = (e, index) => {
     e.preventDefault();
-    if (draggedItem === null || draggedItem === index) return;
+    e.dataTransfer.dropEffect = 'move';
 
-    // Only update the hover index for visual feedback
-    // Don't modify the array until drop
-    setHoverIndex(index);
+    if (draggedIndex === null || draggedIndex === index) return;
+    setDragOverIndex(index);
   };
 
-  const handleDrop = (e, index) => {
+  const handleDragEnter = (e, index) => {
     e.preventDefault();
-    if (draggedItem === null || draggedItem === index) return;
+    if (draggedIndex !== null && draggedIndex !== index) {
+      setDragOverIndex(index);
+    }
+  };
 
-    // Only now do we actually reorder the array
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    // Only clear if we're leaving the grid entirely
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+      setDragOverIndex(null);
+    }
+  };
+
+  const handleDrop = (e, dropIndex) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (draggedIndex === null || draggedIndex === dropIndex) {
+      setDraggedIndex(null);
+      setDragOverIndex(null);
+      return;
+    }
+
     const newPdfs = [...pdfs];
-    const draggedPdf = newPdfs[draggedItem];
-    newPdfs.splice(draggedItem, 1);
-    newPdfs.splice(index, 0, draggedPdf);
+    const draggedPdf = newPdfs[draggedIndex];
+
+    // Remove from old position
+    newPdfs.splice(draggedIndex, 1);
+    // Insert at new position
+    newPdfs.splice(dropIndex, 0, draggedPdf);
 
     onReorder(newPdfs);
-    setDraggedItem(null);
-    setHoverIndex(null);
+    setDraggedIndex(null);
+    setDragOverIndex(null);
   };
 
   const handleDragEnd = () => {
-    setDraggedItem(null);
-    setHoverIndex(null);
+    setDraggedIndex(null);
+    setDragOverIndex(null);
   };
 
   const gridStyle = {
@@ -51,17 +74,21 @@ function AdminGrid({ pdfs, rows, cols, editMode, onReorder, onDelete, onLabelCli
     <div className="grid gap-4 w-full" style={gridStyle}>
       {Array.from({ length: totalSlots }).map((_, index) => {
         const pdf = pdfs[index];
-        const isHovered = hoverIndex === index && draggedItem !== null;
+        const isDragging = draggedIndex === index;
+        const isDraggedOver = dragOverIndex === index && draggedIndex !== null && draggedIndex !== index;
 
         return (
           <div
-            key={pdf?.id || index}
+            key={pdf?.id || `empty-${index}`}
             onDragOver={(e) => editMode && handleDragOver(e, index)}
+            onDragEnter={(e) => editMode && handleDragEnter(e, index)}
+            onDragLeave={(e) => editMode && handleDragLeave(e)}
             onDrop={(e) => editMode && handleDrop(e, index)}
-            className="aspect-[5/7] transition-all duration-300 ease-in-out"
+            className={`aspect-[5/7] transition-all duration-200 ${
+              isDraggedOver ? 'scale-105 ring-4 ring-blue-400 ring-opacity-50' : ''
+            }`}
             style={{
-              transform: draggedItem === index ? 'scale(0.95)' : isHovered ? 'scale(1.05)' : 'scale(1)',
-              opacity: draggedItem === index ? 0.5 : 1,
+              opacity: isDragging ? 0.4 : 1,
             }}
           >
             {pdf ? (
@@ -73,7 +100,7 @@ function AdminGrid({ pdfs, rows, cols, editMode, onReorder, onDelete, onLabelCli
                   onDragStart={handleDragStart}
                   onDragEnd={handleDragEnd}
                   onDelete={onDelete}
-                  isDragging={draggedItem === index}
+                  isDragging={isDragging}
                 />
               ) : (
                 <DraggablePDFCard
@@ -84,7 +111,7 @@ function AdminGrid({ pdfs, rows, cols, editMode, onReorder, onDelete, onLabelCli
                   onDragEnd={handleDragEnd}
                   onDelete={onDelete}
                   onLabelClick={onLabelClick}
-                  isDragging={draggedItem === index}
+                  isDragging={isDragging}
                 />
               )
             ) : (

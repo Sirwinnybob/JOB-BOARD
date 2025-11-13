@@ -27,7 +27,7 @@ export const authAPI = {
 };
 
 export const pdfAPI = {
-  getAll: () => api.get('/pdfs'),
+  getAll: (includePending = false) => api.get('/pdfs', { params: { includePending } }),
   upload: (file, onProgress) => {
     const formData = new FormData();
     formData.append('pdf', file);
@@ -40,6 +40,7 @@ export const pdfAPI = {
   reorder: (pdfs) => api.put('/pdfs/reorder', { pdfs }),
   updateLabels: (id, labelIds) => api.put(`/pdfs/${id}/labels`, { labelIds }),
   createPlaceholder: (position) => api.post('/pdfs/placeholder', { position }),
+  updateStatus: (id, is_pending) => api.put(`/pdfs/${id}/status`, { is_pending }),
 };
 
 export const labelAPI = {

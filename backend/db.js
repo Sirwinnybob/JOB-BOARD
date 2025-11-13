@@ -46,6 +46,16 @@ db.serialize(() => {
     }
   });
 
+  // Add is_pending column to existing tables (migration)
+  db.run(`
+    ALTER TABLE pdfs ADD COLUMN is_pending INTEGER DEFAULT 1
+  `, (err) => {
+    // Ignore error if column already exists
+    if (err && !err.message.includes('duplicate column name')) {
+      console.error('Error adding is_pending column:', err);
+    }
+  });
+
   // Settings table
   db.run(`
     CREATE TABLE IF NOT EXISTS settings (

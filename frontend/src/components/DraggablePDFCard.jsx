@@ -15,11 +15,9 @@ function DraggablePDFCard({
       draggable={editMode}
       onDragStart={() => onDragStart(index)}
       onDragEnd={onDragEnd}
-      className={`relative w-full h-full bg-white rounded-lg shadow-md overflow-hidden border border-gray-200 transition-all ${
-        editMode ? 'cursor-move' : 'cursor-default'
-      } ${isDragging ? 'opacity-50 scale-95' : ''} ${
-        editMode ? 'animate-wiggle' : ''
-      }`}
+      className={`relative w-full h-full bg-white rounded-lg shadow-md overflow-hidden transition-all ${
+        editMode ? 'cursor-move border-2 animate-border-pulse' : 'cursor-default border border-gray-200'
+      } ${isDragging ? 'opacity-50 scale-95' : ''}`}
     >
       <img
         src={`/thumbnails/${pdf.thumbnail}`}

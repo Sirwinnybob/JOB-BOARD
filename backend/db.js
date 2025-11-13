@@ -13,20 +13,38 @@ if (!fs.existsSync(dataDir)) {
 const dbPath = path.join(dataDir, 'database.sqlite');
 const db = new sqlite3.Database(dbPath);
 
+// Optimize SQLite for concurrent reads (important for 20+ connected devices)
+db.configure('busyTimeout', 10000); // Wait up to 10 seconds when database is locked
+db.run('PRAGMA journal_mode = WAL'); // Write-Ahead Logging for better concurrent reads
+db.run('PRAGMA synchronous = NORMAL'); // Faster writes, still safe
+db.run('PRAGMA cache_size = 10000'); // Increase cache for better performance
+db.run('PRAGMA temp_store = MEMORY'); // Store temp tables in memory
+
 // Initialize database tables
 db.serialize(() => {
   // PDFs table
   db.run(`
     CREATE TABLE IF NOT EXISTS pdfs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      filename TEXT NOT NULL,
-      original_name TEXT NOT NULL,
-      thumbnail TEXT NOT NULL,
+      filename TEXT,
+      original_name TEXT,
+      thumbnail TEXT,
       position INTEGER NOT NULL,
+      is_placeholder INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
+
+  // Add is_placeholder column to existing tables (migration)
+  db.run(`
+    ALTER TABLE pdfs ADD COLUMN is_placeholder INTEGER DEFAULT 0
+  `, (err) => {
+    // Ignore error if column already exists
+    if (err && !err.message.includes('duplicate column name')) {
+      console.error('Error adding is_placeholder column:', err);
+    }
+  });
 
   // Settings table
   db.run(`
@@ -72,6 +90,13 @@ db.serialize(() => {
   db.run(`INSERT OR IGNORE INTO labels (name, color) VALUES ('PENDING', '#f59e0b')`);
   db.run(`INSERT OR IGNORE INTO labels (name, color) VALUES ('URGENT', '#ef4444')`);
   db.run(`INSERT OR IGNORE INTO labels (name, color) VALUES ('COMPLETED', '#8b5cf6')`);
+
+  // Create indexes for better query performance with multiple concurrent reads
+  db.run(`CREATE INDEX IF NOT EXISTS idx_pdfs_position ON pdfs(position)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_pdf_labels_pdf_id ON pdf_labels(pdf_id)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_pdf_labels_label_id ON pdf_labels(label_id)`);
 });
+
+console.log('Database initialized with optimizations for concurrent connections');
 
 module.exports = db;

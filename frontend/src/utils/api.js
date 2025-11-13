@@ -39,6 +39,7 @@ export const pdfAPI = {
   delete: (id) => api.delete(`/pdfs/${id}`),
   reorder: (pdfs) => api.put('/pdfs/reorder', { pdfs }),
   updateLabels: (id, labelIds) => api.put(`/pdfs/${id}/labels`, { labelIds }),
+  createPlaceholder: (position) => api.post('/pdfs/placeholder', { position }),
 };
 
 export const labelAPI = {

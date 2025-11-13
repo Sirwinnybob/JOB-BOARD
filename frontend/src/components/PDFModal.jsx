@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 
-function PDFModal({ pdf, onClose }) {
+function PDFModal({ pdf, onClose, pdfs = null, currentIndex = null, onNavigate = null }) {
   const [currentPage, setCurrentPage] = useState(1);
   const [darkMode, setDarkMode] = useState(() => {
     // Check localStorage first, then fall back to system preference
@@ -13,6 +13,24 @@ function PDFModal({ pdf, onClose }) {
   });
 
   const totalPages = pdf.page_count || 1;
+
+  // Navigation helpers
+  const canNavigatePrev = pdfs && currentIndex !== null && currentIndex > 0;
+  const canNavigateNext = pdfs && currentIndex !== null && currentIndex < pdfs.length - 1;
+
+  const handlePreviousJob = () => {
+    if (canNavigatePrev && onNavigate) {
+      setCurrentPage(1); // Reset to first page of new job
+      onNavigate(currentIndex - 1);
+    }
+  };
+
+  const handleNextJob = () => {
+    if (canNavigateNext && onNavigate) {
+      setCurrentPage(1); // Reset to first page of new job
+      onNavigate(currentIndex + 1);
+    }
+  };
 
   useEffect(() => {
     // Prevent body scroll when modal is open
@@ -27,20 +45,34 @@ function PDFModal({ pdf, onClose }) {
     localStorage.setItem('pdfViewerDarkMode', darkMode.toString());
   }, [darkMode]);
 
-  // Close on Escape key and handle arrow keys for pagination
+  // Close on Escape key and handle arrow keys for pagination and job navigation
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
         onClose();
-      } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+      } else if (e.key === 'ArrowRight') {
+        // If we're on the last page and can navigate to next job, do that
+        if (currentPage === totalPages && canNavigateNext) {
+          handleNextJob();
+        } else {
+          setCurrentPage(prev => Math.min(prev + 1, totalPages));
+        }
+      } else if (e.key === 'ArrowLeft') {
+        // If we're on the first page and can navigate to previous job, do that
+        if (currentPage === 1 && canNavigatePrev) {
+          handlePreviousJob();
+        } else {
+          setCurrentPage(prev => Math.max(prev - 1, 1));
+        }
+      } else if (e.key === 'ArrowDown') {
         setCurrentPage(prev => Math.min(prev + 1, totalPages));
-      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+      } else if (e.key === 'ArrowUp') {
         setCurrentPage(prev => Math.max(prev - 1, 1));
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose, totalPages]);
+  }, [onClose, totalPages, currentPage, canNavigatePrev, canNavigateNext]);
 
   const downloadCurrentImage = () => {
     const imageUrl = `/thumbnails/${pdf.images_base}-${currentPage}.png`;
@@ -136,7 +168,7 @@ function PDFModal({ pdf, onClose }) {
         </div>
 
         {/* Image Viewer */}
-        <div className="flex-1 bg-white rounded-lg overflow-hidden shadow-2xl flex flex-col">
+        <div className="flex-1 bg-white rounded-lg overflow-hidden shadow-2xl flex flex-col relative">
           <div className={`flex-1 flex items-center justify-center p-4 overflow-auto transition-colors ${
             darkMode ? 'bg-gray-900' : 'bg-gray-100'
           }`}>
@@ -153,6 +185,36 @@ function PDFModal({ pdf, onClose }) {
               }}
             />
           </div>
+
+          {/* Job Navigation Arrows */}
+          {pdfs && currentIndex !== null && (
+            <>
+              {canNavigatePrev && (
+                <button
+                  onClick={handlePreviousJob}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 bg-blue-600/90 hover:bg-blue-700 text-white p-3 rounded-full transition-all shadow-lg z-10"
+                  title="Previous Job"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                  </svg>
+                </button>
+              )}
+
+              {canNavigateNext && (
+                <button
+                  onClick={handleNextJob}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 bg-blue-600/90 hover:bg-blue-700 text-white p-3 rounded-full transition-all shadow-lg z-10"
+                  title="Next Job"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                  </svg>
+                </button>
+              )}
+            </>
+          )}
+        </div>
 
           {/* Page Navigation */}
           {totalPages > 1 && (

@@ -72,6 +72,14 @@ function HomePage() {
     setSelectedPdf(null);
   };
 
+  const handleNavigate = (newIndex) => {
+    // Filter out placeholders for navigation (same as in grid/slideshow)
+    const displayPdfs = pdfs.filter(pdf => pdf && !pdf.is_placeholder);
+    if (newIndex >= 0 && newIndex < displayPdfs.length) {
+      setSelectedPdf(displayPdfs[newIndex]);
+    }
+  };
+
   const toggleViewMode = () => {
     const newMode = viewMode === 'grid' ? 'slideshow' : 'grid';
     setViewMode(newMode);
@@ -158,7 +166,13 @@ function HomePage() {
 
       {/* PDF Modal */}
       {selectedPdf && (
-        <PDFModal pdf={selectedPdf} onClose={handleCloseModal} />
+        <PDFModal
+          pdf={selectedPdf}
+          onClose={handleCloseModal}
+          pdfs={pdfs.filter(pdf => pdf && !pdf.is_placeholder)}
+          currentIndex={pdfs.filter(pdf => pdf && !pdf.is_placeholder).findIndex(p => p.id === selectedPdf.id)}
+          onNavigate={handleNavigate}
+        />
       )}
     </div>
   );

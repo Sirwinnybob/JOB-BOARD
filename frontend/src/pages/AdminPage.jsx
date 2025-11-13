@@ -7,10 +7,12 @@ import AdminGrid from '../components/AdminGrid';
 import UploadModal from '../components/UploadModal';
 import SettingsModal from '../components/SettingsModal';
 import LabelModal from '../components/LabelModal';
+import PendingSection from '../components/PendingSection';
 import useWebSocket from '../hooks/useWebSocket';
 
 function AdminPage({ onLogout }) {
   const [pdfs, setPdfs] = useState([]);
+  const [pendingPdfs, setPendingPdfs] = useState([]);
   const [workingPdfs, setWorkingPdfs] = useState([]);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [settings, setSettings] = useState({ grid_rows: 4, grid_cols: 6 });
@@ -24,11 +26,18 @@ function AdminPage({ onLogout }) {
 
   const loadData = useCallback(async () => {
     try {
-      const [pdfsRes, settingsRes] = await Promise.all([
-        pdfAPI.getAll(),
+      const [allPdfsRes, settingsRes] = await Promise.all([
+        pdfAPI.getAll(true), // Include pending PDFs
         settingsAPI.get(),
       ]);
-      setPdfs(pdfsRes.data);
+
+      // Separate pending and visible PDFs
+      const allPdfs = allPdfsRes.data;
+      const visible = allPdfs.filter(pdf => !pdf.is_pending);
+      const pending = allPdfs.filter(pdf => pdf.is_pending);
+
+      setPdfs(visible);
+      setPendingPdfs(pending);
       setSettings({
         grid_rows: parseInt(settingsRes.data.grid_rows),
         grid_cols: parseInt(settingsRes.data.grid_cols),
@@ -53,6 +62,7 @@ function AdminPage({ onLogout }) {
       'pdf_deleted',
       'pdfs_reordered',
       'pdf_labels_updated',
+      'pdf_status_updated',
       'label_created',
       'label_deleted',
       'settings_updated'
@@ -166,6 +176,26 @@ function AdminPage({ onLogout }) {
     }
   };
 
+  const handleMovePdfToBoard = async (pdfId) => {
+    try {
+      await pdfAPI.updateStatus(pdfId, false);
+      loadData();
+    } catch (error) {
+      console.error('Error moving PDF to board:', error);
+      alert('Failed to move PDF to board');
+    }
+  };
+
+  const handleMovePdfToPending = async (pdfId) => {
+    try {
+      await pdfAPI.updateStatus(pdfId, true);
+      loadData();
+    } catch (error) {
+      console.error('Error moving PDF to pending:', error);
+      alert('Failed to move PDF to pending');
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
@@ -216,12 +246,14 @@ function AdminPage({ onLogout }) {
               >
                 {editMode ? (hasUnsavedChanges ? 'Save Changes' : 'Done Editing') : 'Edit Mode'}
               </button>
-              <button
-                onClick={() => setShowUpload(true)}
-                className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors"
-              >
-                + Upload PDF
-              </button>
+              {editMode && (
+                <button
+                  onClick={() => setShowUpload(true)}
+                  className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors"
+                >
+                  + Upload PDF
+                </button>
+              )}
               <button
                 onClick={() => setShowSettings(true)}
                 className="px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors"
@@ -235,12 +267,21 @@ function AdminPage({ onLogout }) {
         {/* Main Content */}
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           {editMode && (
-            <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <p className="text-blue-800 text-sm">
-                Drag and drop PDFs to reorder them. Click the tag icon to manage labels. Click the X to delete. Click the + button on empty slots to add placeholders.
-                {hasUnsavedChanges && <strong className="ml-2">Changes will be saved when you click "Save Changes".</strong>}
-              </p>
-            </div>
+            <>
+              <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <p className="text-blue-800 text-sm">
+                  Drag and drop PDFs to reorder them. Click the tag icon to manage labels. Click the X to delete. Click the + button on empty slots to add placeholders.
+                  {hasUnsavedChanges && <strong className="ml-2">Changes will be saved when you click "Save Changes".</strong>}
+                </p>
+              </div>
+
+              {/* Pending Section - Only visible in edit mode */}
+              <PendingSection
+                pdfs={pendingPdfs}
+                onMovePdfToBoard={handleMovePdfToBoard}
+                onDelete={handleDelete}
+              />
+            </>
           )}
 
           <AdminGrid

@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import DraggablePDFCard from './DraggablePDFCard';
+import PlaceholderCard from './PlaceholderCard';
 
-function AdminGrid({ pdfs, rows, cols, editMode, onReorder, onDelete, onLabelClick }) {
+function AdminGrid({ pdfs, rows, cols, editMode, onReorder, onDelete, onLabelClick, onAddPlaceholder }) {
   const [draggedItem, setDraggedItem] = useState(null);
 
   const totalSlots = rows * cols;
@@ -39,26 +40,61 @@ function AdminGrid({ pdfs, rows, cols, editMode, onReorder, onDelete, onLabelCli
 
         return (
           <div
-            key={index}
+            key={pdf?.id || index}
             onDragOver={(e) => editMode && handleDragOver(e, index)}
-            className="aspect-[5/7]"
+            className="aspect-[5/7] transition-all duration-300 ease-in-out"
+            style={{
+              transform: draggedItem === index ? 'scale(0.95)' : 'scale(1)',
+            }}
           >
             {pdf ? (
-              <DraggablePDFCard
-                pdf={pdf}
-                index={index}
-                editMode={editMode}
-                onDragStart={handleDragStart}
-                onDragEnd={handleDragEnd}
-                onDelete={onDelete}
-                onLabelClick={onLabelClick}
-                isDragging={draggedItem === index}
-              />
+              pdf.is_placeholder ? (
+                <PlaceholderCard
+                  placeholder={pdf}
+                  index={index}
+                  editMode={editMode}
+                  onDragStart={handleDragStart}
+                  onDragEnd={handleDragEnd}
+                  onDelete={onDelete}
+                  isDragging={draggedItem === index}
+                />
+              ) : (
+                <DraggablePDFCard
+                  pdf={pdf}
+                  index={index}
+                  editMode={editMode}
+                  onDragStart={handleDragStart}
+                  onDragEnd={handleDragEnd}
+                  onDelete={onDelete}
+                  onLabelClick={onLabelClick}
+                  isDragging={draggedItem === index}
+                />
+              )
             ) : (
-              <div className="w-full h-full bg-gray-200 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center">
-                {editMode && (
-                  <span className="text-gray-400 text-sm">Empty</span>
-                )}
+              <div className="w-full h-full bg-gray-200 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center relative group">
+                {editMode ? (
+                  <button
+                    onClick={() => onAddPlaceholder && onAddPlaceholder(index)}
+                    className="flex flex-col items-center justify-center gap-2 p-4 hover:bg-gray-300 transition-colors w-full h-full rounded-lg"
+                  >
+                    <svg
+                      className="w-8 h-8 text-gray-400 group-hover:text-gray-600"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M12 4v16m8-8H4"
+                      />
+                    </svg>
+                    <span className="text-gray-400 text-sm group-hover:text-gray-600">
+                      Add Placeholder
+                    </span>
+                  </button>
+                ) : null}
               </div>
             )}
           </div>

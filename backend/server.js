@@ -265,12 +265,14 @@ app.delete('/api/pdfs/:id', authMiddleware, async (req, res) => {
         return res.status(404).json({ error: 'PDF not found' });
       }
 
-      // Delete files
-      try {
-        await fs.unlink(path.join(uploadDir, row.filename));
-        await fs.unlink(path.join(thumbnailDir, row.thumbnail));
-      } catch (fileErr) {
-        console.error('Error deleting files:', fileErr);
+      // Delete files only if it's not a placeholder
+      if (!row.is_placeholder) {
+        try {
+          await fs.unlink(path.join(uploadDir, row.filename));
+          await fs.unlink(path.join(thumbnailDir, row.thumbnail));
+        } catch (fileErr) {
+          console.error('Error deleting files:', fileErr);
+        }
       }
 
       db.run('DELETE FROM pdfs WHERE id = ?', [id], (err) => {
@@ -318,6 +320,44 @@ app.put('/api/pdfs/reorder', authMiddleware, async (req, res) => {
     });
   } catch (error) {
     console.error('Error reordering PDFs:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.post('/api/pdfs/placeholder', authMiddleware, async (req, res) => {
+  try {
+    const { position } = req.body;
+
+    if (position === undefined || position === null) {
+      return res.status(400).json({ error: 'Position is required' });
+    }
+
+    db.run(
+      'INSERT INTO pdfs (filename, original_name, thumbnail, position, is_placeholder) VALUES (?, ?, ?, ?, ?)',
+      [null, null, null, position, 1],
+      function (err) {
+        if (err) {
+          console.error('Database error:', err);
+          return res.status(500).json({ error: 'Database error' });
+        }
+
+        const placeholder = {
+          id: this.lastID,
+          filename: null,
+          original_name: null,
+          thumbnail: null,
+          position: position,
+          is_placeholder: 1
+        };
+
+        // Broadcast update to all clients
+        broadcastUpdate('pdf_uploaded', placeholder);
+
+        res.json(placeholder);
+      }
+    );
+  } catch (error) {
+    console.error('Error creating placeholder:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

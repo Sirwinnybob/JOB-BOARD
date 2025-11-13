@@ -19,14 +19,25 @@ db.serialize(() => {
   db.run(`
     CREATE TABLE IF NOT EXISTS pdfs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      filename TEXT NOT NULL,
-      original_name TEXT NOT NULL,
-      thumbnail TEXT NOT NULL,
+      filename TEXT,
+      original_name TEXT,
+      thumbnail TEXT,
       position INTEGER NOT NULL,
+      is_placeholder INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
+
+  // Add is_placeholder column to existing tables (migration)
+  db.run(`
+    ALTER TABLE pdfs ADD COLUMN is_placeholder INTEGER DEFAULT 0
+  `, (err) => {
+    // Ignore error if column already exists
+    if (err && !err.message.includes('duplicate column name')) {
+      console.error('Error adding is_placeholder column:', err);
+    }
+  });
 
   // Settings table
   db.run(`

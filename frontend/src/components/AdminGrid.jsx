@@ -2,15 +2,16 @@ import React, { useState } from 'react';
 import DraggablePDFCard from './DraggablePDFCard';
 import PlaceholderCard from './PlaceholderCard';
 
-function AdminGrid({ pdfs, rows, cols, editMode, onReorder, onDelete, onLabelClick, onSlotMenuOpen, showSlotMenu, onSlotMenuClose, onAddPlaceholder, onUploadToSlot, onMoveToPending }) {
-  const [draggedIndex, setDraggedIndex] = useState(null);
+function AdminGrid({ pdfs, rows, cols, editMode, onReorder, onDelete, onLabelClick, onSlotMenuOpen, showSlotMenu, onSlotMenuClose, onAddPlaceholder, onUploadToSlot, onMoveToPending, onDragStart, onDragEnd, onDrop, draggedPdfInfo }) {
   const [dragOverIndex, setDragOverIndex] = useState(null);
-  const [dragToPending, setDragToPending] = useState(false);
 
   const totalSlots = rows * cols;
 
   const handleDragStart = (e, index) => {
-    setDraggedIndex(index);
+    const pdf = pdfs[index];
+    if (!pdf) return;
+
+    onDragStart(pdf, 'board', index);
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/html', index);
   };
@@ -19,13 +20,13 @@ function AdminGrid({ pdfs, rows, cols, editMode, onReorder, onDelete, onLabelCli
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
 
-    if (draggedIndex === null || draggedIndex === index) return;
+    if (!draggedPdfInfo) return;
     setDragOverIndex(index);
   };
 
   const handleDragEnter = (e, index) => {
     e.preventDefault();
-    if (draggedIndex !== null && draggedIndex !== index) {
+    if (draggedPdfInfo) {
       setDragOverIndex(index);
     }
   };
@@ -42,28 +43,18 @@ function AdminGrid({ pdfs, rows, cols, editMode, onReorder, onDelete, onLabelCli
     e.preventDefault();
     e.stopPropagation();
 
-    if (draggedIndex === null || draggedIndex === dropIndex) {
-      setDraggedIndex(null);
+    if (!draggedPdfInfo) {
       setDragOverIndex(null);
       return;
     }
 
-    const newPdfs = [...pdfs];
-    const draggedPdf = newPdfs[draggedIndex];
-
-    // Remove from old position
-    newPdfs.splice(draggedIndex, 1);
-    // Insert at new position
-    newPdfs.splice(dropIndex, 0, draggedPdf);
-
-    onReorder(newPdfs);
-    setDraggedIndex(null);
+    onDrop(dropIndex);
     setDragOverIndex(null);
   };
 
-  const handleDragEnd = () => {
-    setDraggedIndex(null);
+  const handleDragEndLocal = () => {
     setDragOverIndex(null);
+    onDragEnd();
   };
 
   const gridStyle = {
@@ -75,8 +66,8 @@ function AdminGrid({ pdfs, rows, cols, editMode, onReorder, onDelete, onLabelCli
     <div className="grid gap-4 w-full" style={gridStyle}>
       {Array.from({ length: totalSlots }).map((_, index) => {
         const pdf = pdfs[index];
-        const isDragging = draggedIndex === index;
-        const isDraggedOver = dragOverIndex === index && draggedIndex !== null && draggedIndex !== index;
+        const isDragging = draggedPdfInfo && draggedPdfInfo.source === 'board' && draggedPdfInfo.index === index;
+        const isDraggedOver = dragOverIndex === index && draggedPdfInfo !== null;
 
         return (
           <div
@@ -99,7 +90,7 @@ function AdminGrid({ pdfs, rows, cols, editMode, onReorder, onDelete, onLabelCli
                   index={index}
                   editMode={editMode}
                   onDragStart={handleDragStart}
-                  onDragEnd={handleDragEnd}
+                  onDragEnd={handleDragEndLocal}
                   onDelete={onDelete}
                   isDragging={isDragging}
                 />
@@ -109,7 +100,7 @@ function AdminGrid({ pdfs, rows, cols, editMode, onReorder, onDelete, onLabelCli
                   index={index}
                   editMode={editMode}
                   onDragStart={handleDragStart}
-                  onDragEnd={handleDragEnd}
+                  onDragEnd={handleDragEndLocal}
                   onDelete={onDelete}
                   onLabelClick={onLabelClick}
                   onMoveToPending={onMoveToPending}

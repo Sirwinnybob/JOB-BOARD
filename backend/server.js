@@ -112,7 +112,37 @@ app.get('/api/pdfs', async (req, res) => {
           console.error('Database error:', err);
           return res.status(500).json({ error: 'Database error' });
         }
-        res.json(rows);
+
+        // Fetch labels for each PDF
+        const pdfsWithLabels = [];
+        let completed = 0;
+
+        if (rows.length === 0) {
+          return res.json([]);
+        }
+
+        rows.forEach(pdf => {
+          db.all(
+            `SELECT l.* FROM labels l
+             INNER JOIN pdf_labels pl ON l.id = pl.label_id
+             WHERE pl.pdf_id = ?`,
+            [pdf.id],
+            (err, labels) => {
+              if (err) {
+                console.error('Error fetching labels:', err);
+                labels = [];
+              }
+              pdfsWithLabels.push({ ...pdf, labels: labels || [] });
+              completed++;
+
+              if (completed === rows.length) {
+                // Sort by position
+                pdfsWithLabels.sort((a, b) => a.position - b.position);
+                res.json(pdfsWithLabels);
+              }
+            }
+          );
+        });
       }
     );
   } catch (error) {
@@ -229,6 +259,114 @@ app.put('/api/pdfs/reorder', authMiddleware, async (req, res) => {
     });
   } catch (error) {
     console.error('Error reordering PDFs:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Label Routes
+app.get('/api/labels', async (req, res) => {
+  try {
+    db.all('SELECT * FROM labels ORDER BY name ASC', [], (err, rows) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Database error' });
+      }
+      res.json(rows);
+    });
+  } catch (error) {
+    console.error('Error fetching labels:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.post('/api/labels', authMiddleware, async (req, res) => {
+  try {
+    const { name, color } = req.body;
+
+    if (!name || !color) {
+      return res.status(400).json({ error: 'Name and color required' });
+    }
+
+    db.run(
+      'INSERT INTO labels (name, color) VALUES (?, ?)',
+      [name.toUpperCase(), color],
+      function (err) {
+        if (err) {
+          if (err.message.includes('UNIQUE')) {
+            return res.status(400).json({ error: 'Label already exists' });
+          }
+          console.error('Database error:', err);
+          return res.status(500).json({ error: 'Database error' });
+        }
+
+        res.json({
+          id: this.lastID,
+          name: name.toUpperCase(),
+          color
+        });
+      }
+    );
+  } catch (error) {
+    console.error('Error creating label:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.delete('/api/labels/:id', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    db.run('DELETE FROM labels WHERE id = ?', [id], (err) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Database error' });
+      }
+      res.json({ success: true });
+    });
+  } catch (error) {
+    console.error('Error deleting label:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// PDF Label Management
+app.put('/api/pdfs/:id/labels', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { labelIds } = req.body; // Array of label IDs
+
+    if (!Array.isArray(labelIds)) {
+      return res.status(400).json({ error: 'labelIds must be an array' });
+    }
+
+    // First, remove all existing labels for this PDF
+    db.run('DELETE FROM pdf_labels WHERE pdf_id = ?', [id], (err) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Database error' });
+      }
+
+      // Then, add the new labels
+      if (labelIds.length === 0) {
+        return res.json({ success: true });
+      }
+
+      const stmt = db.prepare('INSERT INTO pdf_labels (pdf_id, label_id) VALUES (?, ?)');
+
+      labelIds.forEach(labelId => {
+        stmt.run(id, labelId);
+      });
+
+      stmt.finalize((err) => {
+        if (err) {
+          console.error('Database error:', err);
+          return res.status(500).json({ error: 'Database error' });
+        }
+        res.json({ success: true });
+      });
+    });
+  } catch (error) {
+    console.error('Error updating PDF labels:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

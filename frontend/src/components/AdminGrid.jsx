@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import DraggablePDFCard from './DraggablePDFCard';
 
-function AdminGrid({ pdfs, rows, cols, editMode, onReorder, onDelete }) {
+function AdminGrid({ pdfs, rows, cols, editMode, onReorder, onDelete, onLabelClick }) {
   const [draggedItem, setDraggedItem] = useState(null);
 
   const totalSlots = rows * cols;
@@ -51,6 +51,7 @@ function AdminGrid({ pdfs, rows, cols, editMode, onReorder, onDelete }) {
                 onDragStart={handleDragStart}
                 onDragEnd={handleDragEnd}
                 onDelete={onDelete}
+                onLabelClick={onLabelClick}
                 isDragging={draggedItem === index}
               />
             ) : (

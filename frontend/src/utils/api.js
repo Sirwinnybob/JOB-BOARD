@@ -38,6 +38,13 @@ export const pdfAPI = {
   },
   delete: (id) => api.delete(`/pdfs/${id}`),
   reorder: (pdfs) => api.put('/pdfs/reorder', { pdfs }),
+  updateLabels: (id, labelIds) => api.put(`/pdfs/${id}/labels`, { labelIds }),
+};
+
+export const labelAPI = {
+  getAll: () => api.get('/labels'),
+  create: (name, color) => api.post('/labels', { name, color }),
+  delete: (id) => api.delete(`/labels/${id}`),
 };
 
 export const settingsAPI = {

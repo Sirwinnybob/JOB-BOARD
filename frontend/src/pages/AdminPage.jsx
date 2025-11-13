@@ -6,6 +6,7 @@ import { pdfAPI, settingsAPI } from '../utils/api';
 import AdminGrid from '../components/AdminGrid';
 import UploadModal from '../components/UploadModal';
 import SettingsModal from '../components/SettingsModal';
+import LabelModal from '../components/LabelModal';
 
 function AdminPage({ onLogout }) {
   const [pdfs, setPdfs] = useState([]);
@@ -13,6 +14,8 @@ function AdminPage({ onLogout }) {
   const [editMode, setEditMode] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showLabelModal, setShowLabelModal] = useState(false);
+  const [selectedPdfForLabels, setSelectedPdfForLabels] = useState(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
@@ -90,6 +93,17 @@ function AdminPage({ onLogout }) {
     }
   };
 
+  const handleLabelClick = (pdf) => {
+    setSelectedPdfForLabels(pdf);
+    setShowLabelModal(true);
+  };
+
+  const handleLabelSuccess = () => {
+    setShowLabelModal(false);
+    setSelectedPdfForLabels(null);
+    loadData();
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
@@ -161,7 +175,7 @@ function AdminPage({ onLogout }) {
           {editMode && (
             <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
               <p className="text-blue-800 text-sm">
-                Drag and drop PDFs to reorder them. Click the X to delete.
+                Drag and drop PDFs to reorder them. Click the tag icon to manage labels. Click the X to delete.
               </p>
             </div>
           )}
@@ -173,6 +187,7 @@ function AdminPage({ onLogout }) {
             editMode={editMode}
             onReorder={handleReorder}
             onDelete={handleDelete}
+            onLabelClick={handleLabelClick}
           />
         </main>
 
@@ -189,6 +204,17 @@ function AdminPage({ onLogout }) {
             settings={settings}
             onClose={() => setShowSettings(false)}
             onSave={handleSettingsSave}
+          />
+        )}
+
+        {showLabelModal && selectedPdfForLabels && (
+          <LabelModal
+            pdf={selectedPdfForLabels}
+            onClose={() => {
+              setShowLabelModal(false);
+              setSelectedPdfForLabels(null);
+            }}
+            onSuccess={handleLabelSuccess}
           />
         )}
       </div>

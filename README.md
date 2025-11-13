@@ -7,6 +7,7 @@ A production-ready, full-stack job board application with PDF preview grid, buil
 - **PDF Grid View**: Configurable grid layout (default 6×4) with thumbnail previews
 - **Full-Screen PDF Viewer**: Click any thumbnail to view the full PDF
 - **Admin Panel**: Secure authentication with drag-and-drop reordering
+- **Label System**: Apply colored labels (NEW, MOVED, PENDING, URGENT, COMPLETED) to PDFs
 - **iOS-Style Drag & Drop**: Smooth, snap-to-grid reordering with visual feedback
 - **Responsive Design**: Mobile-first design with Tailwind CSS
 - **Auto-Thumbnail Generation**: Automatic first-page thumbnail creation
@@ -228,8 +229,9 @@ curl http://localhost:3000/api/health
 
 1. Visit `https://jobboard.kustomkraftcabinets.ddns.net`
 2. Browse PDF thumbnails in the grid
-3. Click any thumbnail to view full PDF
-4. Press ESC or click X to close the viewer
+3. View colored labels (NEW, MOVED, PENDING, etc.) on PDFs
+4. Click any thumbnail to view full PDF
+5. Press ESC or click X to close the viewer
 
 ### Admin Panel
 
@@ -238,14 +240,24 @@ curl http://localhost:3000/api/health
 3. **Upload PDFs**: Click "Upload PDF" button
 4. **Edit Mode**: Click "Edit Mode" to enable drag-and-drop
    - Drag PDFs to reorder them
+   - Click the tag icon to manage labels for a PDF
    - Click X button to delete PDFs
    - Click "Done Editing" when finished
 5. **Settings**: Click "Settings" to change grid dimensions
 
+### Label Management
+
+1. In Edit Mode, click the purple tag icon on any PDF
+2. Select/deselect labels to apply to the PDF
+3. Available labels: NEW (green), MOVED (blue), PENDING (amber), URGENT (red), COMPLETED (purple)
+4. Click "Save" to apply changes
+5. Labels are visible in both public and admin views
+
 ## API Endpoints
 
 ### Public Endpoints
-- `GET /api/pdfs` - Get all PDFs
+- `GET /api/pdfs` - Get all PDFs (includes labels)
+- `GET /api/labels` - Get all available labels
 - `GET /api/settings` - Get grid settings
 - `GET /api/health` - Health check
 
@@ -254,6 +266,9 @@ curl http://localhost:3000/api/health
 - `POST /api/pdfs` - Upload PDF
 - `DELETE /api/pdfs/:id` - Delete PDF
 - `PUT /api/pdfs/reorder` - Reorder PDFs
+- `PUT /api/pdfs/:id/labels` - Update PDF labels
+- `POST /api/labels` - Create new label
+- `DELETE /api/labels/:id` - Delete label
 - `PUT /api/settings` - Update grid settings
 
 ## Data Persistence

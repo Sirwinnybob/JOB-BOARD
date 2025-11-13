@@ -1,5 +1,8 @@
 # Multi-stage build for production-ready job board application
 
+# Build argument to bust cache when needed
+ARG CACHE_BUST=unknown
+
 # Stage 1: Build frontend
 FROM node:20-alpine AS frontend-builder
 
@@ -27,6 +30,10 @@ WORKDIR /app
 
 # Copy backend package files
 COPY backend/package*.json ./
+
+# Force cache invalidation for dependency installation
+ARG CACHE_BUST
+RUN echo "Cache bust: $CACHE_BUST"
 
 # Install backend dependencies (this ensures native modules are built for Linux)
 RUN npm install --omit=dev && npm rebuild

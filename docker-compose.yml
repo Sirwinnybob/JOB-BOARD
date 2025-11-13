@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   job-board:
-    image: sirwinnybob/job-board:latest
+    image: winnybob/job-board:latest
     container_name: job-board-app
     restart: unless-stopped
     ports:

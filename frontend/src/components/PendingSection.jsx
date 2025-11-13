@@ -4,9 +4,9 @@ import { Droppable, Draggable } from '@hello-pangea/dnd';
 function PendingSection({ pdfs, onMovePdfToBoard, onDelete, onUploadToPending }) {
   if (pdfs.length === 0) {
     return (
-      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-6">
+      <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6 mb-6 transition-colors">
         <div className="flex justify-between items-center mb-2">
-          <h2 className="text-lg font-semibold text-yellow-900">
+          <h2 className="text-lg font-semibold text-yellow-900 dark:text-yellow-100 transition-colors">
             📥 PENDING PDFs
           </h2>
           <button
@@ -16,7 +16,7 @@ function PendingSection({ pdfs, onMovePdfToBoard, onDelete, onUploadToPending })
             + Upload to Pending
           </button>
         </div>
-        <p className="text-sm text-yellow-700">
+        <p className="text-sm text-yellow-700 dark:text-yellow-300 transition-colors">
           No pending PDFs. Upload PDFs to pending using the button above.
         </p>
       </div>
@@ -24,13 +24,13 @@ function PendingSection({ pdfs, onMovePdfToBoard, onDelete, onUploadToPending })
   }
 
   return (
-    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 mb-6">
+    <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6 mb-6 transition-colors">
       <div className="flex justify-between items-center mb-4">
         <div>
-          <h2 className="text-lg font-semibold text-yellow-900">
+          <h2 className="text-lg font-semibold text-yellow-900 dark:text-yellow-100 transition-colors">
             📥 PENDING PDFs ({pdfs.length})
           </h2>
-          <p className="text-sm text-yellow-700 mt-1">
+          <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1 transition-colors">
             These PDFs are uploaded but not yet visible on the board. Click "Add to Board" to make them visible to others.
           </p>
         </div>
@@ -60,17 +60,17 @@ function PendingSection({ pdfs, onMovePdfToBoard, onDelete, onUploadToPending })
                     ref={provided.innerRef}
                     {...provided.draggableProps}
                     {...provided.dragHandleProps}
-                    className={`relative bg-white border-2 border-yellow-300 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all cursor-move ${
+                    className={`relative bg-white dark:bg-gray-800 border-2 border-yellow-300 dark:border-yellow-600 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all cursor-move ${
                       snapshot.isDragging ? 'opacity-40' : ''
                     }`}
                   >
                     {/* Thumbnail */}
-                    <div className="aspect-[5/7] bg-gray-100 flex items-center justify-center">
+                    <div className="aspect-[5/7] bg-gray-100 dark:bg-gray-700 flex items-center justify-center transition-colors">
                       {pdf.thumbnail ? (
                         <img
                           src={`/thumbnails/${pdf.thumbnail}`}
                           alt={pdf.original_name}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover dark:invert transition-all"
                         />
                       ) : (
                         <div className="text-gray-400 text-center p-4">
@@ -93,14 +93,14 @@ function PendingSection({ pdfs, onMovePdfToBoard, onDelete, onUploadToPending })
                     </div>
 
                     {/* PDF Name */}
-                    <div className="p-2 bg-white border-t border-yellow-200">
-                      <p className="text-xs text-gray-700 truncate" title={pdf.original_name}>
+                    <div className="p-2 bg-white dark:bg-gray-800 border-t border-yellow-200 dark:border-yellow-700 transition-colors">
+                      <p className="text-xs text-gray-700 dark:text-gray-300 truncate transition-colors" title={pdf.original_name}>
                         {pdf.original_name}
                       </p>
                     </div>
 
                     {/* Actions */}
-                    <div className="p-2 bg-white border-t border-yellow-200 flex gap-2">
+                    <div className="p-2 bg-white dark:bg-gray-800 border-t border-yellow-200 dark:border-yellow-700 flex gap-2 transition-colors">
                       <button
                         onClick={() => onMovePdfToBoard(pdf.id)}
                         className="flex-1 px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors"
@@ -119,7 +119,7 @@ function PendingSection({ pdfs, onMovePdfToBoard, onDelete, onUploadToPending })
 
                     {/* Drag indicator */}
                     {!snapshot.isDragging && (
-                      <div className="absolute top-2 left-2 bg-yellow-600 text-white rounded-full w-6 h-6 flex items-center justify-center shadow-lg text-xs">
+                      <div className="absolute top-2 left-2 bg-yellow-600 dark:bg-yellow-500 text-white rounded-full w-6 h-6 flex items-center justify-center shadow-lg text-xs transition-colors">
                         ⋮⋮
                       </div>
                     )}

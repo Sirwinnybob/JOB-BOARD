@@ -11,14 +11,14 @@ function DraggablePDFCard({
 }) {
   return (
     <div
-      className={`relative w-full h-full bg-white rounded-lg shadow-md overflow-hidden transition-all ${
-        editMode ? 'cursor-move border-2 animate-border-pulse' : 'cursor-default border border-gray-200'
+      className={`relative w-full h-full bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden transition-all ${
+        editMode ? 'cursor-move border-2 animate-border-pulse' : 'cursor-default border border-gray-200 dark:border-gray-700'
       } ${isDragging ? 'opacity-50' : ''}`}
     >
       <img
         src={`/thumbnails/${pdf.thumbnail}`}
         alt={pdf.original_name}
-        className="w-full h-full object-cover"
+        className="w-full h-full object-cover dark:invert transition-all"
         draggable={false}
       />
 

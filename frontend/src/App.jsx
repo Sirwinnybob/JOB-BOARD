@@ -4,6 +4,7 @@ import HomePage from './pages/HomePage';
 import AdminPage from './pages/AdminPage';
 import LoginPage from './pages/LoginPage';
 import { authAPI } from './utils/api';
+import { DarkModeProvider } from './contexts/DarkModeContext';
 
 function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(authAPI.isAuthenticated());
@@ -18,31 +19,33 @@ function App() {
   };
 
   return (
-    <Router>
-      <Routes>
-        <Route path="/" element={<HomePage />} />
-        <Route
-          path="/login"
-          element={
-            isAuthenticated ? (
-              <Navigate to="/admin" replace />
-            ) : (
-              <LoginPage onLogin={handleLogin} />
-            )
-          }
-        />
-        <Route
-          path="/admin"
-          element={
-            isAuthenticated ? (
-              <AdminPage onLogout={handleLogout} />
-            ) : (
-              <Navigate to="/login" replace />
-            )
-          }
-        />
-      </Routes>
-    </Router>
+    <DarkModeProvider>
+      <Router>
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route
+            path="/login"
+            element={
+              isAuthenticated ? (
+                <Navigate to="/admin" replace />
+              ) : (
+                <LoginPage onLogin={handleLogin} />
+              )
+            }
+          />
+          <Route
+            path="/admin"
+            element={
+              isAuthenticated ? (
+                <AdminPage onLogout={handleLogout} />
+              ) : (
+                <Navigate to="/login" replace />
+              )
+            }
+          />
+        </Routes>
+      </Router>
+    </DarkModeProvider>
   );
 }
 

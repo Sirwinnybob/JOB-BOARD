@@ -20,15 +20,26 @@ const PORT = process.env.PORT || 3000;
 // Create HTTP server
 const server = http.createServer(app);
 
-// Create WebSocket server
-const wss = new WebSocket.Server({ server });
+// Create WebSocket server with optimized settings for multiple connections
+const wss = new WebSocket.Server({
+  server,
+  perMessageDeflate: false, // Disable compression for better performance with many clients
+  maxPayload: 1024 * 1024, // 1MB max message size
+});
 
 // WebSocket connection handler
 wss.on('connection', (ws) => {
-  console.log('New WebSocket client connected');
+  console.log('New WebSocket client connected. Total clients:', wss.clients.size);
+
+  ws.isAlive = true;
+
+  // Handle pong responses
+  ws.on('pong', () => {
+    ws.isAlive = true;
+  });
 
   ws.on('close', () => {
-    console.log('WebSocket client disconnected');
+    console.log('WebSocket client disconnected. Total clients:', wss.clients.size);
   });
 
   ws.on('error', (error) => {
@@ -36,17 +47,43 @@ wss.on('connection', (ws) => {
   });
 });
 
-// Broadcast function to send updates to all connected clients
+// Heartbeat to detect broken connections
+const heartbeatInterval = setInterval(() => {
+  wss.clients.forEach((ws) => {
+    if (ws.isAlive === false) {
+      console.log('Terminating inactive WebSocket connection');
+      return ws.terminate();
+    }
+
+    ws.isAlive = false;
+    ws.ping();
+  });
+}, 30000); // Check every 30 seconds
+
+// Clean up on server shutdown
+wss.on('close', () => {
+  clearInterval(heartbeatInterval);
+});
+
+// Optimized broadcast function to send updates to all connected clients
 function broadcastUpdate(type, data = {}) {
   const message = JSON.stringify({ type, data, timestamp: Date.now() });
+  let successCount = 0;
+  let failCount = 0;
 
   wss.clients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
-      client.send(message);
+      try {
+        client.send(message);
+        successCount++;
+      } catch (error) {
+        console.error('Error sending to WebSocket client:', error);
+        failCount++;
+      }
     }
   });
 
-  console.log(`Broadcast: ${type}`);
+  console.log(`Broadcast: ${type} (sent to ${successCount} clients, ${failCount} failed)`);
 }
 
 // Middleware
@@ -60,10 +97,12 @@ app.use(helmet({
 app.use(cors());
 app.use(express.json());
 
-// Rate limiting
+// Rate limiting - Increased for multiple devices on same network
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
+  max: 500, // Increased to support 20+ devices on same IP
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 app.use(limiter);
 

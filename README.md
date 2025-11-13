@@ -302,7 +302,7 @@ Docker volumes ensure data persists across container restarts:
 
 - `./data/uploads` - PDF files
 - `./data/thumbnails` - Generated thumbnails
-- `./data/database` - SQLite database
+- `./data/database.sqlite` - SQLite database file
 
 **Backup these directories regularly!**
 

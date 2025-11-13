@@ -19,7 +19,8 @@ services:
       # Persistent storage for PDFs and thumbnails
       - ./data/uploads:/app/uploads
       - ./data/thumbnails:/app/thumbnails
-      - ./data/database:/app
+      # Database file (not the entire /app directory!)
+      - ./data/database.sqlite:/app/database.sqlite
       # Optional: Mount SSL certificates for HTTPS (if not using reverse proxy)
       # - /path/to/certs:/certs:ro
     networks:

@@ -64,7 +64,7 @@ const limiter = rateLimit({
 app.use(limiter);
 
 // Ensure directories exist - use /app/data for persistent storage (mounted as volume)
-const dataDir = process.env.DATA_DIR || path.join(__dirname, '../data');
+const dataDir = process.env.DATA_DIR || path.join(__dirname, 'data');
 const uploadDir = path.join(dataDir, 'uploads');
 const thumbnailDir = path.join(dataDir, 'thumbnails');
 

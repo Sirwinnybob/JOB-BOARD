@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 
 // Use /app/data directory for persistent storage (mounted as volume)
-const dataDir = process.env.DATA_DIR || path.join(__dirname, '../data');
+const dataDir = process.env.DATA_DIR || path.join(__dirname, 'data');
 
 // Ensure data directory exists
 if (!fs.existsSync(dataDir)) {

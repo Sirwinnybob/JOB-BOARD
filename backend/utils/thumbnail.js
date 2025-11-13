@@ -13,20 +13,27 @@ async function generateThumbnail(pdfPath, outputDir, baseFilename) {
       firstPageToConvert: 1,
       lastPageToConvert: 1,
       pngFile: true,
-      scale: 2.0
+      singleFile: true,
+      resolutionXYAxis: 150  // DPI resolution instead of scale
     };
 
     // Convert PDF to PNG using system poppler-utils
-    await poppler.pdfToCairo(pdfPath, finalPath, options);
+    // Note: pdfToCairo outputs to finalPath without extension, then adds .png
+    const outputBase = finalPath.replace('.png', '');
+    await poppler.pdfToCairo(pdfPath, outputBase, options);
 
-    // pdftocairo adds -1 suffix, rename to clean name
-    const generatedPath = `${finalPath}-1.png`;
+    // With singleFile:true, it creates outputBase.png directly
+    const generatedPath = `${outputBase}.png`;
+
+    // Verify the file was created
     const fileExists = await fs.access(generatedPath).then(() => true).catch(() => false);
-
-    if (fileExists) {
-      await fs.rename(generatedPath, finalPath);
-    } else {
+    if (!fileExists) {
       throw new Error('Thumbnail generation failed - output file not found');
+    }
+
+    // If outputBase differs from finalPath, rename it
+    if (generatedPath !== finalPath) {
+      await fs.rename(generatedPath, finalPath);
     }
 
     return finalName;

@@ -2,9 +2,7 @@ version: '3.8'
 
 services:
   job-board:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: winnybob/job-board:latest
     container_name: job-board-app
     restart: unless-stopped
     ports:

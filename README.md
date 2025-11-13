@@ -8,6 +8,7 @@ A production-ready, full-stack job board application with PDF preview grid, buil
 - **Full-Screen PDF Viewer**: Click any thumbnail to view the full PDF
 - **Admin Panel**: Secure authentication with drag-and-drop reordering
 - **Label System**: Apply colored labels (NEW, MOVED, PENDING, URGENT, COMPLETED) to PDFs
+- **Real-Time Updates**: WebSocket-based live synchronization across all devices
 - **iOS-Style Drag & Drop**: Smooth, snap-to-grid reordering with visual feedback
 - **Responsive Design**: Mobile-first design with Tailwind CSS
 - **Auto-Thumbnail Generation**: Automatic first-page thumbnail creation
@@ -17,7 +18,8 @@ A production-ready, full-stack job board application with PDF preview grid, buil
 ## Tech Stack
 
 - **Frontend**: React 18 + Vite + Tailwind CSS + React DnD
-- **Backend**: Node.js + Express
+- **Backend**: Node.js + Express + WebSocket (ws)
+- **Real-Time**: WebSocket for live updates
 - **Database**: SQLite (file-based, container-friendly)
 - **PDF Processing**: pdf-poppler (thumbnail generation)
 - **Authentication**: JWT-based secure login
@@ -252,6 +254,29 @@ curl http://localhost:3000/api/health
 3. Available labels: NEW (green), MOVED (blue), PENDING (amber), URGENT (red), COMPLETED (purple)
 4. Click "Save" to apply changes
 5. Labels are visible in both public and admin views
+
+### Real-Time Updates
+
+The application uses WebSocket for live synchronization across all connected devices:
+
+**How it works:**
+- When an admin makes changes (upload, delete, reorder, label updates, settings changes), the server broadcasts updates via WebSocket
+- All connected clients (both public viewers and other admins) automatically receive and apply the updates
+- **No page refresh required** - changes appear instantly on all devices
+
+**Update Types:**
+- `pdf_uploaded` - New PDF added
+- `pdf_deleted` - PDF removed
+- `pdfs_reordered` - PDFs rearranged
+- `pdf_labels_updated` - PDF labels changed
+- `label_created` - New label created
+- `label_deleted` - Label removed
+- `settings_updated` - Grid dimensions changed
+
+**Connection Features:**
+- Automatic reconnection on disconnect (exponential backoff)
+- Up to 10 reconnection attempts
+- Maximum 30-second delay between attempts
 
 ## API Endpoints
 

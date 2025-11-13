@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { pdfAPI, settingsAPI } from '../utils/api';
 import PDFGrid from '../components/PDFGrid';
 import PDFModal from '../components/PDFModal';
+import useWebSocket from '../hooks/useWebSocket';
 
 function HomePage() {
   const [pdfs, setPdfs] = useState([]);
@@ -11,11 +12,7 @@ function HomePage() {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const [pdfsRes, settingsRes] = await Promise.all([
         pdfAPI.getAll(),
@@ -31,7 +28,32 @@ function HomePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  // WebSocket connection for live updates
+  const handleWebSocketMessage = useCallback((message) => {
+    console.log('Received update:', message.type);
+    // Reload data when any relevant update is received
+    const relevantTypes = [
+      'pdf_uploaded',
+      'pdf_deleted',
+      'pdfs_reordered',
+      'pdf_labels_updated',
+      'label_created',
+      'label_deleted',
+      'settings_updated'
+    ];
+
+    if (relevantTypes.includes(message.type)) {
+      loadData();
+    }
+  }, [loadData]);
+
+  useWebSocket(handleWebSocketMessage, true);
 
   const handlePdfClick = (pdf) => {
     setSelectedPdf(pdf);

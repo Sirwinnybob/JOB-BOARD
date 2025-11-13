@@ -1,5 +1,7 @@
 require('dotenv').config();
 const express = require('express');
+const http = require('http');
+const WebSocket = require('ws');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
@@ -14,6 +16,38 @@ const { generateThumbnail } = require('./utils/thumbnail');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+// Create HTTP server
+const server = http.createServer(app);
+
+// Create WebSocket server
+const wss = new WebSocket.Server({ server });
+
+// WebSocket connection handler
+wss.on('connection', (ws) => {
+  console.log('New WebSocket client connected');
+
+  ws.on('close', () => {
+    console.log('WebSocket client disconnected');
+  });
+
+  ws.on('error', (error) => {
+    console.error('WebSocket error:', error);
+  });
+});
+
+// Broadcast function to send updates to all connected clients
+function broadcastUpdate(type, data = {}) {
+  const message = JSON.stringify({ type, data, timestamp: Date.now() });
+
+  wss.clients.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(message);
+    }
+  });
+
+  console.log(`Broadcast: ${type}`);
+}
 
 // Middleware
 app.use(helmet({
@@ -183,6 +217,15 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
             return res.status(500).json({ error: 'Database error' });
           }
 
+          // Broadcast update to all clients
+          broadcastUpdate('pdf_uploaded', {
+            id: this.lastID,
+            filename,
+            original_name: originalName,
+            thumbnail: thumbnailName,
+            position: newPosition
+          });
+
           res.json({
             id: this.lastID,
             filename,
@@ -227,6 +270,9 @@ app.delete('/api/pdfs/:id', authMiddleware, async (req, res) => {
           return res.status(500).json({ error: 'Database error' });
         }
 
+        // Broadcast update to all clients
+        broadcastUpdate('pdf_deleted', { id });
+
         res.json({ success: true });
       });
     });
@@ -255,6 +301,10 @@ app.put('/api/pdfs/reorder', authMiddleware, async (req, res) => {
         console.error('Database error:', err);
         return res.status(500).json({ error: 'Database error' });
       }
+
+      // Broadcast update to all clients
+      broadcastUpdate('pdfs_reordered', { pdfs });
+
       res.json({ success: true });
     });
   } catch (error) {
@@ -299,6 +349,13 @@ app.post('/api/labels', authMiddleware, async (req, res) => {
           return res.status(500).json({ error: 'Database error' });
         }
 
+        // Broadcast update to all clients
+        broadcastUpdate('label_created', {
+          id: this.lastID,
+          name: name.toUpperCase(),
+          color
+        });
+
         res.json({
           id: this.lastID,
           name: name.toUpperCase(),
@@ -321,6 +378,10 @@ app.delete('/api/labels/:id', authMiddleware, async (req, res) => {
         console.error('Database error:', err);
         return res.status(500).json({ error: 'Database error' });
       }
+
+      // Broadcast update to all clients
+      broadcastUpdate('label_deleted', { id });
+
       res.json({ success: true });
     });
   } catch (error) {
@@ -348,6 +409,8 @@ app.put('/api/pdfs/:id/labels', authMiddleware, async (req, res) => {
 
       // Then, add the new labels
       if (labelIds.length === 0) {
+        // Broadcast update to all clients
+        broadcastUpdate('pdf_labels_updated', { pdfId: id, labelIds: [] });
         return res.json({ success: true });
       }
 
@@ -362,6 +425,10 @@ app.put('/api/pdfs/:id/labels', authMiddleware, async (req, res) => {
           console.error('Database error:', err);
           return res.status(500).json({ error: 'Database error' });
         }
+
+        // Broadcast update to all clients
+        broadcastUpdate('pdf_labels_updated', { pdfId: id, labelIds });
+
         res.json({ success: true });
       });
     });
@@ -415,6 +482,9 @@ app.put('/api/settings', authMiddleware, async (req, res) => {
         return res.status(500).json({ error: 'Database error' });
       }
 
+      // Broadcast update to all clients
+      broadcastUpdate('settings_updated', { grid_rows: rows, grid_cols: cols });
+
       res.json({ grid_rows: rows, grid_cols: cols });
     });
   } catch (error) {
@@ -433,7 +503,8 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
 });
 
-app.listen(PORT, '0.0.0.0', () => {
+server.listen(PORT, '0.0.0.0', () => {
   console.log(`Job Board server running on port ${PORT}`);
+  console.log(`WebSocket server ready`);
   console.log(`Environment: ${process.env.NODE_ENV}`);
 });

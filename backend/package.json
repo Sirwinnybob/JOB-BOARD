@@ -17,7 +17,8 @@
     "pdf-poppler": "^0.2.1",
     "dotenv": "^16.3.1",
     "express-rate-limit": "^7.1.5",
-    "helmet": "^7.1.0"
+    "helmet": "^7.1.0",
+    "ws": "^8.16.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"

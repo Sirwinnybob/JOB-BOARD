@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
@@ -7,6 +7,7 @@ import AdminGrid from '../components/AdminGrid';
 import UploadModal from '../components/UploadModal';
 import SettingsModal from '../components/SettingsModal';
 import LabelModal from '../components/LabelModal';
+import useWebSocket from '../hooks/useWebSocket';
 
 function AdminPage({ onLogout }) {
   const [pdfs, setPdfs] = useState([]);
@@ -19,11 +20,7 @@ function AdminPage({ onLogout }) {
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       const [pdfsRes, settingsRes] = await Promise.all([
         pdfAPI.getAll(),
@@ -39,7 +36,32 @@ function AdminPage({ onLogout }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  // WebSocket connection for live updates
+  const handleWebSocketMessage = useCallback((message) => {
+    console.log('Admin received update:', message.type);
+    // Reload data when any relevant update is received
+    const relevantTypes = [
+      'pdf_uploaded',
+      'pdf_deleted',
+      'pdfs_reordered',
+      'pdf_labels_updated',
+      'label_created',
+      'label_deleted',
+      'settings_updated'
+    ];
+
+    if (relevantTypes.includes(message.type)) {
+      loadData();
+    }
+  }, [loadData]);
+
+  useWebSocket(handleWebSocketMessage, true);
 
   const handleLogout = () => {
     onLogout();

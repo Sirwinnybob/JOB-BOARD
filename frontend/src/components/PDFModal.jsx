@@ -1,7 +1,12 @@
 import React, { useEffect, useState } from 'react';
 
 function PDFModal({ pdf, onClose }) {
-  const [useEmbed, setUseEmbed] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [viewMode, setViewMode] = useState('images'); // 'images' or 'pdf'
+
+  // Determine if we have page images available
+  const hasPageImages = pdf.page_count && pdf.images_base;
+  const totalPages = pdf.page_count || 1;
 
   useEffect(() => {
     // Prevent body scroll when modal is open
@@ -11,16 +16,22 @@ function PDFModal({ pdf, onClose }) {
     };
   }, []);
 
-  // Close on Escape key
+  // Close on Escape key and handle arrow keys for pagination
   useEffect(() => {
-    const handleEscape = (e) => {
+    const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
         onClose();
+      } else if (hasPageImages && viewMode === 'images') {
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+          setCurrentPage(prev => Math.min(prev + 1, totalPages));
+        } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+          setCurrentPage(prev => Math.max(prev - 1, 1));
+        }
       }
     };
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
-  }, [onClose]);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose, hasPageImages, viewMode, totalPages]);
 
   return (
     <div
@@ -33,10 +44,29 @@ function PDFModal({ pdf, onClose }) {
       >
         {/* Header */}
         <div className="flex justify-between items-center mb-4 gap-4">
-          <h2 className="text-white text-xl font-semibold truncate flex-1">
-            {pdf.original_name}
-          </h2>
+          <div className="flex items-center gap-4 flex-1">
+            <h2 className="text-white text-xl font-semibold truncate">
+              {pdf.original_name}
+            </h2>
+            {hasPageImages && (
+              <span className="text-white text-sm bg-white/20 px-3 py-1 rounded-lg">
+                Page {currentPage} of {totalPages}
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-2">
+            {hasPageImages && (
+              <button
+                onClick={() => setViewMode(viewMode === 'images' ? 'pdf' : 'images')}
+                className="text-white hover:text-gray-300 transition-colors px-3 py-2 bg-purple-600 rounded-lg text-sm font-medium flex items-center gap-2"
+                title={viewMode === 'images' ? 'View PDF' : 'View Images'}
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+                <span className="hidden sm:inline">{viewMode === 'images' ? 'PDF' : 'Images'}</span>
+              </button>
+            )}
             <a
               href={`/uploads/${pdf.filename}`}
               target="_blank"
@@ -82,9 +112,70 @@ function PDFModal({ pdf, onClose }) {
           </div>
         </div>
 
-        {/* PDF Viewer */}
-        <div className="flex-1 bg-white rounded-lg overflow-hidden shadow-2xl">
-          {useEmbed ? (
+        {/* PDF/Image Viewer */}
+        <div className="flex-1 bg-white rounded-lg overflow-hidden shadow-2xl flex flex-col">
+          {hasPageImages && viewMode === 'images' ? (
+            <>
+              {/* Image Viewer */}
+              <div className="flex-1 flex items-center justify-center bg-gray-100 p-4 overflow-auto">
+                <img
+                  src={`/thumbnails/${pdf.images_base}-${currentPage}.png`}
+                  alt={`${pdf.original_name} - Page ${currentPage}`}
+                  className="max-w-full max-h-full object-contain"
+                  onError={(e) => {
+                    e.target.onerror = null;
+                    e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" fill="gray"%3EImage not found%3C/text%3E%3C/svg%3E';
+                  }}
+                />
+              </div>
+
+              {/* Page Navigation */}
+              {totalPages > 1 && (
+                <div className="bg-gray-800 p-4 flex items-center justify-center gap-4">
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                    disabled={currentPage === 1}
+                    className="px-4 py-2 bg-white text-gray-800 rounded-lg font-medium hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                    Previous
+                  </button>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-white">Page</span>
+                    <input
+                      type="number"
+                      min="1"
+                      max={totalPages}
+                      value={currentPage}
+                      onChange={(e) => {
+                        const page = parseInt(e.target.value, 10);
+                        if (page >= 1 && page <= totalPages) {
+                          setCurrentPage(page);
+                        }
+                      }}
+                      className="w-16 px-2 py-1 text-center border border-gray-300 rounded"
+                    />
+                    <span className="text-white">of {totalPages}</span>
+                  </div>
+
+                  <button
+                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                    disabled={currentPage === totalPages}
+                    className="px-4 py-2 bg-white text-gray-800 rounded-lg font-medium hover:bg-gray-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                  >
+                    Next
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </div>
+              )}
+            </>
+          ) : (
+            /* PDF Viewer fallback */
             <object
               data={`/uploads/${pdf.filename}#view=FitH`}
               type="application/pdf"
@@ -115,12 +206,6 @@ function PDFModal({ pdf, onClose }) {
                 </div>
               </div>
             </object>
-          ) : (
-            <iframe
-              src={`/uploads/${pdf.filename}#view=FitH`}
-              className="w-full h-full"
-              title={pdf.original_name}
-            />
           )}
         </div>
       </div>

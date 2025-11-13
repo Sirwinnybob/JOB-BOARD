@@ -8,8 +8,10 @@ import SettingsModal from '../components/SettingsModal';
 import LabelModal from '../components/LabelModal';
 import PendingSection from '../components/PendingSection';
 import useWebSocket from '../hooks/useWebSocket';
+import { useDarkMode } from '../contexts/DarkModeContext';
 
 function AdminPage({ onLogout }) {
+  const { darkMode, toggleDarkMode } = useDarkMode();
   const [pdfs, setPdfs] = useState([]);
   const [pendingPdfs, setPendingPdfs] = useState([]);
   const [workingPdfs, setWorkingPdfs] = useState([]);
@@ -18,6 +20,8 @@ function AdminPage({ onLogout }) {
   const [settings, setSettings] = useState({ grid_rows: 4, grid_cols: 6 });
   const [editMode, setEditMode] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
+  const [uploadTargetPosition, setUploadTargetPosition] = useState(null);
+  const [uploadToPending, setUploadToPending] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [showLabelModal, setShowLabelModal] = useState(false);
   const [selectedPdfForLabels, setSelectedPdfForLabels] = useState(null);
@@ -57,6 +61,12 @@ function AdminPage({ onLogout }) {
   // WebSocket connection for live updates
   const handleWebSocketMessage = useCallback((message) => {
     console.log('Admin received update:', message.type);
+    // Don't reload data during edit mode to preserve working copies
+    if (editMode) {
+      console.log('Skipping reload during edit mode');
+      return;
+    }
+
     // Reload data when any relevant update is received
     const relevantTypes = [
       'pdf_uploaded',
@@ -72,7 +82,7 @@ function AdminPage({ onLogout }) {
     if (relevantTypes.includes(message.type)) {
       loadData();
     }
-  }, [loadData]);
+  }, [loadData, editMode]);
 
   useWebSocket(handleWebSocketMessage, true);
 
@@ -168,7 +178,15 @@ function AdminPage({ onLogout }) {
 
   const handleUploadSuccess = () => {
     setShowUpload(false);
+    setUploadTargetPosition(null);
+    setUploadToPending(true);
     loadData();
+  };
+
+  const handleUploadToPending = () => {
+    setUploadTargetPosition(null);
+    setUploadToPending(true);
+    setShowUpload(true);
   };
 
   const handleSettingsSave = async (newSettings) => {
@@ -213,8 +231,10 @@ function AdminPage({ onLogout }) {
     }
   };
 
-  const handleUploadToPdf = (position) => {
-    // Position will be used after upload
+  const handleUploadToSlot = (position) => {
+    // Upload directly to this slot position
+    setUploadTargetPosition(position + 1); // Convert to 1-based position
+    setUploadToPending(false);
     setShowSlotMenu(null);
     setShowUpload(true);
   };
@@ -294,6 +314,13 @@ function AdminPage({ onLogout }) {
       // Moving from board to pending
       const newBoardPdfs = [...workingPdfs];
       const [movedPdf] = newBoardPdfs.splice(source.index, 1);
+
+      // Prevent placeholders from being moved to pending
+      if (movedPdf.is_placeholder) {
+        console.log('Cannot move placeholder to pending');
+        return;
+      }
+
       movedPdf.is_pending = 1;
 
       const newPendingPdfs = [...workingPendingPdfs];
@@ -314,24 +341,39 @@ function AdminPage({ onLogout }) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200">
+    <div className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800 transition-colors">
         {/* Header */}
-        <header className="bg-white shadow-sm">
+        <header className="bg-white dark:bg-gray-800 shadow-sm transition-colors">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
             <div className="flex justify-between items-center">
-              <h1 className="text-2xl font-bold text-gray-900">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white transition-colors">
                 Job Board Admin
               </h1>
               <div className="flex items-center space-x-4">
                 <button
+                  onClick={toggleDarkMode}
+                  className="p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+                  title={darkMode ? 'Light Mode' : 'Dark Mode'}
+                >
+                  {darkMode ? (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                    </svg>
+                  )}
+                </button>
+                <button
                   onClick={() => navigate('/')}
-                  className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
+                  className="text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
                 >
                   View Board
                 </button>
                 <button
                   onClick={handleLogout}
-                  className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
+                  className="text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors"
                 >
                   Logout
                 </button>
@@ -341,7 +383,7 @@ function AdminPage({ onLogout }) {
         </header>
 
         {/* Toolbar */}
-        <div className="bg-white border-b border-gray-200">
+        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 transition-colors">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
             <div className="flex flex-wrap gap-3">
               <button
@@ -356,10 +398,10 @@ function AdminPage({ onLogout }) {
               </button>
               {editMode && (
                 <button
-                  onClick={() => setShowUpload(true)}
+                  onClick={handleUploadToPending}
                   className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors"
                 >
-                  + Upload PDF
+                  + Upload to Pending
                 </button>
               )}
               <button
@@ -377,8 +419,8 @@ function AdminPage({ onLogout }) {
           <DragDropContext onDragEnd={handleDragEnd}>
             {editMode && (
               <>
-                <div className="mb-4 bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <p className="text-blue-800 text-sm">
+                <div className="mb-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4 transition-colors">
+                  <p className="text-blue-800 dark:text-blue-200 text-sm transition-colors">
                     Drag and drop PDFs to reorder them. Click the tag icon to manage labels. Click the X to delete. Click the + button on empty slots to add placeholders.
                     {hasUnsavedChanges && <strong className="ml-2">Changes will be saved when you click "Save Changes".</strong>}
                   </p>
@@ -389,6 +431,7 @@ function AdminPage({ onLogout }) {
                   pdfs={workingPendingPdfs}
                   onMovePdfToBoard={handleMovePdfToBoard}
                   onDelete={handleDelete}
+                  onUploadToPending={handleUploadToPending}
                 />
               </>
             )}
@@ -405,7 +448,7 @@ function AdminPage({ onLogout }) {
               showSlotMenu={showSlotMenu}
               onSlotMenuClose={handleSlotMenuClose}
               onAddPlaceholder={handleAddPlaceholder}
-              onUploadToSlot={handleUploadToPdf}
+              onUploadToSlot={handleUploadToSlot}
               onMoveToPending={handleMovePdfToPending}
             />
           </DragDropContext>
@@ -414,8 +457,14 @@ function AdminPage({ onLogout }) {
         {/* Modals */}
         {showUpload && (
           <UploadModal
-            onClose={() => setShowUpload(false)}
+            onClose={() => {
+              setShowUpload(false);
+              setUploadTargetPosition(null);
+              setUploadToPending(true);
+            }}
             onSuccess={handleUploadSuccess}
+            targetPosition={uploadTargetPosition}
+            uploadToPending={uploadToPending}
           />
         )}
 

@@ -28,9 +28,15 @@ export const authAPI = {
 
 export const pdfAPI = {
   getAll: (includePending = false) => api.get('/pdfs', { params: { includePending } }),
-  upload: (file, onProgress) => {
+  upload: (file, onProgress, uploadToPending = true, targetPosition = null) => {
     const formData = new FormData();
     formData.append('pdf', file);
+    if (!uploadToPending) {
+      formData.append('is_pending', '0');
+    }
+    if (targetPosition !== null) {
+      formData.append('position', targetPosition.toString());
+    }
     return api.post('/pdfs', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
       onUploadProgress: onProgress,

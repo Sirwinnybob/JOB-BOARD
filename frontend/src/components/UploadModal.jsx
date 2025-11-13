@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { pdfAPI } from '../utils/api';
 
-function UploadModal({ onClose, onSuccess }) {
+function UploadModal({ onClose, onSuccess, targetPosition = null, uploadToPending = true }) {
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -57,7 +57,7 @@ function UploadModal({ onClose, onSuccess }) {
           (progressEvent.loaded * 100) / progressEvent.total
         );
         setProgress(percentCompleted);
-      });
+      }, uploadToPending, targetPosition);
       onSuccess();
     } catch (err) {
       setError(err.response?.data?.error || 'Upload failed');
@@ -74,7 +74,9 @@ function UploadModal({ onClose, onSuccess }) {
         className="bg-white rounded-lg shadow-2xl p-6 w-full max-w-md"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Upload PDF</h2>
+        <h2 className="text-2xl font-bold text-gray-900 mb-4">
+          Upload PDF {!uploadToPending && targetPosition !== null ? `to Slot ${targetPosition + 1}` : 'to Pending'}
+        </h2>
 
         {/* Drop zone */}
         <div

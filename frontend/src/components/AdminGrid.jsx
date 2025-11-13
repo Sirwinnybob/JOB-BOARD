@@ -64,10 +64,10 @@ function AdminGrid({ pdfs, rows, cols, editMode, onReorder, onDelete, onLabelCli
                     )}
                   </Draggable>
                 ) : (
-                  <div className="w-full h-full bg-gray-200 rounded-lg border-2 border-dashed border-gray-300 flex items-center justify-center relative group">
+                  <div className="w-full h-full bg-gray-200 dark:bg-gray-700 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center relative group transition-colors">
                     {editMode ? (
                       showSlotMenu === index ? (
-                        <div className="absolute inset-0 bg-white rounded-lg shadow-lg z-20 flex flex-col items-stretch justify-center p-4 gap-2">
+                        <div className="absolute inset-0 bg-white dark:bg-gray-800 rounded-lg shadow-lg z-20 flex flex-col items-stretch justify-center p-4 gap-2 transition-colors">
                           <button
                             onClick={() => onAddPlaceholder && onAddPlaceholder(index)}
                             className="flex items-center justify-center gap-2 p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -88,7 +88,7 @@ function AdminGrid({ pdfs, rows, cols, editMode, onReorder, onDelete, onLabelCli
                           </button>
                           <button
                             onClick={onSlotMenuClose}
-                            className="p-2 text-gray-600 hover:text-gray-900 transition-colors text-sm"
+                            className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 transition-colors text-sm"
                           >
                             Cancel
                           </button>
@@ -96,10 +96,10 @@ function AdminGrid({ pdfs, rows, cols, editMode, onReorder, onDelete, onLabelCli
                       ) : (
                         <button
                           onClick={() => onSlotMenuOpen && onSlotMenuOpen(index)}
-                          className="flex flex-col items-center justify-center gap-2 p-4 hover:bg-gray-300 transition-colors w-full h-full rounded-lg"
+                          className="flex flex-col items-center justify-center gap-2 p-4 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors w-full h-full rounded-lg"
                         >
                           <svg
-                            className="w-8 h-8 text-gray-400 group-hover:text-gray-600"
+                            className="w-8 h-8 text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors"
                             fill="none"
                             stroke="currentColor"
                             viewBox="0 0 24 24"
@@ -111,7 +111,7 @@ function AdminGrid({ pdfs, rows, cols, editMode, onReorder, onDelete, onLabelCli
                               d="M12 4v16m8-8H4"
                             />
                           </svg>
-                          <span className="text-gray-400 text-sm group-hover:text-gray-600">
+                          <span className="text-gray-400 dark:text-gray-500 text-sm group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors">
                             Add Item
                           </span>
                         </button>

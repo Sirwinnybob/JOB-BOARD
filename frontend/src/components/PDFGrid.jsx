@@ -21,14 +21,14 @@ function PDFGrid({ pdfs, rows, cols, onPdfClick }) {
             className="aspect-[5/7] transition-all duration-500 ease-in-out"
           >
             {!pdf ? (
-              <div className="w-full h-full bg-gray-200 rounded-lg border-2 border-dashed border-gray-300" />
+              <div className="w-full h-full bg-gray-200 dark:bg-gray-700 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 transition-colors" />
             ) : pdf.is_placeholder ? (
-              <div className="relative w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg shadow-md border-2 border-dashed border-gray-300 overflow-hidden transition-all duration-500"
+              <div className="relative w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-lg shadow-md border-2 border-dashed border-gray-300 dark:border-gray-600 overflow-hidden transition-all duration-500"
               >
                 <div className="w-full h-full flex flex-col items-center justify-center p-4">
-                  <div className="bg-gray-300 rounded-full p-4 mb-3">
+                  <div className="bg-gray-300 dark:bg-gray-600 rounded-full p-4 mb-3 transition-colors">
                     <svg
-                      className="w-12 h-12 text-gray-500"
+                      className="w-12 h-12 text-gray-500 dark:text-gray-400 transition-colors"
                       fill="none"
                       stroke="currentColor"
                       viewBox="0 0 24 24"
@@ -41,7 +41,7 @@ function PDFGrid({ pdfs, rows, cols, onPdfClick }) {
                       />
                     </svg>
                   </div>
-                  <p className="text-gray-500 text-sm font-medium text-center">
+                  <p className="text-gray-500 dark:text-gray-400 text-sm font-medium text-center transition-colors">
                     Placeholder
                   </p>
                 </div>
@@ -49,12 +49,12 @@ function PDFGrid({ pdfs, rows, cols, onPdfClick }) {
             ) : (
               <div
                 onClick={() => onPdfClick(pdf)}
-                className="relative w-full h-full bg-white rounded-lg shadow-md hover:shadow-xl transform hover:scale-105 transition-all duration-500 cursor-pointer overflow-hidden border border-gray-200"
+                className="relative w-full h-full bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-xl transform hover:scale-105 transition-all duration-500 cursor-pointer overflow-hidden border border-gray-200 dark:border-gray-700"
               >
                 <img
                   src={`/thumbnails/${pdf.thumbnail}`}
                   alt={pdf.original_name}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover dark:invert transition-all"
                   loading="lazy"
                 />
 

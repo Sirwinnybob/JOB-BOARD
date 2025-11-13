@@ -14,3 +14,14 @@ body {
 * {
   box-sizing: border-box;
 }
+
+/* Hide scrollbar for slideshow view */
+@layer utilities {
+  .scrollbar-hide {
+    -ms-overflow-style: none;  /* IE and Edge */
+    scrollbar-width: none;  /* Firefox */
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;  /* Chrome, Safari and Opera */
+  }
+}

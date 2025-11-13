@@ -28,12 +28,14 @@ WORKDIR /app
 # Copy backend package files
 COPY backend/package*.json ./
 
-# Copy backend source (before npm install to avoid overwriting node_modules)
-COPY backend/*.js ./
-COPY backend/*.json ./
-
 # Install backend dependencies (this ensures native modules are built for Linux)
 RUN npm install --omit=dev && npm rebuild
+
+# Copy backend source (after npm install to avoid overwriting node_modules)
+COPY backend/*.js ./
+COPY backend/*.json ./
+COPY backend/middleware ./middleware
+COPY backend/utils ./utils
 
 # Copy built frontend from previous stage
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist

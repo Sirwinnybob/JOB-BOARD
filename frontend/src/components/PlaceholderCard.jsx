@@ -4,16 +4,11 @@ function PlaceholderCard({
   placeholder,
   index,
   editMode,
-  onDragStart,
-  onDragEnd,
   onDelete,
   isDragging,
 }) {
   return (
     <div
-      draggable={editMode}
-      onDragStart={(e) => editMode && onDragStart(e, index)}
-      onDragEnd={onDragEnd}
       className={`relative w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg shadow-md overflow-hidden transition-all ${
         editMode ? 'cursor-move border-2 animate-border-pulse' : 'cursor-default border-2 border-dashed border-gray-300'
       } ${isDragging ? 'opacity-50' : ''}`}

@@ -62,4 +62,28 @@ export const settingsAPI = {
   update: (settings) => api.put('/settings', settings),
 };
 
+export const ocrAPI = {
+  getRegions: async () => {
+    const response = await api.get('/ocr-regions');
+    return response.data;
+  },
+  updateRegion: async (fieldName, region) => {
+    const response = await api.put(`/ocr-regions/${fieldName}`, region);
+    return response.data;
+  },
+  testOCR: async (imageFile, region) => {
+    const formData = new FormData();
+    formData.append('image', imageFile);
+    formData.append('x', region.x.toString());
+    formData.append('y', region.y.toString());
+    formData.append('width', region.width.toString());
+    formData.append('height', region.height.toString());
+
+    const response = await api.post('/ocr-test', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+};
+
 export default api;

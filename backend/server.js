@@ -10,10 +10,14 @@ const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs').promises;
+const { exec } = require('child_process');
+const { promisify } = require('util');
 const db = require('./db');
 const authMiddleware = require('./middleware/auth');
 const { generateThumbnail, generatePdfImages } = require('./utils/thumbnail');
 const { extractMetadata } = require('./utils/textExtraction');
+
+const execAsync = promisify(exec);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -811,6 +815,124 @@ app.put('/api/settings', authMiddleware, async (req, res) => {
   } catch (error) {
     console.error('Error updating settings:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// OCR Region Routes
+app.get('/api/ocr-regions', async (req, res) => {
+  try {
+    db.all('SELECT * FROM ocr_regions ORDER BY field_name ASC', [], (err, rows) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Database error' });
+      }
+      res.json(rows);
+    });
+  } catch (error) {
+    console.error('Error fetching OCR regions:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.put('/api/ocr-regions/:field_name', authMiddleware, async (req, res) => {
+  try {
+    const { field_name } = req.params;
+    const { x, y, width, height, description } = req.body;
+
+    if (x === undefined || y === undefined || width === undefined || height === undefined) {
+      return res.status(400).json({ error: 'x, y, width, and height required' });
+    }
+
+    db.run(
+      'UPDATE ocr_regions SET x = ?, y = ?, width = ?, height = ?, description = ?, updated_at = CURRENT_TIMESTAMP WHERE field_name = ?',
+      [parseInt(x), parseInt(y), parseInt(width), parseInt(height), description || null, field_name],
+      function (err) {
+        if (err) {
+          console.error('Database error:', err);
+          return res.status(500).json({ error: 'Database error' });
+        }
+
+        if (this.changes === 0) {
+          return res.status(404).json({ error: 'OCR region not found' });
+        }
+
+        // Broadcast update to all clients
+        broadcastUpdate('ocr_region_updated', {
+          field_name,
+          x: parseInt(x),
+          y: parseInt(y),
+          width: parseInt(width),
+          height: parseInt(height),
+          description
+        });
+
+        res.json({
+          field_name,
+          x: parseInt(x),
+          y: parseInt(y),
+          width: parseInt(width),
+          height: parseInt(height),
+          description
+        });
+      }
+    );
+  } catch (error) {
+    console.error('Error updating OCR region:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Test OCR on a specific region of an uploaded image
+app.post('/api/ocr-test', authMiddleware, upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file && !req.body.imagePath) {
+      return res.status(400).json({ error: 'No image provided' });
+    }
+
+    const { x, y, width, height } = req.body;
+
+    if (x === undefined || y === undefined || width === undefined || height === undefined) {
+      return res.status(400).json({ error: 'Region coordinates required' });
+    }
+
+    // Use provided image or uploaded file
+    let imagePath;
+    if (req.file) {
+      imagePath = req.file.path;
+    } else {
+      imagePath = path.join(thumbnailDir, req.body.imagePath);
+    }
+
+    // Run OCR on specific region using ImageMagick crop + tesseract
+    const tempDir = '/tmp';
+    const timestamp = Date.now();
+    const croppedImage = path.join(tempDir, `ocr-crop-${timestamp}.png`);
+
+    // Crop the image to the specified region
+    const cropCommand = `convert "${imagePath}" -crop ${width}x${height}+${x}+${y} "${croppedImage}"`;
+    console.log(`Cropping image: ${cropCommand}`);
+    await execAsync(cropCommand);
+
+    // Run OCR on cropped image
+    const { stdout } = await execAsync(`tesseract "${croppedImage}" stdout`);
+
+    // Clean up temporary files
+    try {
+      await fs.unlink(croppedImage);
+      if (req.file) {
+        await fs.unlink(imagePath);
+      }
+    } catch (unlinkErr) {
+      console.error('Error deleting temporary files:', unlinkErr);
+    }
+
+    res.json({
+      text: stdout.trim(),
+      region: { x: parseInt(x), y: parseInt(y), width: parseInt(width), height: parseInt(height) }
+    });
+  } catch (error) {
+    console.error('Error testing OCR:', error);
+    res.status(500).json({ error: 'Failed to test OCR', details: error.message });
   }
 });
 

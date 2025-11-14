@@ -606,6 +606,12 @@ function AdminPage({ onLogout }) {
               >
                 Manage Labels
               </button>
+              <button
+                onClick={() => navigate('/admin/ocr-settings')}
+                className="px-4 py-2 bg-teal-600 text-white rounded-lg font-medium hover:bg-teal-700 transition-colors"
+              >
+                OCR Settings
+              </button>
             </div>
           </div>
         </div>

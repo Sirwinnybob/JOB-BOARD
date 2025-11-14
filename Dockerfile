@@ -10,9 +10,10 @@ WORKDIR /app/frontend
 
 # Copy frontend package files
 COPY frontend/package*.json ./
+COPY frontend/.npmrc ./
 
-# Install dependencies
-RUN npm install
+# Install dependencies (skip optional packages to avoid platform issues)
+RUN npm ci --no-optional || npm install --no-optional
 
 # Copy frontend source
 COPY frontend/ ./
@@ -30,13 +31,14 @@ WORKDIR /app
 
 # Copy backend package files
 COPY backend/package*.json ./
+COPY backend/.npmrc ./
 
 # Force cache invalidation for dependency installation
 ARG CACHE_BUST
 RUN echo "Cache bust: $CACHE_BUST"
 
-# Install backend dependencies (this ensures native modules are built for Linux)
-RUN npm install --omit=dev && npm rebuild
+# Install backend dependencies (skip optional packages to avoid platform issues)
+RUN npm ci --omit=dev --no-optional || npm install --omit=dev --no-optional
 
 # Copy backend source (after npm install to avoid overwriting node_modules)
 COPY backend/*.js ./

@@ -1,7 +1,7 @@
 import React from 'react';
 import { Droppable, Draggable } from '@hello-pangea/dnd';
 
-function PendingSection({ pdfs, onMovePdfToBoard, onDelete, onUploadToPending }) {
+function PendingSection({ pdfs, onMovePdfToBoard, onMoveAllPdfsToBoard, onDelete, onUploadToPending }) {
   if (pdfs.length === 0) {
     return (
       <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6 mb-6 transition-colors">
@@ -136,11 +136,7 @@ function PendingSection({ pdfs, onMovePdfToBoard, onDelete, onUploadToPending })
       {pdfs.length > 1 && (
         <div className="mt-4 pt-4 border-t border-yellow-300">
           <button
-            onClick={() => {
-              if (confirm(`Add all ${pdfs.length} pending PDFs to the board?`)) {
-                pdfs.forEach(pdf => onMovePdfToBoard(pdf.id));
-              }
-            }}
+            onClick={onMoveAllPdfsToBoard}
             className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors font-medium"
           >
             Add All to Board ({pdfs.length})

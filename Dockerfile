@@ -28,6 +28,7 @@ FROM node:20-alpine
 # - poppler-utils: PDF thumbnail generation (pdftocairo, pdfinfo)
 # - tesseract-ocr: OCR text extraction
 # - imagemagick: Image manipulation and cropping
+# - ghostscript: PDF processing for ImageMagick and reportlab
 # - python3, py3-pip: Python runtime for dark mode conversion
 # - build-base, python3-dev, jpeg-dev, zlib-dev: Build dependencies for Python packages
 RUN apk add --no-cache \
@@ -35,6 +36,7 @@ RUN apk add --no-cache \
     tesseract-ocr \
     tesseract-ocr-data-eng \
     imagemagick \
+    ghostscript \
     python3 \
     py3-pip \
     build-base \

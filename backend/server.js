@@ -910,8 +910,20 @@ app.post('/api/ocr-test', authMiddleware, upload.single('image'), async (req, re
     const timestamp = Date.now();
     const croppedImage = path.join(tempDir, `ocr-crop-${timestamp}.png`);
 
+    // Check if input is a PDF - if so, convert to PNG first
+    let processedImagePath = imagePath;
+    const isPdf = imagePath.toLowerCase().endsWith('.pdf');
+
+    if (isPdf) {
+      const pdfToPngPath = path.join(tempDir, `ocr-pdf-${timestamp}`);
+      const convertPdfCommand = `pdftocairo -png -f 1 -l 1 -singlefile -r 300 "${imagePath}" "${pdfToPngPath}"`;
+      console.log(`Converting PDF to PNG: ${convertPdfCommand}`);
+      await execAsync(convertPdfCommand);
+      processedImagePath = `${pdfToPngPath}.png`;
+    }
+
     // Crop the image to the specified region
-    const cropCommand = `convert "${imagePath}" -crop ${width}x${height}+${x}+${y} "${croppedImage}"`;
+    const cropCommand = `magick "${processedImagePath}" -crop ${width}x${height}+${x}+${y} "${croppedImage}"`;
     console.log(`Cropping image: ${cropCommand}`);
     await execAsync(cropCommand);
 
@@ -921,6 +933,9 @@ app.post('/api/ocr-test', authMiddleware, upload.single('image'), async (req, re
     // Clean up temporary files
     try {
       await fs.unlink(croppedImage);
+      if (isPdf && processedImagePath !== imagePath) {
+        await fs.unlink(processedImagePath); // Delete temporary PNG from PDF conversion
+      }
       if (req.file) {
         await fs.unlink(imagePath);
       }

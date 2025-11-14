@@ -320,8 +320,8 @@ function AdminPage({ onLogout }) {
       // If in edit mode, update working copy immediately
       if (editMode && placeholder) {
         const newWorkingPdfs = [...workingPdfs];
-        // Insert placeholder at the specified position
-        newWorkingPdfs.splice(position, 0, placeholder);
+        // Place placeholder directly at the position, don't insert (which would shift)
+        newWorkingPdfs[position] = placeholder;
         setWorkingPdfs(newWorkingPdfs);
         setHasUnsavedChanges(true);
       } else {

@@ -12,7 +12,8 @@ function PDFModal({ pdf, onClose, pdfs = null, currentIndex = null, onNavigate =
     return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
 
-  const totalPages = pdf.page_count || 1;
+  const isPlaceholder = pdf.is_placeholder;
+  const totalPages = isPlaceholder ? 1 : (pdf.page_count || 1);
 
   // Navigation helpers
   const canNavigatePrev = pdfs && currentIndex !== null && currentIndex > 0;
@@ -102,11 +103,18 @@ function PDFModal({ pdf, onClose, pdfs = null, currentIndex = null, onNavigate =
         <div className="flex justify-between items-center mb-4 gap-4">
           <div className="flex items-center gap-4 flex-1">
             <h2 className="text-white text-xl font-semibold truncate">
-              {pdf.original_name}
+              {isPlaceholder ? pdf.text || 'Placeholder' : pdf.original_name}
             </h2>
-            <span className="text-white text-sm bg-white/20 px-3 py-1 rounded-lg">
-              Page {currentPage} of {totalPages}
-            </span>
+            {!isPlaceholder && (
+              <span className="text-white text-sm bg-white/20 px-3 py-1 rounded-lg">
+                Page {currentPage} of {totalPages}
+              </span>
+            )}
+            {isPlaceholder && (
+              <span className="text-white text-sm bg-yellow-600/70 px-3 py-1 rounded-lg">
+                Placeholder
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -125,26 +133,30 @@ function PDFModal({ pdf, onClose, pdfs = null, currentIndex = null, onNavigate =
               )}
               <span className="hidden sm:inline">{darkMode ? 'Light' : 'Dark'}</span>
             </button>
-            <button
-              onClick={openImageInNewTab}
-              className="text-white hover:text-gray-300 transition-colors px-3 py-2 bg-blue-600 rounded-lg text-sm font-medium flex items-center gap-2"
-              title="Open in New Tab"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-              </svg>
-              <span className="hidden sm:inline">Open</span>
-            </button>
-            <button
-              onClick={downloadCurrentImage}
-              className="text-white hover:text-gray-300 transition-colors px-3 py-2 bg-green-600 rounded-lg text-sm font-medium flex items-center gap-2"
-              title="Download Image"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-              </svg>
-              <span className="hidden sm:inline">Download</span>
-            </button>
+            {!isPlaceholder && (
+              <>
+                <button
+                  onClick={openImageInNewTab}
+                  className="text-white hover:text-gray-300 transition-colors px-3 py-2 bg-blue-600 rounded-lg text-sm font-medium flex items-center gap-2"
+                  title="Open in New Tab"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                  <span className="hidden sm:inline">Open</span>
+                </button>
+                <button
+                  onClick={downloadCurrentImage}
+                  className="text-white hover:text-gray-300 transition-colors px-3 py-2 bg-green-600 rounded-lg text-sm font-medium flex items-center gap-2"
+                  title="Download Image"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  <span className="hidden sm:inline">Download</span>
+                </button>
+              </>
+            )}
             <button
               onClick={onClose}
               className="text-white hover:text-gray-300 transition-colors p-2"
@@ -172,19 +184,51 @@ function PDFModal({ pdf, onClose, pdfs = null, currentIndex = null, onNavigate =
           <div className={`flex-1 flex items-center justify-center p-4 overflow-auto transition-colors ${
             darkMode ? 'bg-gray-900' : 'bg-gray-100'
           }`}>
-            <img
-              src={`/thumbnails/${pdf.images_base}-${currentPage}.png`}
-              alt={`${pdf.original_name} - Page ${currentPage}`}
-              className="max-w-full max-h-full object-contain transition-all"
-              style={{
-                filter: darkMode ? 'invert(1)' : 'none'
-              }}
-              onError={(e) => {
-                e.target.onerror = null;
-                const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><text x="50%" y="50%" text-anchor="middle" fill="gray">Image not found</text></svg>';
-                e.target.src = `data:image/svg+xml,${encodeURIComponent(svg)}`;
-              }}
-            />
+            {isPlaceholder ? (
+              <div className="flex flex-col items-center justify-center max-w-full max-h-full">
+                {pdf.image_url ? (
+                  <img
+                    src={pdf.image_url}
+                    alt={pdf.text || 'Placeholder'}
+                    className="max-w-full max-h-full object-contain transition-all"
+                    style={{
+                      filter: darkMode ? 'invert(1)' : 'none'
+                    }}
+                  />
+                ) : (
+                  <div className={`text-center p-8 ${darkMode ? 'text-white' : 'text-gray-700'}`}>
+                    <svg
+                      className="w-24 h-24 mx-auto mb-4"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+                      />
+                    </svg>
+                    <p className="text-2xl font-medium">{pdf.text || 'Placeholder'}</p>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <img
+                src={`/thumbnails/${pdf.images_base}-${currentPage}.png`}
+                alt={`${pdf.original_name} - Page ${currentPage}`}
+                className="max-w-full max-h-full object-contain transition-all"
+                style={{
+                  filter: darkMode ? 'invert(1)' : 'none'
+                }}
+                onError={(e) => {
+                  e.target.onerror = null;
+                  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><text x="50%" y="50%" text-anchor="middle" fill="gray">Image not found</text></svg>';
+                  e.target.src = `data:image/svg+xml,${encodeURIComponent(svg)}`;
+                }}
+              />
+            )}
           </div>
 
           {/* Job Navigation Arrows */}
@@ -218,7 +262,7 @@ function PDFModal({ pdf, onClose, pdfs = null, currentIndex = null, onNavigate =
         </div>
 
           {/* Page Navigation */}
-          {totalPages > 1 && (
+          {!isPlaceholder && totalPages > 1 && (
             <div className="bg-gray-800 p-4 flex items-center justify-center gap-4">
               <button
                 onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}

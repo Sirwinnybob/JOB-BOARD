@@ -13,6 +13,7 @@ const fs = require('fs').promises;
 const db = require('./db');
 const authMiddleware = require('./middleware/auth');
 const { generateThumbnail, generatePdfImages } = require('./utils/thumbnail');
+const { extractMetadata } = require('./utils/textExtraction');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -251,6 +252,19 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
     const isPending = req.body.is_pending !== undefined ? parseInt(req.body.is_pending) : 1;
     const targetPosition = req.body.position !== undefined ? parseInt(req.body.position) : null;
 
+    // Extract metadata (job number and construction method) from PDF
+    let job_number = null;
+    let construction_method = null;
+    try {
+      const metadata = await extractMetadata(pdfPath);
+      job_number = metadata.job_number;
+      construction_method = metadata.construction_method;
+      console.log(`Extracted metadata from PDF: Job# ${job_number}, Method: ${construction_method}`);
+    } catch (extractErr) {
+      console.error('Error extracting metadata from PDF:', extractErr);
+      // Continue even if extraction fails
+    }
+
     // Generate thumbnail
     const thumbnailName = await generateThumbnail(pdfPath, thumbnailDir, baseFilename);
 
@@ -285,8 +299,8 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
 
     // Store null for filename since we no longer keep the PDF
     db.run(
-      'INSERT INTO pdfs (filename, original_name, thumbnail, position, is_pending, page_count, images_base) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [null, originalName, thumbnailName, newPosition, isPending, pageCount, imagesBase],
+      'INSERT INTO pdfs (filename, original_name, thumbnail, position, is_pending, page_count, images_base, job_number, construction_method) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [null, originalName, thumbnailName, newPosition, isPending, pageCount, imagesBase, job_number, construction_method],
       function (err) {
         if (err) {
           console.error('Database error:', err);
@@ -302,7 +316,9 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
           position: newPosition,
           is_pending: isPending,
           page_count: pageCount,
-          images_base: imagesBase
+          images_base: imagesBase,
+          job_number: job_number,
+          construction_method: construction_method
         });
 
         res.json({
@@ -313,7 +329,9 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
           position: newPosition,
           is_pending: isPending,
           page_count: pageCount,
-          images_base: imagesBase
+          images_base: imagesBase,
+          job_number: job_number,
+          construction_method: construction_method
         });
       }
     );

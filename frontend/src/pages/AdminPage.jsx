@@ -6,6 +6,7 @@ import AdminGrid from '../components/AdminGrid';
 import UploadModal from '../components/UploadModal';
 import SettingsModal from '../components/SettingsModal';
 import LabelModal from '../components/LabelModal';
+import LabelManagementModal from '../components/LabelManagementModal';
 import PendingSection from '../components/PendingSection';
 import useWebSocket from '../hooks/useWebSocket';
 import { useDarkMode } from '../contexts/DarkModeContext';
@@ -24,6 +25,7 @@ function AdminPage({ onLogout }) {
   const [uploadToPending, setUploadToPending] = useState(true);
   const [showSettings, setShowSettings] = useState(false);
   const [showLabelModal, setShowLabelModal] = useState(false);
+  const [showLabelManagement, setShowLabelManagement] = useState(false);
   const [selectedPdfForLabels, setSelectedPdfForLabels] = useState(null);
   const [showSlotMenu, setShowSlotMenu] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -85,6 +87,7 @@ function AdminPage({ onLogout }) {
       'pdf_labels_updated',
       'pdf_status_updated',
       'label_created',
+      'label_updated',
       'label_deleted',
       'settings_updated'
     ];
@@ -300,6 +303,26 @@ function AdminPage({ onLogout }) {
     } else {
       // Not in edit mode, just reload all data
       await loadData();
+    }
+  };
+
+  const handleMetadataUpdate = (pdfId, metadata) => {
+    // Update metadata in working copies immediately
+    setWorkingPdfs(prevWorking =>
+      prevWorking.map(pdf => (pdf && pdf.id === pdfId) ? { ...pdf, ...metadata } : pdf)
+    );
+    setWorkingPendingPdfs(prevWorking =>
+      prevWorking.map(pdf => (pdf && pdf.id === pdfId) ? { ...pdf, ...metadata } : pdf)
+    );
+
+    // Also update the base state if not in edit mode
+    if (!editMode) {
+      setPdfs(prevPdfs =>
+        prevPdfs.map(pdf => (pdf && pdf.id === pdfId) ? { ...pdf, ...metadata } : pdf)
+      );
+      setPendingPdfs(prevPending =>
+        prevPending.map(pdf => (pdf && pdf.id === pdfId) ? { ...pdf, ...metadata } : pdf)
+      );
     }
   };
 
@@ -577,6 +600,12 @@ function AdminPage({ onLogout }) {
               >
                 Settings
               </button>
+              <button
+                onClick={() => setShowLabelManagement(true)}
+                className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors"
+              >
+                Manage Labels
+              </button>
             </div>
           </div>
         </div>
@@ -617,6 +646,7 @@ function AdminPage({ onLogout }) {
               onReorder={handleReorder}
               onDelete={handleDelete}
               onLabelClick={handleLabelClick}
+              onMetadataUpdate={handleMetadataUpdate}
               onSlotMenuOpen={handleSlotMenuOpen}
               showSlotMenu={showSlotMenu}
               onSlotMenuClose={handleSlotMenuClose}
@@ -657,6 +687,13 @@ function AdminPage({ onLogout }) {
               setSelectedPdfForLabels(null);
             }}
             onSuccess={handleLabelSuccess}
+          />
+        )}
+
+        {showLabelManagement && (
+          <LabelManagementModal
+            onClose={() => setShowLabelManagement(false)}
+            onUpdate={loadData}
           />
         )}
     </div>

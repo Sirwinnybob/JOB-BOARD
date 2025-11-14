@@ -3,7 +3,7 @@ import { useDraggable, useDroppable } from '@dnd-kit/core';
 import DraggablePDFCard from './DraggablePDFCard';
 import PlaceholderCard from './PlaceholderCard';
 
-function DraggableGridItem({ id, pdf, index, editMode, onDelete, onLabelClick, onMoveToPending, onSlotMenuOpen, showSlotMenu, onSlotMenuClose, onAddPlaceholder, onUploadToSlot }) {
+function DraggableGridItem({ id, pdf, index, editMode, onDelete, onLabelClick, onMoveToPending, onMetadataUpdate, onSlotMenuOpen, showSlotMenu, onSlotMenuClose, onAddPlaceholder, onUploadToSlot }) {
   // Make this slot droppable
   const { setNodeRef: setDropRef, isOver } = useDroppable({
     id: id,
@@ -59,6 +59,7 @@ function DraggableGridItem({ id, pdf, index, editMode, onDelete, onLabelClick, o
               onDelete={onDelete}
               onLabelClick={onLabelClick}
               onMoveToPending={onMoveToPending}
+              onMetadataUpdate={onMetadataUpdate}
               isDragging={isDragging}
             />
           )}

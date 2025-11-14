@@ -481,6 +481,73 @@ app.put('/api/pdfs/:id/status', authMiddleware, async (req, res) => {
   }
 });
 
+app.put('/api/pdfs/:id/metadata', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { job_number, construction_method } = req.body;
+
+    // Build dynamic update query based on provided fields
+    const updates = [];
+    const values = [];
+
+    if (job_number !== undefined) {
+      updates.push('job_number = ?');
+      values.push(job_number);
+    }
+
+    if (construction_method !== undefined) {
+      updates.push('construction_method = ?');
+      values.push(construction_method);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'At least one field required' });
+    }
+
+    values.push(id); // Add id for WHERE clause
+
+    db.run(
+      `UPDATE pdfs SET ${updates.join(', ')} WHERE id = ?`,
+      values,
+      function (err) {
+        if (err) {
+          console.error('Database error:', err);
+          return res.status(500).json({ error: 'Database error' });
+        }
+
+        if (this.changes === 0) {
+          return res.status(404).json({ error: 'PDF not found' });
+        }
+
+        // Fetch updated PDF to broadcast
+        db.get('SELECT * FROM pdfs WHERE id = ?', [id], (err, pdf) => {
+          if (err || !pdf) {
+            console.error('Error fetching updated PDF:', err);
+            return res.status(500).json({ error: 'Database error' });
+          }
+
+          // Broadcast update to all clients
+          broadcastUpdate('pdf_metadata_updated', {
+            id: pdf.id,
+            job_number: pdf.job_number,
+            construction_method: pdf.construction_method
+          });
+
+          res.json({
+            success: true,
+            id: pdf.id,
+            job_number: pdf.job_number,
+            construction_method: pdf.construction_method
+          });
+        });
+      }
+    );
+  } catch (error) {
+    console.error('Error updating PDF metadata:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Label Routes
 app.get('/api/labels', async (req, res) => {
   try {
@@ -533,6 +600,51 @@ app.post('/api/labels', authMiddleware, async (req, res) => {
     );
   } catch (error) {
     console.error('Error creating label:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.put('/api/labels/:id', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, color } = req.body;
+
+    if (!name || !color) {
+      return res.status(400).json({ error: 'Name and color required' });
+    }
+
+    db.run(
+      'UPDATE labels SET name = ?, color = ? WHERE id = ?',
+      [name.toUpperCase(), color, id],
+      function (err) {
+        if (err) {
+          if (err.message.includes('UNIQUE')) {
+            return res.status(400).json({ error: 'Label name already exists' });
+          }
+          console.error('Database error:', err);
+          return res.status(500).json({ error: 'Database error' });
+        }
+
+        if (this.changes === 0) {
+          return res.status(404).json({ error: 'Label not found' });
+        }
+
+        // Broadcast update to all clients
+        broadcastUpdate('label_updated', {
+          id: parseInt(id),
+          name: name.toUpperCase(),
+          color
+        });
+
+        res.json({
+          id: parseInt(id),
+          name: name.toUpperCase(),
+          color
+        });
+      }
+    );
+  } catch (error) {
+    console.error('Error updating label:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

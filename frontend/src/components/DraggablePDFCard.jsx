@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { pdfAPI } from '../utils/api';
 
 function DraggablePDFCard({
   pdf,
@@ -8,13 +9,121 @@ function DraggablePDFCard({
   onLabelClick,
   onMoveToPending,
   isDragging,
+  onMetadataUpdate,
 }) {
+  const [editing, setEditing] = useState(null);
+  const [editValue, setEditValue] = useState('');
+
+  const handleStartEdit = (field, currentValue) => {
+    setEditing(field);
+    setEditValue(currentValue || '');
+  };
+
+  const handleSaveEdit = async (field) => {
+    try {
+      const updates = {};
+      if (field === 'job_number') {
+        updates.job_number = editValue;
+        updates.construction_method = pdf.construction_method;
+      } else {
+        updates.job_number = pdf.job_number;
+        updates.construction_method = editValue;
+      }
+
+      await pdfAPI.updateMetadata(pdf.id, updates.job_number, updates.construction_method);
+      if (onMetadataUpdate) {
+        onMetadataUpdate(pdf.id, updates);
+      }
+      setEditing(null);
+    } catch (error) {
+      console.error('Error updating metadata:', error);
+      alert('Failed to update metadata');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditing(null);
+    setEditValue('');
+  };
+
   return (
-    <div
-      className={`relative w-full h-full bg-white dark:bg-gray-800 rounded-lg shadow-md overflow-hidden transition-all ${
-        editMode ? 'cursor-move border-2 animate-border-pulse' : 'cursor-default border border-gray-200 dark:border-gray-700'
-      } ${isDragging ? 'opacity-50' : ''}`}
-    >
+    <div className="relative w-full h-full flex flex-col">
+      {/* Job Info Section - White header above thumbnail */}
+      <div className="bg-white dark:bg-gray-700 border-b-2 border-gray-300 dark:border-gray-600 px-2 py-1 flex justify-between items-center text-xs transition-colors">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1">
+            <span className="font-semibold text-gray-600 dark:text-gray-400">Job#:</span>
+            {editing === 'job_number' ? (
+              <input
+                type="text"
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleSaveEdit('job_number');
+                  if (e.key === 'Escape') handleCancelEdit();
+                }}
+                onBlur={() => handleSaveEdit('job_number')}
+                className="flex-1 px-1 py-0.5 border border-blue-500 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-xs focus:outline-none"
+                autoFocus
+                onClick={(e) => e.stopPropagation()}
+              />
+            ) : (
+              <span
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleStartEdit('job_number', pdf.job_number);
+                }}
+                className="flex-1 truncate cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 px-1 rounded text-gray-900 dark:text-white"
+                title={pdf.job_number || 'Click to add job number'}
+              >
+                {pdf.job_number || '—'}
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="flex-1 min-w-0 ml-2">
+          <div className="flex items-center gap-1">
+            <span className="font-semibold text-gray-600 dark:text-gray-400">Type:</span>
+            {editing === 'construction_method' ? (
+              <select
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onBlur={() => handleSaveEdit('construction_method')}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleSaveEdit('construction_method');
+                  if (e.key === 'Escape') handleCancelEdit();
+                }}
+                className="flex-1 px-1 py-0.5 border border-blue-500 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-xs focus:outline-none"
+                autoFocus
+                onClick={(e) => e.stopPropagation()}
+              >
+                <option value="">—</option>
+                <option value="Frameless">Frameless</option>
+                <option value="Face Frame">Face Frame</option>
+                <option value="Both">Both</option>
+              </select>
+            ) : (
+              <span
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleStartEdit('construction_method', pdf.construction_method);
+                }}
+                className="flex-1 truncate cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 px-1 rounded text-gray-900 dark:text-white"
+                title={pdf.construction_method || 'Click to select type'}
+              >
+                {pdf.construction_method || '—'}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* PDF Card */}
+      <div
+        className={`flex-1 relative bg-white dark:bg-gray-800 rounded-b-lg shadow-md overflow-hidden transition-all ${
+          editMode ? 'cursor-move border-2 animate-border-pulse' : 'cursor-default border border-gray-200 dark:border-gray-700'
+        } ${isDragging ? 'opacity-50' : ''}`}
+      >
       <img
         src={`/thumbnails/${pdf.thumbnail}`}
         alt={pdf.original_name}
@@ -138,7 +247,8 @@ function DraggablePDFCard({
           </svg>
         </div>
       )}
-    </div>
+      </div> {/* Close PDF Card div */}
+    </div> {/* Close wrapper div */}
   );
 }
 

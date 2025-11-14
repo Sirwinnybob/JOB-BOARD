@@ -28,7 +28,7 @@ async function extractTextWithOCR(pdfPath, region = null) {
     if (region && region.width > 0 && region.height > 0) {
       // Extract from specific region using ImageMagick crop + tesseract
       const croppedImage = path.join(tempDir, `ocr-crop-${timestamp}.png`);
-      const cropCommand = `convert "${imagePath}" -crop ${region.width}x${region.height}+${region.x}+${region.y} "${croppedImage}"`;
+      const cropCommand = `magick "${imagePath}" -crop ${region.width}x${region.height}+${region.x}+${region.y} "${croppedImage}"`;
       console.log(`Cropping image: ${cropCommand}`);
       await execAsync(cropCommand);
 

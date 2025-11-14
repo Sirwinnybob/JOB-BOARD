@@ -134,21 +134,26 @@ function AdminPage({ onLogout }) {
           const allPdfs = [];
 
           // Board PDFs - ensure they're marked as not pending
+          // Filter out undefined (empty slots)
           workingPdfs.forEach((pdf, index) => {
-            allPdfs.push({
-              id: pdf.id,
-              position: index + 1,
-              is_pending: 0
-            });
+            if (pdf) {
+              allPdfs.push({
+                id: pdf.id,
+                position: index + 1,
+                is_pending: 0
+              });
+            }
           });
 
           // Pending PDFs - ensure they're marked as pending
           workingPendingPdfs.forEach((pdf, index) => {
-            allPdfs.push({
-              id: pdf.id,
-              position: allPdfs.length + index + 1, // Continue numbering
-              is_pending: 1
-            });
+            if (pdf) {
+              allPdfs.push({
+                id: pdf.id,
+                position: allPdfs.length + index + 1, // Continue numbering
+                is_pending: 1
+              });
+            }
           });
 
           // Save positions
@@ -159,7 +164,7 @@ function AdminPage({ onLogout }) {
 
           allPdfs.forEach(pdfUpdate => {
             // Find the PDF in original arrays
-            const originalPdf = [...pdfs, ...pendingPdfs].find(p => p.id === pdfUpdate.id);
+            const originalPdf = [...pdfs, ...pendingPdfs].find(p => p && p.id === pdfUpdate.id);
 
             // If status changed, update it
             if (originalPdf && originalPdf.is_pending !== pdfUpdate.is_pending) {
@@ -200,13 +205,13 @@ function AdminPage({ onLogout }) {
 
       // If in edit mode, update working copies
       if (editMode) {
-        setWorkingPdfs(workingPdfs.filter((pdf) => pdf.id !== id));
-        setWorkingPendingPdfs(workingPendingPdfs.filter((pdf) => pdf.id !== id));
+        setWorkingPdfs(workingPdfs.filter((pdf) => pdf && pdf.id !== id));
+        setWorkingPendingPdfs(workingPendingPdfs.filter((pdf) => pdf && pdf.id !== id));
         setHasUnsavedChanges(true);
       } else {
         // Not in edit mode, update main state
-        setPdfs(pdfs.filter((pdf) => pdf.id !== id));
-        setPendingPdfs(pendingPdfs.filter((pdf) => pdf.id !== id));
+        setPdfs(pdfs.filter((pdf) => pdf && pdf.id !== id));
+        setPendingPdfs(pendingPdfs.filter((pdf) => pdf && pdf.id !== id));
       }
     } catch (error) {
       console.error('Error deleting PDF:', error);
@@ -275,17 +280,17 @@ function AdminPage({ onLogout }) {
       try {
         const allPdfsRes = await pdfAPI.getAll(true);
         const allPdfs = allPdfsRes.data;
-        const updatedPdf = allPdfs.find(p => p.id === pdfId);
+        const updatedPdf = allPdfs.find(p => p && p.id === pdfId);
 
         if (updatedPdf) {
           // Update the PDF in the appropriate working array
           if (updatedPdf.is_pending) {
             setWorkingPendingPdfs(prevWorking =>
-              prevWorking.map(pdf => pdf.id === pdfId ? { ...pdf, labels: updatedPdf.labels } : pdf)
+              prevWorking.map(pdf => (pdf && pdf.id === pdfId) ? { ...pdf, labels: updatedPdf.labels } : pdf)
             );
           } else {
             setWorkingPdfs(prevWorking =>
-              prevWorking.map(pdf => pdf.id === pdfId ? { ...pdf, labels: updatedPdf.labels } : pdf)
+              prevWorking.map(pdf => (pdf && pdf.id === pdfId) ? { ...pdf, labels: updatedPdf.labels } : pdf)
             );
           }
         }
@@ -339,14 +344,14 @@ function AdminPage({ onLogout }) {
 
   const handleMovePdfToBoard = (pdfId) => {
     // Move from pending to board (working copies only, not saved yet)
-    const pdfToMove = workingPendingPdfs.find(pdf => pdf.id === pdfId);
+    const pdfToMove = workingPendingPdfs.find(pdf => pdf && pdf.id === pdfId);
     if (!pdfToMove) return;
 
     // Create a copy and update is_pending flag
     const updatedPdf = { ...pdfToMove, is_pending: 0 };
 
     // Remove from pending and add to board
-    setWorkingPendingPdfs(workingPendingPdfs.filter(pdf => pdf.id !== pdfId));
+    setWorkingPendingPdfs(workingPendingPdfs.filter(pdf => pdf && pdf.id !== pdfId));
     setWorkingPdfs([...workingPdfs, updatedPdf]);
     setHasUnsavedChanges(true);
   };
@@ -358,8 +363,8 @@ function AdminPage({ onLogout }) {
       return;
     }
 
-    // Update all pending PDFs to not be pending
-    const movedPdfs = workingPendingPdfs.map(pdf => ({ ...pdf, is_pending: 0 }));
+    // Update all pending PDFs to not be pending (filter out any undefined)
+    const movedPdfs = workingPendingPdfs.filter(pdf => pdf).map(pdf => ({ ...pdf, is_pending: 0 }));
 
     // Add all to board and clear pending
     setWorkingPdfs([...workingPdfs, ...movedPdfs]);
@@ -369,14 +374,16 @@ function AdminPage({ onLogout }) {
 
   const handleMovePdfToPending = (pdfId) => {
     // Move from board to pending (working copies only, not saved yet)
-    const pdfToMove = workingPdfs.find(pdf => pdf.id === pdfId);
+    const pdfToMove = workingPdfs.find(pdf => pdf && pdf.id === pdfId);
     if (!pdfToMove) return;
 
     // Create a copy and update is_pending flag
     const updatedPdf = { ...pdfToMove, is_pending: 1 };
 
     // Remove from board and add to pending
-    setWorkingPdfs(workingPdfs.filter(pdf => pdf.id !== pdfId));
+    // Use map to set to undefined instead of filter to preserve indices
+    const newWorkingPdfs = workingPdfs.map(pdf => (pdf && pdf.id === pdfId) ? undefined : pdf);
+    setWorkingPdfs(newWorkingPdfs);
     setWorkingPendingPdfs([...workingPendingPdfs, updatedPdf]);
     setHasUnsavedChanges(true);
   };

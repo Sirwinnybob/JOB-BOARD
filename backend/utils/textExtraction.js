@@ -78,19 +78,33 @@ async function extractTextWithOCR(pdfPath) {
  * @returns {Promise<string>} Extracted text
  */
 async function extractText(pdfPath) {
+  console.log(`Starting text extraction from: ${pdfPath}`);
+
   // Try pdf-parse first (works for text-based PDFs)
   let text = await extractTextWithPdfParse(pdfPath);
 
-  if (!text || text.trim().length < 10) {
-    console.log('pdf-parse failed or returned minimal text, trying pdftotext...');
-    text = await extractTextWithPdfToText(pdfPath);
+  if (text && text.trim().length >= 10) {
+    console.log(`pdf-parse succeeded, extracted ${text.length} characters`);
+    return text;
   }
 
-  if (!text || text.trim().length < 10) {
-    console.log('pdftotext failed or returned minimal text, trying OCR...');
-    text = await extractTextWithOCR(pdfPath);
+  console.log('pdf-parse failed or returned minimal text, trying pdftotext...');
+  text = await extractTextWithPdfToText(pdfPath);
+
+  if (text && text.trim().length >= 10) {
+    console.log(`pdftotext succeeded, extracted ${text.length} characters`);
+    return text;
   }
 
+  console.log('pdftotext failed or returned minimal text, trying OCR...');
+  text = await extractTextWithOCR(pdfPath);
+
+  if (text && text.trim().length >= 10) {
+    console.log(`OCR succeeded, extracted ${text.length} characters`);
+    return text;
+  }
+
+  console.log('All text extraction methods failed or returned minimal text');
   return text || '';
 }
 
@@ -104,18 +118,23 @@ function extractJobNumber(text) {
   // Pattern to match JOB# followed by various formats
   // Matches: 123, 123a, 123-2, 25-123, 25-123a, etc.
   const patterns = [
-    /JOB#\s*(\d+(?:-\d+)?[a-zA-Z]?)/i,
-    /JOB\s*#\s*(\d+(?:-\d+)?[a-zA-Z]?)/i,
+    /JOB\s*#\s*:?\s*(\d+(?:-\d+)?[a-zA-Z]?)/i,
     /JOB\s*NUMBER\s*:?\s*(\d+(?:-\d+)?[a-zA-Z]?)/i,
+    /JOB\s*NO\.?\s*:?\s*(\d+(?:-\d+)?[a-zA-Z]?)/i,
+    /JOB:\s*(\d+(?:-\d+)?[a-zA-Z]?)/i,
   ];
+
+  console.log('Searching for job number in text (first 500 chars):', text.substring(0, 500));
 
   for (const pattern of patterns) {
     const match = text.match(pattern);
     if (match && match[1]) {
+      console.log(`Found job number with pattern ${pattern}:`, match[1]);
       return match[1].trim();
     }
   }
 
+  console.log('No job number found in text');
   return null;
 }
 
@@ -129,9 +148,12 @@ function extractConstructionMethod(text) {
   // Normalize text for searching
   const normalizedText = text.toUpperCase();
 
+  console.log('Searching for construction method in text');
+
   // Look for construction method keywords
   // Check for "BOTH" first as it's most specific
   if (normalizedText.includes('BOTH')) {
+    console.log('Found construction method: Both');
     return 'Both';
   }
 
@@ -139,6 +161,7 @@ function extractConstructionMethod(text) {
   if (normalizedText.includes('FACE-FRAME') ||
       normalizedText.includes('FACE FRAME') ||
       normalizedText.includes('FACEFRAME')) {
+    console.log('Found construction method: Face Frame');
     return 'Face Frame';
   }
 
@@ -146,9 +169,11 @@ function extractConstructionMethod(text) {
   if (normalizedText.includes('FRAMELESS') ||
       normalizedText.includes('FRAME-LESS') ||
       normalizedText.includes('FRAME LESS')) {
+    console.log('Found construction method: Frameless');
     return 'Frameless';
   }
 
+  console.log('No construction method found in text');
   return null;
 }
 

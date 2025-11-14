@@ -35,10 +35,16 @@ async function generateThumbnail(pdfPath, outputDir, baseFilename) {
 
 async function generatePdfImages(pdfPath, outputDir, baseFilename) {
   try {
+    console.log(`Generating PDF images for: ${pdfPath}`);
+    console.log(`Output directory: ${outputDir}`);
+    console.log(`Base filename: ${baseFilename}`);
+
     // First, get the page count
     const pageCountCommand = `pdfinfo "${pdfPath}" | grep Pages: | awk '{print $2}'`;
+    console.log(`Running page count command: ${pageCountCommand}`);
     const { stdout: pageCountStr } = await execAsync(pageCountCommand);
     const pageCount = parseInt(pageCountStr.trim(), 10);
+    console.log(`Page count: ${pageCount}`);
 
     if (!pageCount || pageCount < 1) {
       throw new Error('Could not determine PDF page count');
@@ -50,16 +56,24 @@ async function generatePdfImages(pdfPath, outputDir, baseFilename) {
     // Without -singlefile, pdftocairo will generate baseFilename-1.png, baseFilename-2.png, etc.
     const outputBase = path.join(outputDir, baseFilename);
     const command = `pdftocairo -png -r 300 "${pdfPath}" "${outputBase}"`;
+    console.log(`Running pdftocairo command: ${command}`);
 
-    await execAsync(command);
+    const { stdout, stderr } = await execAsync(command);
+    if (stdout) console.log(`pdftocairo stdout: ${stdout}`);
+    if (stderr) console.log(`pdftocairo stderr: ${stderr}`);
 
     // Verify the files were created
     const firstPagePath = path.join(outputDir, `${baseFilename}-1.png`);
+    console.log(`Checking for file: ${firstPagePath}`);
     const fileExists = await fs.access(firstPagePath).then(() => true).catch(() => false);
     if (!fileExists) {
-      throw new Error('PDF image generation failed - output files not found');
+      // List files in output directory for debugging
+      const files = await fs.readdir(outputDir);
+      console.error(`Files in output directory:`, files.filter(f => f.includes(baseFilename)));
+      throw new Error(`PDF image generation failed - output file not found: ${firstPagePath}`);
     }
 
+    console.log(`Successfully generated ${pageCount} page images`);
     return {
       pageCount,
       baseFilename,

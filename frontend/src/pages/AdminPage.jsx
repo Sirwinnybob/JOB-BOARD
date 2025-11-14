@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DndContext, DragOverlay, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
-import { arrayMove } from '@dnd-kit/sortable';
+import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { pdfAPI, settingsAPI } from '../utils/api';
 import AdminGrid from '../components/AdminGrid';
 import UploadModal from '../components/UploadModal';
@@ -397,91 +396,98 @@ function AdminPage({ onLogout }) {
       return;
     }
 
-    // Parse the draggable IDs to get container and index info
-    const activeId = active.id;
+    const activeData = active.data.current;
     const overId = over.id;
 
-    // IDs are in format: "board-{index}" or "pending-{index}" or "pdf-{id}"
-    const getContainerAndIndex = (id) => {
-      if (typeof id === 'string') {
-        if (id.startsWith('board-')) {
-          const index = parseInt(id.split('-')[1]);
-          return { container: 'board', index };
-        } else if (id.startsWith('pending-')) {
-          const index = parseInt(id.split('-')[1]);
-          return { container: 'pending', index };
-        } else if (id.startsWith('pdf-')) {
-          const pdfId = parseInt(id.split('-')[1]);
-          // Find which container this PDF is in
-          const boardIndex = workingPdfs.findIndex(p => p.id === pdfId);
-          if (boardIndex !== -1) {
-            return { container: 'board', index: boardIndex, pdfId };
-          }
-          const pendingIndex = workingPendingPdfs.findIndex(p => p.id === pdfId);
-          if (pendingIndex !== -1) {
-            return { container: 'pending', index: pendingIndex, pdfId };
-          }
-        }
-      }
-      return null;
-    };
-
-    const activeInfo = getContainerAndIndex(activeId);
-    const overInfo = getContainerAndIndex(overId);
-
-    if (!activeInfo || !overInfo) {
+    if (!activeData) {
       return;
     }
 
-    const sourceContainer = activeInfo.container;
-    const destContainer = overInfo.container;
+    const sourceContainer = activeData.container;
+    const sourcePdf = activeData.pdf;
+    const sourceIndex = activeData.index;
 
+    // Determine destination
+    let destContainer = null;
+    let destIndex = null;
+
+    if (typeof overId === 'string') {
+      if (overId.startsWith('board-')) {
+        destContainer = 'board';
+        destIndex = parseInt(overId.split('-')[1]);
+      } else if (overId === 'pending-container') {
+        destContainer = 'pending';
+        destIndex = workingPendingPdfs.length; // Add to end
+      }
+    }
+
+    if (!destContainer) {
+      return;
+    }
+
+    // Handle dragging within board
     if (sourceContainer === 'board' && destContainer === 'board') {
-      // Reordering within board
-      if (activeInfo.index !== overInfo.index) {
-        const newPdfs = arrayMove(workingPdfs, activeInfo.index, overInfo.index);
-        setWorkingPdfs(newPdfs);
-        setHasUnsavedChanges(true);
+      if (sourceIndex === destIndex) {
+        return; // Same position
       }
-    } else if (sourceContainer === 'pending' && destContainer === 'pending') {
-      // Reordering within pending
-      if (activeInfo.index !== overInfo.index) {
-        const newPdfs = arrayMove(workingPendingPdfs, activeInfo.index, overInfo.index);
-        setWorkingPendingPdfs(newPdfs);
-        setHasUnsavedChanges(true);
-      }
-    } else if (sourceContainer === 'pending' && destContainer === 'board') {
-      // Moving from pending to board
-      const newPendingPdfs = [...workingPendingPdfs];
-      const [movedPdf] = newPendingPdfs.splice(activeInfo.index, 1);
 
-      // Create a copy with updated status
-      const updatedPdf = { ...movedPdf, is_pending: 0 };
+      const newPdfs = [...workingPdfs];
+
+      // Remove from source position
+      const [movedPdf] = newPdfs.splice(sourceIndex, 1);
+
+      // Insert at destination (or swap if occupied)
+      if (newPdfs[destIndex]) {
+        // Slot is occupied, swap positions
+        const temp = newPdfs[destIndex];
+        newPdfs[destIndex] = movedPdf;
+        newPdfs[sourceIndex] = temp;
+      } else {
+        // Slot is empty, just move there
+        newPdfs.splice(destIndex, 0, movedPdf);
+      }
+
+      setWorkingPdfs(newPdfs);
+      setHasUnsavedChanges(true);
+    }
+    // Handle dragging from pending to board
+    else if (sourceContainer === 'pending' && destContainer === 'board') {
+      const newPendingPdfs = [...workingPendingPdfs];
+      newPendingPdfs.splice(sourceIndex, 1);
 
       const newBoardPdfs = [...workingPdfs];
-      newBoardPdfs.splice(overInfo.index, 0, updatedPdf);
+      const updatedPdf = { ...sourcePdf, is_pending: 0 };
+
+      // Insert at destination or swap
+      if (newBoardPdfs[destIndex]) {
+        // Slot is occupied, swap
+        const temp = newBoardPdfs[destIndex];
+        newBoardPdfs[destIndex] = updatedPdf;
+        // Move displaced item to end
+        newBoardPdfs.push(temp);
+      } else {
+        // Slot is empty
+        newBoardPdfs.splice(destIndex, 0, updatedPdf);
+      }
 
       setWorkingPendingPdfs(newPendingPdfs);
       setWorkingPdfs(newBoardPdfs);
       setHasUnsavedChanges(true);
-    } else if (sourceContainer === 'board' && destContainer === 'pending') {
-      // Moving from board to pending
-      const movedPdf = workingPdfs[activeInfo.index];
-
+    }
+    // Handle dragging from board to pending
+    else if (sourceContainer === 'board' && destContainer === 'pending') {
       // Prevent placeholders from being moved to pending
-      if (movedPdf.is_placeholder) {
+      if (sourcePdf.is_placeholder) {
         console.log('Cannot move placeholder to pending');
         return;
       }
 
       const newBoardPdfs = [...workingPdfs];
-      newBoardPdfs.splice(activeInfo.index, 1);
-
-      // Create a copy with updated status
-      const updatedPdf = { ...movedPdf, is_pending: 1 };
+      newBoardPdfs.splice(sourceIndex, 1);
 
       const newPendingPdfs = [...workingPendingPdfs];
-      newPendingPdfs.splice(overInfo.index, 0, updatedPdf);
+      const updatedPdf = { ...sourcePdf, is_pending: 1 };
+      newPendingPdfs.push(updatedPdf);
 
       setWorkingPdfs(newBoardPdfs);
       setWorkingPendingPdfs(newPendingPdfs);

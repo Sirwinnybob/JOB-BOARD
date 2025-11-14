@@ -13,7 +13,7 @@ function PDFModal({ pdf, onClose, pdfs = null, currentIndex = null, onNavigate =
   });
 
   const isPlaceholder = pdf.is_placeholder;
-  const totalPages = isPlaceholder ? 1 : (pdf.page_count || 1);
+  const totalPages = 1; // Always show only first page
 
   // Navigation helpers
   const canNavigatePrev = pdfs && currentIndex !== null && currentIndex > 0;
@@ -79,7 +79,8 @@ function PDFModal({ pdf, onClose, pdfs = null, currentIndex = null, onNavigate =
     const imageUrl = `/thumbnails/${pdf.images_base}-${currentPage}.png`;
     const link = document.createElement('a');
     link.href = imageUrl;
-    link.download = `${pdf.original_name.replace('.pdf', '')}-page-${currentPage}.png`;
+    const filename = pdf.job_number ? `Job-${pdf.job_number}.png` : `job-sheet.png`;
+    link.download = filename;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -102,17 +103,17 @@ function PDFModal({ pdf, onClose, pdfs = null, currentIndex = null, onNavigate =
         {/* Header */}
         <div className="flex justify-between items-center mb-4 gap-4">
           <div className="flex items-center gap-4 flex-1">
-            <h2 className="text-white text-xl font-semibold truncate">
-              {isPlaceholder ? pdf.text || 'Placeholder' : pdf.original_name}
+            <h2 className="text-white text-xl font-semibold">
+              {isPlaceholder ? (pdf.text || 'Placeholder') : (pdf.job_number ? `Job #${pdf.job_number}` : 'Job Details')}
             </h2>
-            {!isPlaceholder && (
-              <span className="text-white text-sm bg-white/20 px-3 py-1 rounded-lg">
-                Page {currentPage} of {totalPages}
-              </span>
-            )}
             {isPlaceholder && (
               <span className="text-white text-sm bg-yellow-600/70 px-3 py-1 rounded-lg">
                 Placeholder
+              </span>
+            )}
+            {!isPlaceholder && pdf.construction_method && (
+              <span className="text-white text-sm bg-blue-600/70 px-3 py-1 rounded-lg">
+                {pdf.construction_method}
               </span>
             )}
           </div>

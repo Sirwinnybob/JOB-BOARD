@@ -49,7 +49,7 @@ function DraggablePendingItem({ pdf, index, onMovePdfToBoard, onDelete, editMode
       } ${isDragging ? 'opacity-40' : ''}`}
     >
       {/* Thumbnail */}
-      <div className="aspect-[5/7] bg-gray-100 dark:bg-gray-700 flex items-center justify-center transition-colors">
+      <div className="aspect-[4/3] bg-gray-100 dark:bg-gray-700 flex items-center justify-center transition-colors">
         {pdf.thumbnail ? (
           <img
             src={`/thumbnails/${pdf.thumbnail}`}
@@ -74,13 +74,6 @@ function DraggablePendingItem({ pdf, index, onMovePdfToBoard, onDelete, editMode
             <span className="text-xs">PDF</span>
           </div>
         )}
-      </div>
-
-      {/* PDF Name */}
-      <div className="p-2 bg-white dark:bg-gray-800 border-t border-yellow-200 dark:border-yellow-700 transition-colors">
-        <p className="text-xs text-gray-700 dark:text-gray-300 truncate transition-colors" title={pdf.original_name}>
-          {pdf.original_name}
-        </p>
       </div>
 
       {/* Actions - Only in edit mode */}

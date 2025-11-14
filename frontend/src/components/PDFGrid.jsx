@@ -18,7 +18,7 @@ function PDFGrid({ pdfs, rows, cols, onPdfClick }) {
         return (
           <div
             key={pdf?.id || `empty-${index}`}
-            className="aspect-[5/7] transition-all duration-500 ease-in-out"
+            className="aspect-[4/3] transition-all duration-500 ease-in-out"
           >
             {!pdf ? (
               <div className="w-full h-full bg-gray-200 dark:bg-gray-700 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 transition-colors" />
@@ -72,12 +72,6 @@ function PDFGrid({ pdfs, rows, cols, onPdfClick }) {
                     ))}
                   </div>
                 )}
-
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2">
-                  <p className="text-white text-xs truncate">
-                    {pdf.original_name.replace('.pdf', '')}
-                  </p>
-                </div>
               </div>
             )}
           </div>

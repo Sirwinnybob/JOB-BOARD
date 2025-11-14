@@ -3,7 +3,7 @@ import { useDraggable, useDroppable } from '@dnd-kit/core';
 import DraggablePDFCard from './DraggablePDFCard';
 import PlaceholderCard from './PlaceholderCard';
 
-function DraggableGridItem({ id, pdf, index, editMode, onDelete, onLabelClick, onMoveToPending, onSlotMenuOpen, showSlotMenu, onSlotMenuClose, onAddPlaceholder, onUploadToSlot }) {
+function DraggableGridItem({ id, pdf, index, editMode, onDelete, onLabelClick, onMoveToPending, onMetadataUpdate, onSlotMenuOpen, showSlotMenu, onSlotMenuClose, onAddPlaceholder, onUploadToSlot }) {
   // Make this slot droppable
   const { setNodeRef: setDropRef, isOver } = useDroppable({
     id: id,
@@ -34,7 +34,7 @@ function DraggableGridItem({ id, pdf, index, editMode, onDelete, onLabelClick, o
     return (
       <div
         ref={setDropRef}
-        className={`aspect-[5/7] ${isOver ? 'ring-2 ring-blue-500' : ''}`}
+        className={`aspect-[4/3] ${isOver ? 'ring-2 ring-blue-500' : ''}`}
       >
         <div
           ref={setDragRef}
@@ -59,6 +59,7 @@ function DraggableGridItem({ id, pdf, index, editMode, onDelete, onLabelClick, o
               onDelete={onDelete}
               onLabelClick={onLabelClick}
               onMoveToPending={onMoveToPending}
+              onMetadataUpdate={onMetadataUpdate}
               isDragging={isDragging}
             />
           )}
@@ -71,7 +72,7 @@ function DraggableGridItem({ id, pdf, index, editMode, onDelete, onLabelClick, o
   return (
     <div
       ref={setDropRef}
-      className={`aspect-[5/7] bg-gray-200 dark:bg-gray-700 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center relative group transition-colors ${
+      className={`aspect-[4/3] bg-gray-200 dark:bg-gray-700 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center relative group transition-colors ${
         isOver ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-900/20' : ''
       }`}
     >

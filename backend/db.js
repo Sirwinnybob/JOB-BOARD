@@ -76,6 +76,26 @@ db.serialize(() => {
     }
   });
 
+  // Add job_number column to existing tables (migration)
+  db.run(`
+    ALTER TABLE pdfs ADD COLUMN job_number TEXT
+  `, (err) => {
+    // Ignore error if column already exists
+    if (err && !err.message.includes('duplicate column name')) {
+      console.error('Error adding job_number column:', err);
+    }
+  });
+
+  // Add construction_method column to existing tables (migration)
+  db.run(`
+    ALTER TABLE pdfs ADD COLUMN construction_method TEXT
+  `, (err) => {
+    // Ignore error if column already exists
+    if (err && !err.message.includes('duplicate column name')) {
+      console.error('Error adding construction_method column:', err);
+    }
+  });
+
   // Settings table
   db.run(`
     CREATE TABLE IF NOT EXISTS settings (

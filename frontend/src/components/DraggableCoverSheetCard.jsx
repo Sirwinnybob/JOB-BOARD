@@ -55,9 +55,9 @@ function DraggableCoverSheetCard({
   };
 
   return (
-    <div className="relative w-full h-full">
-      {/* Job Info Section - Positioned above the card */}
-      <div className="absolute -top-7 left-0 right-0 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-t px-2 py-1 flex justify-between items-center text-xs transition-colors shadow-sm z-10">
+    <div className="relative w-full h-full flex flex-col">
+      {/* Job Info Section - At top of slot */}
+      <div className="bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-t px-2 py-1 flex justify-between items-center text-xs transition-colors shadow-sm z-10 flex-shrink-0">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1">
             <span className="font-semibold text-gray-600 dark:text-gray-400">Job#:</span>
@@ -136,7 +136,7 @@ function DraggableCoverSheetCard({
 
       {/* Cover Sheet Card */}
       <div
-        className={`flex-1 relative bg-white dark:bg-gray-800 rounded-b-lg shadow-md overflow-hidden transition-all ${
+        className={`flex-1 relative bg-white dark:bg-gray-800 rounded-b-lg shadow-md overflow-hidden transition-all min-h-0 ${
           editMode ? 'cursor-move border-2 animate-border-pulse' : 'cursor-default border border-gray-200 dark:border-gray-700'
         } ${isDragging ? 'opacity-50' : ''}`}
       >

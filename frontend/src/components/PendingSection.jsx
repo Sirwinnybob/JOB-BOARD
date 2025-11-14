@@ -1,25 +1,25 @@
 import React from 'react';
-import { useDroppable } from '@dnd-kit/core';
-import { SortableContext, rectSortingStrategy, useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+import { useDraggable, useDroppable } from '@dnd-kit/core';
 
-function SortablePendingItem({ pdf, index, onMovePdfToBoard, onDelete }) {
+function DraggablePendingItem({ pdf, index, onMovePdfToBoard, onDelete }) {
   const {
     attributes,
     listeners,
     setNodeRef,
     transform,
-    transition,
     isDragging,
-  } = useSortable({
-    id: `pending-${index}`,
+  } = useDraggable({
+    id: `pending-pdf-${pdf.id}`,
+    data: {
+      pdf,
+      index,
+      container: 'pending',
+    },
   });
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.4 : 1,
-  };
+  const style = transform ? {
+    transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+  } : undefined;
 
   return (
     <div
@@ -27,7 +27,9 @@ function SortablePendingItem({ pdf, index, onMovePdfToBoard, onDelete }) {
       style={style}
       {...attributes}
       {...listeners}
-      className="relative bg-white dark:bg-gray-800 border-2 border-yellow-300 dark:border-yellow-600 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all cursor-move"
+      className={`relative bg-white dark:bg-gray-800 border-2 border-yellow-300 dark:border-yellow-600 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all cursor-move ${
+        isDragging ? 'opacity-40' : ''
+      }`}
     >
       {/* Thumbnail */}
       <div className="aspect-[5/7] bg-gray-100 dark:bg-gray-700 flex items-center justify-center transition-colors">
@@ -99,8 +101,8 @@ function SortablePendingItem({ pdf, index, onMovePdfToBoard, onDelete }) {
 }
 
 function PendingSection({ pdfs, onMovePdfToBoard, onMoveAllPdfsToBoard, onDelete, onUploadToPending }) {
-  const { setNodeRef } = useDroppable({
-    id: 'pending',
+  const { setNodeRef, isOver } = useDroppable({
+    id: 'pending-container',
   });
 
   if (pdfs.length === 0) {
@@ -124,8 +126,6 @@ function PendingSection({ pdfs, onMovePdfToBoard, onMoveAllPdfsToBoard, onDelete
     );
   }
 
-  const pendingIds = pdfs.map((_, index) => `pending-${index}`);
-
   return (
     <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6 mb-6 transition-colors">
       <div className="flex justify-between items-center mb-4">
@@ -134,7 +134,7 @@ function PendingSection({ pdfs, onMovePdfToBoard, onMoveAllPdfsToBoard, onDelete
             📥 PENDING PDFs ({pdfs.length})
           </h2>
           <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1 transition-colors">
-            These PDFs are uploaded but not yet visible on the board. Click "Add to Board" to make them visible to others.
+            These PDFs are uploaded but not yet visible on the board. Drag them to the board or click "Add to Board".
           </p>
         </div>
         <button
@@ -145,22 +145,22 @@ function PendingSection({ pdfs, onMovePdfToBoard, onMoveAllPdfsToBoard, onDelete
         </button>
       </div>
 
-      <SortableContext items={pendingIds} strategy={rectSortingStrategy}>
-        <div
-          ref={setNodeRef}
-          className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4"
-        >
-          {pdfs.map((pdf, index) => (
-            <SortablePendingItem
-              key={pdf.id}
-              pdf={pdf}
-              index={index}
-              onMovePdfToBoard={onMovePdfToBoard}
-              onDelete={onDelete}
-            />
-          ))}
-        </div>
-      </SortableContext>
+      <div
+        ref={setNodeRef}
+        className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 ${
+          isOver ? 'ring-2 ring-yellow-500' : ''
+        }`}
+      >
+        {pdfs.map((pdf, index) => (
+          <DraggablePendingItem
+            key={pdf.id}
+            pdf={pdf}
+            index={index}
+            onMovePdfToBoard={onMovePdfToBoard}
+            onDelete={onDelete}
+          />
+        ))}
+      </div>
 
       {/* Bulk Actions */}
       {pdfs.length > 1 && (

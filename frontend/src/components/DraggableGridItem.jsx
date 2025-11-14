@@ -1,63 +1,80 @@
 import React from 'react';
-import { useSortable } from '@dnd-kit/sortable';
-import { CSS } from '@dnd-kit/utilities';
+import { useDraggable, useDroppable } from '@dnd-kit/core';
 import DraggablePDFCard from './DraggablePDFCard';
 import PlaceholderCard from './PlaceholderCard';
 
-function SortableGridItem({ id, pdf, index, editMode, onDelete, onLabelClick, onMoveToPending, onSlotMenuOpen, showSlotMenu, onSlotMenuClose, onAddPlaceholder, onUploadToSlot }) {
+function DraggableGridItem({ id, pdf, index, editMode, onDelete, onLabelClick, onMoveToPending, onSlotMenuOpen, showSlotMenu, onSlotMenuClose, onAddPlaceholder, onUploadToSlot }) {
+  // Make this slot droppable
+  const { setNodeRef: setDropRef, isOver } = useDroppable({
+    id: id,
+  });
+
+  // Make the PDF draggable if it exists
   const {
     attributes,
     listeners,
-    setNodeRef,
+    setNodeRef: setDragRef,
     transform,
-    transition,
     isDragging,
-  } = useSortable({
-    id,
+  } = useDraggable({
+    id: pdf ? `pdf-${pdf.id}` : id,
     disabled: !editMode || !pdf,
+    data: {
+      pdf,
+      index,
+      container: 'board',
+    },
   });
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.4 : 1,
-  };
+  const style = transform ? {
+    transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+  } : undefined;
 
   if (pdf) {
     return (
       <div
-        ref={setNodeRef}
-        style={style}
-        {...attributes}
-        {...listeners}
-        className="aspect-[5/7]"
+        ref={setDropRef}
+        className={`aspect-[5/7] ${isOver ? 'ring-2 ring-blue-500' : ''}`}
       >
-        {pdf.is_placeholder ? (
-          <PlaceholderCard
-            placeholder={pdf}
-            index={index}
-            editMode={editMode}
-            onDelete={onDelete}
-            isDragging={isDragging}
-          />
-        ) : (
-          <DraggablePDFCard
-            pdf={pdf}
-            index={index}
-            editMode={editMode}
-            onDelete={onDelete}
-            onLabelClick={onLabelClick}
-            onMoveToPending={onMoveToPending}
-            isDragging={isDragging}
-          />
-        )}
+        <div
+          ref={setDragRef}
+          style={style}
+          {...attributes}
+          {...listeners}
+          className={`w-full h-full ${isDragging ? 'opacity-40' : ''}`}
+        >
+          {pdf.is_placeholder ? (
+            <PlaceholderCard
+              placeholder={pdf}
+              index={index}
+              editMode={editMode}
+              onDelete={onDelete}
+              isDragging={isDragging}
+            />
+          ) : (
+            <DraggablePDFCard
+              pdf={pdf}
+              index={index}
+              editMode={editMode}
+              onDelete={onDelete}
+              onLabelClick={onLabelClick}
+              onMoveToPending={onMoveToPending}
+              isDragging={isDragging}
+            />
+          )}
+        </div>
       </div>
     );
   }
 
   // Empty slot
   return (
-    <div className="aspect-[5/7] bg-gray-200 dark:bg-gray-700 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center relative group transition-colors">
+    <div
+      ref={setDropRef}
+      className={`aspect-[5/7] bg-gray-200 dark:bg-gray-700 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center relative group transition-colors ${
+        isOver ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-900/20' : ''
+      }`}
+    >
       {editMode ? (
         showSlotMenu === index ? (
           <div className="absolute inset-0 bg-white dark:bg-gray-800 rounded-lg shadow-lg z-20 flex flex-col items-stretch justify-center p-4 gap-2 transition-colors">
@@ -114,4 +131,4 @@ function SortableGridItem({ id, pdf, index, editMode, onDelete, onLabelClick, on
   );
 }
 
-export default SortableGridItem;
+export default DraggableGridItem;

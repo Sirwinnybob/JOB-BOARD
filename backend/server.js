@@ -252,20 +252,7 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
     const isPending = req.body.is_pending !== undefined ? parseInt(req.body.is_pending) : 1;
     const targetPosition = req.body.position !== undefined ? parseInt(req.body.position) : null;
 
-    // Extract metadata (job number and construction method) from PDF
-    let job_number = null;
-    let construction_method = null;
-    try {
-      const metadata = await extractMetadata(pdfPath);
-      job_number = metadata.job_number;
-      construction_method = metadata.construction_method;
-      console.log(`Extracted metadata from PDF: Job# ${job_number}, Method: ${construction_method}`);
-    } catch (extractErr) {
-      console.error('Error extracting metadata from PDF:', extractErr);
-      // Continue even if extraction fails
-    }
-
-    // Generate thumbnail
+    // Generate thumbnail (fast)
     const thumbnailName = await generateThumbnail(pdfPath, thumbnailDir, baseFilename);
 
     // Generate full PDF images for viewing
@@ -298,18 +285,21 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
     }
 
     // Store null for filename since we no longer keep the PDF
+    // Initially store with null job_number and construction_method
     db.run(
       'INSERT INTO pdfs (filename, original_name, thumbnail, position, is_pending, page_count, images_base, job_number, construction_method) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [null, originalName, thumbnailName, newPosition, isPending, pageCount, imagesBase, job_number, construction_method],
+      [null, originalName, thumbnailName, newPosition, isPending, pageCount, imagesBase, null, null],
       function (err) {
         if (err) {
           console.error('Database error:', err);
           return res.status(500).json({ error: 'Database error' });
         }
 
+        const pdfId = this.lastID;
+
         // Broadcast update to all clients
         broadcastUpdate('pdf_uploaded', {
-          id: this.lastID,
+          id: pdfId,
           filename: null,
           original_name: originalName,
           thumbnail: thumbnailName,
@@ -317,12 +307,13 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
           is_pending: isPending,
           page_count: pageCount,
           images_base: imagesBase,
-          job_number: job_number,
-          construction_method: construction_method
+          job_number: null,
+          construction_method: null
         });
 
+        // Send immediate response to client (fast upload)
         res.json({
-          id: this.lastID,
+          id: pdfId,
           filename: null,
           original_name: originalName,
           thumbnail: thumbnailName,
@@ -330,8 +321,40 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
           is_pending: isPending,
           page_count: pageCount,
           images_base: imagesBase,
-          job_number: job_number,
-          construction_method: construction_method
+          job_number: null,
+          construction_method: null
+        });
+
+        // Process OCR in background (don't wait for response)
+        setImmediate(async () => {
+          try {
+            console.log(`Starting background OCR extraction for PDF ${pdfId}...`);
+            const metadata = await extractMetadata(pdfPath);
+            console.log(`Background OCR complete for PDF ${pdfId}:`, metadata);
+
+            // Update database with extracted metadata
+            db.run(
+              'UPDATE pdfs SET job_number = ?, construction_method = ? WHERE id = ?',
+              [metadata.job_number, metadata.construction_method, pdfId],
+              (updateErr) => {
+                if (updateErr) {
+                  console.error('Error updating metadata:', updateErr);
+                  return;
+                }
+
+                // Broadcast metadata update to all clients
+                broadcastUpdate('pdf_metadata_updated', {
+                  id: pdfId,
+                  job_number: metadata.job_number,
+                  construction_method: metadata.construction_method
+                });
+
+                console.log(`Metadata updated for PDF ${pdfId}`);
+              }
+            );
+          } catch (extractErr) {
+            console.error(`Error in background OCR extraction for PDF ${pdfId}:`, extractErr);
+          }
         });
       }
     );

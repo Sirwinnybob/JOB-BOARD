@@ -76,13 +76,6 @@ function DraggablePendingItem({ pdf, index, onMovePdfToBoard, onDelete, editMode
         )}
       </div>
 
-      {/* PDF Name */}
-      <div className="p-2 bg-white dark:bg-gray-800 border-t border-yellow-200 dark:border-yellow-700 transition-colors">
-        <p className="text-xs text-gray-700 dark:text-gray-300 truncate transition-colors" title={pdf.original_name}>
-          {pdf.original_name}
-        </p>
-      </div>
-
       {/* Actions - Only in edit mode */}
       {editMode && onMovePdfToBoard && onDelete && (
         <div className="p-2 bg-white dark:bg-gray-800 border-t border-yellow-200 dark:border-yellow-700 flex gap-2 transition-colors">

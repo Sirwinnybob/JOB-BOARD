@@ -121,13 +121,6 @@ function SlideShowView({ pdfs, onPdfClick }) {
                   ))}
                 </div>
               )}
-
-              {/* Title overlay */}
-              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6">
-                <p className="text-white text-lg font-medium">
-                  {pdf.original_name.replace('.pdf', '')}
-                </p>
-              </div>
             </div>
           </div>
         ))}

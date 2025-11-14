@@ -72,12 +72,6 @@ function PDFGrid({ pdfs, rows, cols, onPdfClick }) {
                     ))}
                   </div>
                 )}
-
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2">
-                  <p className="text-white text-xs truncate">
-                    {pdf.original_name.replace('.pdf', '')}
-                  </p>
-                </div>
               </div>
             )}
           </div>

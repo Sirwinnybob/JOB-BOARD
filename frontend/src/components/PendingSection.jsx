@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
-import SlideShowView from './SlideShowView';
 
-function DraggablePendingItem({ pdf, index, onMovePdfToBoard, onDelete, editMode, onPdfClick }) {
+function DraggablePendingItem({ pdf, index, onMovePdfToBoard, onDelete, editMode }) {
 
   const {
     attributes,
@@ -31,21 +30,14 @@ function DraggablePendingItem({ pdf, index, onMovePdfToBoard, onDelete, editMode
     pointerEvents: 'none',
   } : {};
 
-  const handleClick = () => {
-    if (!editMode && onPdfClick) {
-      onPdfClick(pdf);
-    }
-  };
-
   return (
     <div
       ref={setNodeRef}
       style={{...style, ...draggingStyle}}
       {...attributes}
       {...listeners}
-      onClick={handleClick}
       className={`relative bg-white dark:bg-gray-800 border-2 border-yellow-300 dark:border-yellow-600 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow ${
-        editMode ? 'cursor-move' : 'cursor-pointer'
+        editMode ? 'cursor-move' : ''
       } ${isDragging ? 'opacity-40' : ''}`}
     >
       {/* Thumbnail */}
@@ -113,25 +105,9 @@ function DraggablePendingItem({ pdf, index, onMovePdfToBoard, onDelete, editMode
 }
 
 function PendingSection({ pdfs, onMovePdfToBoard, onMoveAllPdfsToBoard, onDelete, onUploadToPending, editMode }) {
-  const [selectedPdf, setSelectedPdf] = useState(null);
-
   const { setNodeRef, isOver } = useDroppable({
     id: 'pending-container',
   });
-
-  const handlePdfClick = (pdf) => {
-    setSelectedPdf(pdf);
-  };
-
-  const handleCloseModal = () => {
-    setSelectedPdf(null);
-  };
-
-  const handleNavigate = (newIndex) => {
-    if (newIndex >= 0 && newIndex < pdfs.length && pdfs[newIndex]) {
-      setSelectedPdf(pdfs[newIndex]);
-    }
-  };
 
   if (pdfs.length === 0) {
     return (
@@ -197,7 +173,6 @@ function PendingSection({ pdfs, onMovePdfToBoard, onMoveAllPdfsToBoard, onDelete
             onMovePdfToBoard={onMovePdfToBoard}
             onDelete={onDelete}
             editMode={editMode}
-            onPdfClick={handlePdfClick}
           />
         ))}
       </div>
@@ -212,15 +187,6 @@ function PendingSection({ pdfs, onMovePdfToBoard, onMoveAllPdfsToBoard, onDelete
             Add All to Board ({pdfs.length})
           </button>
         </div>
-      )}
-
-      {/* Fullscreen SlideShow View */}
-      {selectedPdf && (
-        <SlideShowView
-          pdfs={pdfs}
-          initialIndex={pdfs.findIndex(p => p && p.id === selectedPdf.id)}
-          onClose={handleCloseModal}
-        />
       )}
     </div>
   );

@@ -6,7 +6,6 @@ function OCRSettingsPage() {
   const [selectedRegion, setSelectedRegion] = useState(null);
   const [testImage, setTestImage] = useState(null);
   const [testImageFile, setTestImageFile] = useState(null);
-  const [ocrResults, setOcrResults] = useState({});
   const [dragging, setDragging] = useState(null);
   const [resizing, setResizing] = useState(null);
   const [imageNaturalSize, setImageNaturalSize] = useState({ width: 0, height: 0 });
@@ -205,26 +204,6 @@ function OCRSettingsPage() {
     }
   };
 
-  const testRegionOCR = async (region) => {
-    if (!testImageFile) {
-      alert('Please upload a test image first');
-      return;
-    }
-
-    try {
-      const result = await ocrAPI.testOCR(testImageFile, region);
-      setOcrResults(prev => ({
-        ...prev,
-        [region.field_name]: result.text
-      }));
-    } catch (error) {
-      console.error('Error testing OCR:', error);
-      setOcrResults(prev => ({
-        ...prev,
-        [region.field_name]: 'Error: ' + error.message
-      }));
-    }
-  };
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-6">
@@ -305,31 +284,13 @@ function OCRSettingsPage() {
                   <div>Size: {region.width}x{region.height}px</div>
                 </div>
 
-                {ocrResults[region.field_name] && (
-                  <div className="mt-2 p-2 bg-gray-100 dark:bg-gray-700 rounded text-sm">
-                    <div className="font-semibold text-gray-700 dark:text-gray-300">OCR Result:</div>
-                    <div className="text-gray-900 dark:text-white font-mono">
-                      "{ocrResults[region.field_name]}"
-                    </div>
-                  </div>
-                )}
-
-                <div className="mt-3 flex gap-2">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      testRegionOCR(region);
-                    }}
-                    className="flex-1 px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-sm"
-                  >
-                    Test OCR
-                  </button>
+                <div className="mt-3">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       saveRegion(region);
                     }}
-                    className="flex-1 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm"
+                    className="w-full px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm"
                   >
                     Save
                   </button>
@@ -345,8 +306,7 @@ function OCRSettingsPage() {
                 <li>1. Select a region from the list</li>
                 <li>2. Drag the region to position it</li>
                 <li>3. Resize using the handle (bottom-right)</li>
-                <li>4. Click "Test OCR" to see results</li>
-                <li>5. Click "Save" to save the configuration</li>
+                <li>4. Click "Save" to save the configuration</li>
               </ul>
             </div>
           </div>

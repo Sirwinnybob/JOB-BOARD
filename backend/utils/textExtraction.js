@@ -115,22 +115,46 @@ async function extractText(pdfPath) {
  * @returns {string|null} Extracted job number or null
  */
 function extractJobNumber(text) {
+  // Clean up text - remove excessive whitespace and normalize
+  const cleanText = text.replace(/\s+/g, ' ').trim();
+
+  console.log('Searching for job number in text (first 1000 chars):', cleanText.substring(0, 1000));
+
   // Pattern to match JOB# followed by various formats
   // Matches: 123, 123a, 123-2, 25-123, 25-123a, etc.
   const patterns = [
+    // Direct patterns (JOB# immediately followed by number)
     /JOB\s*#\s*:?\s*(\d+(?:-\d+)?[a-zA-Z]?)/i,
     /JOB\s*NUMBER\s*:?\s*(\d+(?:-\d+)?[a-zA-Z]?)/i,
     /JOB\s*NO\.?\s*:?\s*(\d+(?:-\d+)?[a-zA-Z]?)/i,
     /JOB:\s*(\d+(?:-\d+)?[a-zA-Z]?)/i,
+
+    // Look for standalone numbers that might be job numbers
+    // Search for patterns like "25-123" or "123a" that appear near "Job" or after it
+    /JOB[^0-9]{0,20}(\d+(?:-\d+)?[a-zA-Z]?)/i,
   ];
 
-  console.log('Searching for job number in text (first 500 chars):', text.substring(0, 500));
-
   for (const pattern of patterns) {
-    const match = text.match(pattern);
+    const match = cleanText.match(pattern);
     if (match && match[1]) {
-      console.log(`Found job number with pattern ${pattern}:`, match[1]);
-      return match[1].trim();
+      // Validate that it looks like a job number (not a date or other number)
+      const potentialJobNum = match[1].trim();
+      // Skip if it looks like a date (e.g., 10/13/25)
+      if (!potentialJobNum.includes('/')) {
+        console.log(`Found job number with pattern ${pattern}:`, potentialJobNum);
+        return potentialJobNum;
+      }
+    }
+  }
+
+  // Also try to find any number patterns that look like job numbers in the full text
+  // Look for patterns like "25-123", "123a", etc. near the word "Job"
+  const jobSectionMatch = cleanText.match(/JOB[^]*?(\d+(?:-\d+)?[a-zA-Z]?)(?=\s|$|[^0-9a-zA-Z-])/i);
+  if (jobSectionMatch && jobSectionMatch[1]) {
+    const potentialJobNum = jobSectionMatch[1].trim();
+    if (!potentialJobNum.includes('/') && potentialJobNum.length >= 1) {
+      console.log('Found potential job number near "Job" keyword:', potentialJobNum);
+      return potentialJobNum;
     }
   }
 

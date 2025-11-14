@@ -62,15 +62,46 @@ async function generatePdfImages(pdfPath, outputDir, baseFilename) {
     if (stdout) console.log(`pdftocairo stdout: ${stdout}`);
     if (stderr) console.log(`pdftocairo stderr: ${stderr}`);
 
-    // Verify the files were created
-    const firstPagePath = path.join(outputDir, `${baseFilename}-1.png`);
-    console.log(`Checking for file: ${firstPagePath}`);
-    const fileExists = await fs.access(firstPagePath).then(() => true).catch(() => false);
+    // Verify the files were created and rename if zero-padded
+    // pdftocairo uses zero-padding for page numbers when there are 10+ pages
+    // We need to rename them to match what the frontend expects (no zero-padding)
+    let firstPagePath = path.join(outputDir, `${baseFilename}-1.png`);
+    let fileExists = await fs.access(firstPagePath).then(() => true).catch(() => false);
+    let isZeroPadded = false;
+
+    if (!fileExists) {
+      // Try zero-padded format
+      firstPagePath = path.join(outputDir, `${baseFilename}-01.png`);
+      fileExists = await fs.access(firstPagePath).then(() => true).catch(() => false);
+      if (fileExists) {
+        isZeroPadded = true;
+      }
+    }
+
     if (!fileExists) {
       // List files in output directory for debugging
       const files = await fs.readdir(outputDir);
       console.error(`Files in output directory:`, files.filter(f => f.includes(baseFilename)));
-      throw new Error(`PDF image generation failed - output file not found: ${firstPagePath}`);
+      throw new Error(`PDF image generation failed - no output files found for: ${baseFilename}`);
+    }
+
+    console.log(`First page found at: ${firstPagePath}`);
+
+    // If files are zero-padded, rename them to match frontend expectations
+    if (isZeroPadded) {
+      console.log('Files are zero-padded, renaming to non-padded format...');
+      for (let i = 1; i <= pageCount; i++) {
+        const paddedNum = i.toString().padStart(2, '0');
+        const oldPath = path.join(outputDir, `${baseFilename}-${paddedNum}.png`);
+        const newPath = path.join(outputDir, `${baseFilename}-${i}.png`);
+        try {
+          await fs.rename(oldPath, newPath);
+          console.log(`Renamed: ${baseFilename}-${paddedNum}.png -> ${baseFilename}-${i}.png`);
+        } catch (renameErr) {
+          console.error(`Error renaming ${oldPath}:`, renameErr);
+        }
+      }
+      console.log('File renaming complete');
     }
 
     console.log(`Successfully generated ${pageCount} page images`);

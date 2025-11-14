@@ -11,7 +11,7 @@ function AdminGrid({ pdfs, rows, cols, editMode, onReorder, onDelete, onLabelCli
 
   return (
     <div
-      className="grid gap-x-4 gap-y-10 w-full"
+      className="grid gap-4 w-full"
       style={gridStyle}
     >
       {Array.from({ length: totalSlots }).map((_, index) => {

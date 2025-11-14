@@ -10,7 +10,7 @@ function PDFGrid({ pdfs, rows, cols, onPdfClick }) {
 
   return (
     <div
-      className="grid gap-x-4 gap-y-10 w-full"
+      className="grid gap-4 w-full"
       style={gridStyle}
     >
       {Array.from({ length: totalSlots }).map((_, index) => {
@@ -19,7 +19,7 @@ function PDFGrid({ pdfs, rows, cols, onPdfClick }) {
         return (
           <div
             key={pdf?.id || `empty-${index}`}
-            className="aspect-[4/3] pt-7 transition-all duration-500 ease-in-out"
+            className="aspect-[4/3] transition-all duration-500 ease-in-out"
           >
             {!pdf ? (
               <div className="w-full h-full bg-gray-200 dark:bg-gray-700 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 transition-colors" />

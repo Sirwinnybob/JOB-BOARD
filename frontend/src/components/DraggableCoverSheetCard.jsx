@@ -54,13 +54,33 @@ function DraggableCoverSheetCard({
     setEditValue('');
   };
 
+  // Determine header background color based on construction method
+  const getHeaderStyle = () => {
+    if (!pdf.construction_method) {
+      return isDarkMode
+        ? { backgroundColor: 'rgb(55, 65, 81)' } // dark:bg-gray-700
+        : { backgroundColor: 'white' };
+    }
+
+    const colorMap = {
+      'Face Frame': 'rgb(150, 179, 82)',
+      'Frameless': 'rgb(237, 146, 35)',
+      'Both': 'rgb(0, 133, 138)'
+    };
+
+    return { backgroundColor: colorMap[pdf.construction_method] || 'white' };
+  };
+
   return (
-    <div className="relative w-full h-full">
-      {/* Job Info Section - Positioned above the card */}
-      <div className="absolute -top-7 left-0 right-0 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-t px-2 py-1 flex justify-between items-center text-xs transition-colors shadow-sm z-10">
+    <div className="relative w-full h-full flex flex-col">
+      {/* Job Info Section - At top of slot */}
+      <div
+        className="border border-gray-300 dark:border-gray-600 rounded-t px-2 py-1 flex justify-between items-center text-xs transition-colors shadow-sm z-10 flex-shrink-0"
+        style={getHeaderStyle()}
+      >
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1">
-            <span className="font-semibold text-gray-600 dark:text-gray-400">Job#:</span>
+            <span className={`font-semibold ${pdf.construction_method ? 'text-white' : 'text-gray-600 dark:text-gray-400'}`}>Job#:</span>
             {editMode && editing === 'job_number' ? (
               <input
                 type="text"
@@ -83,8 +103,10 @@ function DraggableCoverSheetCard({
                     handleStartEdit('job_number', pdf.job_number);
                   }
                 }}
-                className={`flex-1 truncate px-1 rounded text-gray-900 dark:text-white ${
-                  editMode ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600' : 'cursor-default'
+                className={`flex-1 truncate px-1 rounded ${
+                  pdf.construction_method ? 'text-white' : 'text-gray-900 dark:text-white'
+                } ${
+                  editMode ? 'cursor-pointer hover:bg-black/10' : 'cursor-default'
                 }`}
                 title={editMode ? (pdf.job_number || 'Click to add job number') : pdf.job_number}
               >
@@ -95,7 +117,7 @@ function DraggableCoverSheetCard({
         </div>
         <div className="flex-1 min-w-0 ml-2">
           <div className="flex items-center gap-1">
-            <span className="font-semibold text-gray-600 dark:text-gray-400">Type:</span>
+            <span className={`font-semibold ${pdf.construction_method ? 'text-white' : 'text-gray-600 dark:text-gray-400'}`}>Type:</span>
             {editMode && editing === 'construction_method' ? (
               <select
                 value={editValue}
@@ -122,8 +144,10 @@ function DraggableCoverSheetCard({
                     handleStartEdit('construction_method', pdf.construction_method);
                   }
                 }}
-                className={`flex-1 truncate px-1 rounded text-gray-900 dark:text-white ${
-                  editMode ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600' : 'cursor-default'
+                className={`flex-1 truncate px-1 rounded ${
+                  pdf.construction_method ? 'text-white' : 'text-gray-900 dark:text-white'
+                } ${
+                  editMode ? 'cursor-pointer hover:bg-black/10' : 'cursor-default'
                 }`}
                 title={editMode ? (pdf.construction_method || 'Click to select type') : pdf.construction_method}
               >
@@ -136,7 +160,7 @@ function DraggableCoverSheetCard({
 
       {/* Cover Sheet Card */}
       <div
-        className={`flex-1 relative bg-white dark:bg-gray-800 rounded-b-lg shadow-md overflow-hidden transition-all ${
+        className={`flex-1 relative bg-white dark:bg-gray-800 rounded-b-lg shadow-md overflow-hidden transition-all min-h-0 ${
           editMode ? 'cursor-move border-2 animate-border-pulse' : 'cursor-default border border-gray-200 dark:border-gray-700'
         } ${isDragging ? 'opacity-50' : ''}`}
       >

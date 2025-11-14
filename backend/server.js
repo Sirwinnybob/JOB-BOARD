@@ -152,20 +152,6 @@ const upload = multer({
   limits: { fileSize: 50 * 1024 * 1024 } // 50MB max
 });
 
-// Separate upload handler for OCR testing that accepts images and PDFs
-const ocrTestUpload = multer({
-  storage,
-  fileFilter: (req, file, cb) => {
-    const allowedTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg'];
-    if (allowedTypes.includes(file.mimetype)) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only PDF and image files (PNG, JPEG) are allowed for OCR testing'));
-    }
-  },
-  limits: { fileSize: 50 * 1024 * 1024 } // 50MB max
-});
-
 // Auth Routes
 app.post('/api/auth/login', async (req, res) => {
   try {
@@ -946,85 +932,6 @@ app.put('/api/ocr-regions/:field_name', authMiddleware, async (req, res) => {
   } catch (error) {
     console.error('Error updating OCR region:', error);
     res.status(500).json({ error: 'Internal server error' });
-  }
-});
-
-// Test OCR on a specific region of an uploaded image
-app.post('/api/ocr-test', authMiddleware, ocrTestUpload.single('image'), async (req, res) => {
-  try {
-    if (!req.file && !req.body.imagePath) {
-      return res.status(400).json({ error: 'No image provided' });
-    }
-
-    const { x, y, width, height } = req.body;
-
-    if (x === undefined || y === undefined || width === undefined || height === undefined) {
-      return res.status(400).json({ error: 'Region coordinates required' });
-    }
-
-    // Validate dimensions
-    const parsedWidth = parseInt(width);
-    const parsedHeight = parseInt(height);
-    if (parsedWidth <= 0 || parsedHeight <= 0) {
-      return res.status(400).json({
-        error: 'Invalid region dimensions. Please configure OCR regions first by dragging on the image.',
-        details: 'Width and height must be greater than 0'
-      });
-    }
-
-    // Use provided image or uploaded file
-    let imagePath;
-    if (req.file) {
-      imagePath = req.file.path;
-    } else {
-      imagePath = path.join(thumbnailDir, req.body.imagePath);
-    }
-
-    // Run OCR on specific region using ImageMagick crop + tesseract
-    const tempDir = '/tmp';
-    const timestamp = Date.now();
-    const croppedImage = path.join(tempDir, `ocr-crop-${timestamp}.png`);
-
-    // Check if input is a PDF - if so, convert to PNG first
-    let processedImagePath = imagePath;
-    const isPdf = imagePath.toLowerCase().endsWith('.pdf');
-
-    if (isPdf) {
-      const pdfToPngPath = path.join(tempDir, `ocr-pdf-${timestamp}`);
-      const convertPdfCommand = `pdftocairo -png -f 1 -l 1 -singlefile -r 300 "${imagePath}" "${pdfToPngPath}"`;
-      console.log(`Converting PDF to PNG: ${convertPdfCommand}`);
-      await execAsync(convertPdfCommand);
-      processedImagePath = `${pdfToPngPath}.png`;
-    }
-
-    // Crop the image to the specified region
-    const cropCommand = `magick "${processedImagePath}" -crop ${width}x${height}+${x}+${y} "${croppedImage}"`;
-    console.log(`Cropping image: ${cropCommand}`);
-    await execAsync(cropCommand);
-
-    // Run OCR on cropped image
-    const { stdout } = await execAsync(`tesseract "${croppedImage}" stdout`);
-
-    // Clean up temporary files
-    try {
-      await fs.unlink(croppedImage);
-      if (isPdf && processedImagePath !== imagePath) {
-        await fs.unlink(processedImagePath); // Delete temporary PNG from PDF conversion
-      }
-      if (req.file) {
-        await fs.unlink(imagePath);
-      }
-    } catch (unlinkErr) {
-      console.error('Error deleting temporary files:', unlinkErr);
-    }
-
-    res.json({
-      text: stdout.trim(),
-      region: { x: parseInt(x), y: parseInt(y), width: parseInt(width), height: parseInt(height) }
-    });
-  } catch (error) {
-    console.error('Error testing OCR:', error);
-    res.status(500).json({ error: 'Failed to test OCR', details: error.message });
   }
 });
 

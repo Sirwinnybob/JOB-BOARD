@@ -52,13 +52,14 @@ function UploadModal({ onClose, onSuccess, targetPosition = null, uploadToPendin
     setError('');
 
     try {
-      await pdfAPI.upload(file, (progressEvent) => {
+      const response = await pdfAPI.upload(file, (progressEvent) => {
         const percentCompleted = Math.round(
           (progressEvent.loaded * 100) / progressEvent.total
         );
         setProgress(percentCompleted);
       }, uploadToPending, targetPosition);
-      onSuccess();
+      // Pass the uploaded PDF data to the success callback
+      onSuccess(response.data);
     } catch (err) {
       setError(err.response?.data?.error || 'Upload failed');
       setUploading(false);

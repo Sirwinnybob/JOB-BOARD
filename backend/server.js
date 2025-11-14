@@ -259,9 +259,9 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
     // Generate thumbnail (fast)
     const thumbnailName = await generateThumbnail(pdfPath, thumbnailDir, baseFilename);
 
-    // Generate full PDF images for viewing
+    // Generate full PDF images for viewing (including dark mode version)
     const imagesBase = `${baseFilename}-pages`;
-    const { pageCount } = await generatePdfImages(pdfPath, thumbnailDir, imagesBase);
+    const { pageCount, darkModeBaseFilename } = await generatePdfImages(pdfPath, thumbnailDir, imagesBase);
 
     // Delete the original PDF file after generating images
     try {
@@ -291,8 +291,8 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
     // Store null for filename since we no longer keep the PDF
     // Initially store with null job_number and construction_method
     db.run(
-      'INSERT INTO pdfs (filename, original_name, thumbnail, position, is_pending, page_count, images_base, job_number, construction_method) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [null, originalName, thumbnailName, newPosition, isPending, pageCount, imagesBase, null, null],
+      'INSERT INTO pdfs (filename, original_name, thumbnail, position, is_pending, page_count, images_base, dark_mode_images_base, job_number, construction_method) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [null, originalName, thumbnailName, newPosition, isPending, pageCount, imagesBase, darkModeBaseFilename, null, null],
       function (err) {
         if (err) {
           console.error('Database error:', err);
@@ -311,6 +311,7 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
           is_pending: isPending,
           page_count: pageCount,
           images_base: imagesBase,
+          dark_mode_images_base: darkModeBaseFilename,
           job_number: null,
           construction_method: null
         });
@@ -325,6 +326,7 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
           is_pending: isPending,
           page_count: pageCount,
           images_base: imagesBase,
+          dark_mode_images_base: darkModeBaseFilename,
           job_number: null,
           construction_method: null
         });

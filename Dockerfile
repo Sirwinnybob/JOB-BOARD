@@ -24,8 +24,30 @@ RUN npm run build
 # Stage 2: Build backend and final image
 FROM node:20-alpine
 
-# Install poppler-utils for PDF thumbnail generation, tesseract for OCR, and ImageMagick for image manipulation
-RUN apk add --no-cache poppler-utils tesseract-ocr tesseract-ocr-data-eng imagemagick
+# Install system dependencies:
+# - poppler-utils: PDF thumbnail generation (pdftocairo, pdfinfo)
+# - tesseract-ocr: OCR text extraction
+# - imagemagick: Image manipulation and cropping
+# - python3, py3-pip: Python runtime for dark mode conversion
+# - build-base, python3-dev, jpeg-dev, zlib-dev: Build dependencies for Python packages
+RUN apk add --no-cache \
+    poppler-utils \
+    tesseract-ocr \
+    tesseract-ocr-data-eng \
+    imagemagick \
+    python3 \
+    py3-pip \
+    build-base \
+    python3-dev \
+    jpeg-dev \
+    zlib-dev \
+    libffi-dev
+
+# Install Python packages for dark mode PDF conversion
+RUN pip3 install --no-cache-dir \
+    pikepdf>=8.0.0 \
+    reportlab \
+    Pillow>=10.0.0
 
 WORKDIR /app
 

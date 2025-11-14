@@ -96,6 +96,16 @@ db.serialize(() => {
     }
   });
 
+  // Add dark_mode_images_base column to existing tables (migration)
+  db.run(`
+    ALTER TABLE pdfs ADD COLUMN dark_mode_images_base TEXT
+  `, (err) => {
+    // Ignore error if column already exists
+    if (err && !err.message.includes('duplicate column name')) {
+      console.error('Error adding dark_mode_images_base column:', err);
+    }
+  });
+
   // Settings table
   db.run(`
     CREATE TABLE IF NOT EXISTS settings (

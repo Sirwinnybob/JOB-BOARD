@@ -181,7 +181,8 @@ function PDFModal({ pdf, onClose, pdfs = null, currentIndex = null, onNavigate =
               }}
               onError={(e) => {
                 e.target.onerror = null;
-                e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="200" height="200"%3E%3Ctext x="50%25" y="50%25" text-anchor="middle" fill="gray"%3EImage not found%3C/text%3E%3C/svg%3E';
+                const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200"><text x="50%" y="50%" text-anchor="middle" fill="gray">Image not found<' + '/text><' + '/svg>';
+                e.target.src = `data:image/svg+xml,${encodeURIComponent(svg)}`;
               }}
             />
           </div>
@@ -262,7 +263,6 @@ function PDFModal({ pdf, onClose, pdfs = null, currentIndex = null, onNavigate =
           )}
         </div>
       </div>
-    </div>
   );
 }
 

@@ -152,6 +152,20 @@ const upload = multer({
   limits: { fileSize: 50 * 1024 * 1024 } // 50MB max
 });
 
+// Separate upload handler for OCR testing that accepts images and PDFs
+const ocrTestUpload = multer({
+  storage,
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only PDF and image files (PNG, JPEG) are allowed for OCR testing'));
+    }
+  },
+  limits: { fileSize: 50 * 1024 * 1024 } // 50MB max
+});
+
 // Auth Routes
 app.post('/api/auth/login', async (req, res) => {
   try {
@@ -936,7 +950,7 @@ app.put('/api/ocr-regions/:field_name', authMiddleware, async (req, res) => {
 });
 
 // Test OCR on a specific region of an uploaded image
-app.post('/api/ocr-test', authMiddleware, upload.single('image'), async (req, res) => {
+app.post('/api/ocr-test', authMiddleware, ocrTestUpload.single('image'), async (req, res) => {
   try {
     if (!req.file && !req.body.imagePath) {
       return res.status(400).json({ error: 'No image provided' });
@@ -946,6 +960,16 @@ app.post('/api/ocr-test', authMiddleware, upload.single('image'), async (req, re
 
     if (x === undefined || y === undefined || width === undefined || height === undefined) {
       return res.status(400).json({ error: 'Region coordinates required' });
+    }
+
+    // Validate dimensions
+    const parsedWidth = parseInt(width);
+    const parsedHeight = parseInt(height);
+    if (parsedWidth <= 0 || parsedHeight <= 0) {
+      return res.status(400).json({
+        error: 'Invalid region dimensions. Please configure OCR regions first by dragging on the image.',
+        details: 'Width and height must be greater than 0'
+      });
     }
 
     // Use provided image or uploaded file

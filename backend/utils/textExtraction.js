@@ -20,9 +20,15 @@ async function extractTextWithOCR(pdfPath, region = null) {
     const imageBase = `${tempDir}/ocr-temp-${timestamp}`;
 
     // Convert PDF to PNG images (first page only, high resolution for OCR)
-    await execAsync(`pdftocairo -png -f 1 -l 1 -r 300 "${pdfPath}" "${imageBase}"`);
+    // -singlefile creates single file without page numbers
+    await execAsync(`pdftocairo -png -f 1 -l 1 -singlefile -r 300 "${pdfPath}" "${imageBase}"`);
 
+    // With -singlefile, pdftocairo creates imageBase.png (no page number suffix)
+    const generatedImagePath = `${imageBase}.png`;
     const imagePath = `${imageBase}-1.png`;
+
+    // Rename to expected format
+    await fs.rename(generatedImagePath, imagePath);
 
     let ocrText;
     if (region && region.width > 0 && region.height > 0) {

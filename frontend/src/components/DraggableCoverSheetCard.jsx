@@ -55,13 +55,13 @@ function DraggableCoverSheetCard({
   };
 
   return (
-    <div className="relative w-full h-full flex flex-col">
-      {/* Job Info Section - White header above thumbnail */}
-      <div className="bg-white dark:bg-gray-700 border-b-2 border-gray-300 dark:border-gray-600 px-2 py-1 flex justify-between items-center text-xs transition-colors">
+    <div className="relative w-full h-full">
+      {/* Job Info Section - Positioned above the card */}
+      <div className="absolute -top-7 left-0 right-0 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-t px-2 py-1 flex justify-between items-center text-xs transition-colors shadow-sm z-10">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-1">
             <span className="font-semibold text-gray-600 dark:text-gray-400">Job#:</span>
-            {editing === 'job_number' ? (
+            {editMode && editing === 'job_number' ? (
               <input
                 type="text"
                 value={editValue}
@@ -78,11 +78,15 @@ function DraggableCoverSheetCard({
             ) : (
               <span
                 onClick={(e) => {
-                  e.stopPropagation();
-                  handleStartEdit('job_number', pdf.job_number);
+                  if (editMode) {
+                    e.stopPropagation();
+                    handleStartEdit('job_number', pdf.job_number);
+                  }
                 }}
-                className="flex-1 truncate cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 px-1 rounded text-gray-900 dark:text-white"
-                title={pdf.job_number || 'Click to add job number'}
+                className={`flex-1 truncate px-1 rounded text-gray-900 dark:text-white ${
+                  editMode ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600' : 'cursor-default'
+                }`}
+                title={editMode ? (pdf.job_number || 'Click to add job number') : pdf.job_number}
               >
                 {pdf.job_number || '—'}
               </span>
@@ -92,7 +96,7 @@ function DraggableCoverSheetCard({
         <div className="flex-1 min-w-0 ml-2">
           <div className="flex items-center gap-1">
             <span className="font-semibold text-gray-600 dark:text-gray-400">Type:</span>
-            {editing === 'construction_method' ? (
+            {editMode && editing === 'construction_method' ? (
               <select
                 value={editValue}
                 onChange={(e) => setEditValue(e.target.value)}
@@ -113,11 +117,15 @@ function DraggableCoverSheetCard({
             ) : (
               <span
                 onClick={(e) => {
-                  e.stopPropagation();
-                  handleStartEdit('construction_method', pdf.construction_method);
+                  if (editMode) {
+                    e.stopPropagation();
+                    handleStartEdit('construction_method', pdf.construction_method);
+                  }
                 }}
-                className="flex-1 truncate cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600 px-1 rounded text-gray-900 dark:text-white"
-                title={pdf.construction_method || 'Click to select type'}
+                className={`flex-1 truncate px-1 rounded text-gray-900 dark:text-white ${
+                  editMode ? 'cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-600' : 'cursor-default'
+                }`}
+                title={editMode ? (pdf.construction_method || 'Click to select type') : pdf.construction_method}
               >
                 {pdf.construction_method || '—'}
               </span>
@@ -126,7 +134,7 @@ function DraggableCoverSheetCard({
         </div>
       </div>
 
-      {/* PDF Card */}
+      {/* Cover Sheet Card */}
       <div
         className={`flex-1 relative bg-white dark:bg-gray-800 rounded-b-lg shadow-md overflow-hidden transition-all ${
           editMode ? 'cursor-move border-2 animate-border-pulse' : 'cursor-default border border-gray-200 dark:border-gray-700'

@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
+import PDFModal from './PDFModal';
 
-function DraggablePendingItem({ pdf, index, onMovePdfToBoard, onDelete, editMode }) {
-  const [showViewer, setShowViewer] = useState(false);
+function DraggablePendingItem({ pdf, index, onMovePdfToBoard, onDelete, editMode, onPdfClick }) {
 
   const {
     attributes,
@@ -22,26 +22,32 @@ function DraggablePendingItem({ pdf, index, onMovePdfToBoard, onDelete, editMode
 
   const style = transform ? {
     transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-  } : undefined;
+    willChange: 'transform',
+  } : {
+    transition: 'transform 200ms ease',
+  };
+
+  const draggingStyle = isDragging ? {
+    pointerEvents: 'none',
+  } : {};
 
   const handleClick = () => {
-    if (!editMode) {
-      setShowViewer(true);
+    if (!editMode && onPdfClick) {
+      onPdfClick(pdf);
     }
   };
 
   return (
-    <>
-      <div
-        ref={setNodeRef}
-        style={style}
-        {...attributes}
-        {...listeners}
-        onClick={handleClick}
-        className={`relative bg-white dark:bg-gray-800 border-2 border-yellow-300 dark:border-yellow-600 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all ${
-          editMode ? 'cursor-move' : 'cursor-pointer'
-        } ${isDragging ? 'opacity-40' : ''}`}
-      >
+    <div
+      ref={setNodeRef}
+      style={{...style, ...draggingStyle}}
+      {...attributes}
+      {...listeners}
+      onClick={handleClick}
+      className={`relative bg-white dark:bg-gray-800 border-2 border-yellow-300 dark:border-yellow-600 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow ${
+        editMode ? 'cursor-move' : 'cursor-pointer'
+      } ${isDragging ? 'opacity-40' : ''}`}
+    >
       {/* Thumbnail */}
       <div className="aspect-[5/7] bg-gray-100 dark:bg-gray-700 flex items-center justify-center transition-colors">
         {pdf.thumbnail ? (
@@ -110,59 +116,29 @@ function DraggablePendingItem({ pdf, index, onMovePdfToBoard, onDelete, editMode
         </div>
       )}
     </div>
-
-    {/* PDF Viewer Modal */}
-    {showViewer && (
-      <div
-        className="fixed inset-0 bg-black bg-opacity-90 z-50 flex items-center justify-center p-4"
-        onClick={() => setShowViewer(false)}
-      >
-        <div className="relative w-full h-full max-w-6xl max-h-screen flex flex-col">
-          <div className="absolute top-4 right-4 z-10 flex gap-2">
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setShowViewer(false);
-              }}
-              className="bg-white dark:bg-gray-800 text-gray-900 dark:text-white p-2 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-              title="Close"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-          <div className="bg-white dark:bg-gray-900 rounded-lg overflow-hidden flex-1 flex flex-col">
-            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{pdf.original_name}</h3>
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                {pdf.page_count} {pdf.page_count === 1 ? 'page' : 'pages'}
-              </p>
-            </div>
-            <div className="flex-1 overflow-y-auto p-4 bg-gray-100 dark:bg-gray-800">
-              <div className="space-y-4">
-                {Array.from({ length: pdf.page_count || 0 }, (_, i) => (
-                  <img
-                    key={i}
-                    src={`/thumbnails/${pdf.images_base}-${i + 1}.png`}
-                    alt={`Page ${i + 1}`}
-                    className="w-full max-w-3xl mx-auto shadow-lg rounded dark:invert"
-                  />
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    )}
-    </>
   );
 }
 
 function PendingSection({ pdfs, onMovePdfToBoard, onMoveAllPdfsToBoard, onDelete, onUploadToPending, editMode }) {
+  const [selectedPdf, setSelectedPdf] = useState(null);
+
   const { setNodeRef, isOver } = useDroppable({
     id: 'pending-container',
   });
+
+  const handlePdfClick = (pdf) => {
+    setSelectedPdf(pdf);
+  };
+
+  const handleCloseModal = () => {
+    setSelectedPdf(null);
+  };
+
+  const handleNavigate = (newIndex) => {
+    if (newIndex >= 0 && newIndex < pdfs.length && pdfs[newIndex]) {
+      setSelectedPdf(pdfs[newIndex]);
+    }
+  };
 
   if (pdfs.length === 0) {
     return (
@@ -228,6 +204,7 @@ function PendingSection({ pdfs, onMovePdfToBoard, onMoveAllPdfsToBoard, onDelete
             onMovePdfToBoard={onMovePdfToBoard}
             onDelete={onDelete}
             editMode={editMode}
+            onPdfClick={handlePdfClick}
           />
         ))}
       </div>
@@ -242,6 +219,17 @@ function PendingSection({ pdfs, onMovePdfToBoard, onMoveAllPdfsToBoard, onDelete
             Add All to Board ({pdfs.length})
           </button>
         </div>
+      )}
+
+      {/* PDF Modal */}
+      {selectedPdf && (
+        <PDFModal
+          pdf={selectedPdf}
+          onClose={handleCloseModal}
+          pdfs={pdfs}
+          currentIndex={pdfs.findIndex(p => p && p.id === selectedPdf.id)}
+          onNavigate={handleNavigate}
+        />
       )}
     </div>
   );

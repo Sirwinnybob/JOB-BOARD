@@ -73,8 +73,8 @@ function HomePage() {
   };
 
   const handleNavigate = (newIndex) => {
-    // Filter out placeholders for navigation (same as in grid/slideshow)
-    const displayPdfs = pdfs.filter(pdf => pdf && !pdf.is_placeholder);
+    // Include all PDFs including placeholders in navigation
+    const displayPdfs = pdfs.filter(pdf => pdf);
     if (newIndex >= 0 && newIndex < displayPdfs.length) {
       setSelectedPdf(displayPdfs[newIndex]);
     }
@@ -169,8 +169,8 @@ function HomePage() {
         <PDFModal
           pdf={selectedPdf}
           onClose={handleCloseModal}
-          pdfs={pdfs.filter(pdf => pdf && !pdf.is_placeholder)}
-          currentIndex={pdfs.filter(pdf => pdf && !pdf.is_placeholder).findIndex(p => p.id === selectedPdf.id)}
+          pdfs={pdfs.filter(pdf => pdf)}
+          currentIndex={pdfs.filter(pdf => pdf).findIndex(p => p.id === selectedPdf.id)}
           onNavigate={handleNavigate}
         />
       )}

@@ -433,19 +433,12 @@ function AdminPage({ onLogout }) {
 
       const newPdfs = [...workingPdfs];
 
-      // Remove from source position
-      const [movedPdf] = newPdfs.splice(sourceIndex, 1);
+      // Simple swap: take what's at source, take what's at dest, swap them
+      const sourcePdfItem = newPdfs[sourceIndex];
+      const destPdfItem = newPdfs[destIndex];
 
-      // Insert at destination (or swap if occupied)
-      if (newPdfs[destIndex]) {
-        // Slot is occupied, swap positions
-        const temp = newPdfs[destIndex];
-        newPdfs[destIndex] = movedPdf;
-        newPdfs[sourceIndex] = temp;
-      } else {
-        // Slot is empty, just move there
-        newPdfs.splice(destIndex, 0, movedPdf);
-      }
+      newPdfs[destIndex] = sourcePdfItem;
+      newPdfs[sourceIndex] = destPdfItem;
 
       setWorkingPdfs(newPdfs);
       setHasUnsavedChanges(true);
@@ -458,16 +451,15 @@ function AdminPage({ onLogout }) {
       const newBoardPdfs = [...workingPdfs];
       const updatedPdf = { ...sourcePdf, is_pending: 0 };
 
-      // Insert at destination or swap
-      if (newBoardPdfs[destIndex]) {
-        // Slot is occupied, swap
-        const temp = newBoardPdfs[destIndex];
-        newBoardPdfs[destIndex] = updatedPdf;
-        // Move displaced item to end
-        newBoardPdfs.push(temp);
-      } else {
-        // Slot is empty
-        newBoardPdfs.splice(destIndex, 0, updatedPdf);
+      // Get what's currently at the destination
+      const destPdfItem = newBoardPdfs[destIndex];
+
+      // Place the pending PDF at the destination
+      newBoardPdfs[destIndex] = updatedPdf;
+
+      // If there was something at the destination, add it to the end
+      if (destPdfItem) {
+        newBoardPdfs.push(destPdfItem);
       }
 
       setWorkingPendingPdfs(newPendingPdfs);
@@ -483,7 +475,8 @@ function AdminPage({ onLogout }) {
       }
 
       const newBoardPdfs = [...workingPdfs];
-      newBoardPdfs.splice(sourceIndex, 1);
+      // Remove from board by setting to undefined (leave the slot empty)
+      newBoardPdfs[sourceIndex] = undefined;
 
       const newPendingPdfs = [...workingPendingPdfs];
       const updatedPdf = { ...sourcePdf, is_pending: 1 };

@@ -12,8 +12,8 @@ WORKDIR /app/frontend
 COPY frontend/package*.json ./
 COPY frontend/.npmrc ./
 
-# Install dependencies (skip optional packages to avoid platform issues)
-RUN npm ci --no-optional || npm install --no-optional
+# Install dependencies (skip optional packages and bypass platform checks)
+RUN npm ci --no-optional --force || npm install --no-optional --force
 
 # Copy frontend source
 COPY frontend/ ./
@@ -37,8 +37,8 @@ COPY backend/.npmrc ./
 ARG CACHE_BUST
 RUN echo "Cache bust: $CACHE_BUST"
 
-# Install backend dependencies (skip optional packages to avoid platform issues)
-RUN npm ci --omit=dev --no-optional || npm install --omit=dev --no-optional
+# Install backend dependencies (skip optional packages and bypass platform checks)
+RUN npm ci --omit=dev --no-optional --force || npm install --omit=dev --no-optional --force
 
 # Copy backend source (after npm install to avoid overwriting node_modules)
 COPY backend/*.js ./

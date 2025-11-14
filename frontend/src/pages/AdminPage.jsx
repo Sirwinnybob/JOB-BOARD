@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DragDropContext } from '@hello-pangea/dnd';
+import { DndContext, DragOverlay, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { arrayMove } from '@dnd-kit/sortable';
 import { pdfAPI, settingsAPI } from '../utils/api';
 import AdminGrid from '../components/AdminGrid';
 import UploadModal from '../components/UploadModal';
@@ -27,7 +28,17 @@ function AdminPage({ onLogout }) {
   const [selectedPdfForLabels, setSelectedPdfForLabels] = useState(null);
   const [showSlotMenu, setShowSlotMenu] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [activeDragId, setActiveDragId] = useState(null);
   const navigate = useNavigate();
+
+  // Configure drag sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // 8px movement required to start drag
+      },
+    })
+  );
 
   const loadData = useCallback(async () => {
     try {
@@ -371,55 +382,91 @@ function AdminPage({ onLogout }) {
     setHasUnsavedChanges(true);
   };
 
-  // Unified drag handler for @hello-pangea/dnd
-  const handleDragEnd = (result) => {
-    const { source, destination } = result;
+  // Drag handlers for @dnd-kit
+  const handleDragStart = (event) => {
+    setActiveDragId(event.active.id);
+  };
+
+  const handleDragEnd = (event) => {
+    setActiveDragId(null);
+
+    const { active, over } = event;
 
     // Dropped outside a valid droppable
-    if (!destination) {
+    if (!over) {
       return;
     }
 
-    // Dropped in the same position
-    if (source.droppableId === destination.droppableId && source.index === destination.index) {
+    // Parse the draggable IDs to get container and index info
+    const activeId = active.id;
+    const overId = over.id;
+
+    // IDs are in format: "board-{index}" or "pending-{index}" or "pdf-{id}"
+    const getContainerAndIndex = (id) => {
+      if (typeof id === 'string') {
+        if (id.startsWith('board-')) {
+          const index = parseInt(id.split('-')[1]);
+          return { container: 'board', index };
+        } else if (id.startsWith('pending-')) {
+          const index = parseInt(id.split('-')[1]);
+          return { container: 'pending', index };
+        } else if (id.startsWith('pdf-')) {
+          const pdfId = parseInt(id.split('-')[1]);
+          // Find which container this PDF is in
+          const boardIndex = workingPdfs.findIndex(p => p.id === pdfId);
+          if (boardIndex !== -1) {
+            return { container: 'board', index: boardIndex, pdfId };
+          }
+          const pendingIndex = workingPendingPdfs.findIndex(p => p.id === pdfId);
+          if (pendingIndex !== -1) {
+            return { container: 'pending', index: pendingIndex, pdfId };
+          }
+        }
+      }
+      return null;
+    };
+
+    const activeInfo = getContainerAndIndex(activeId);
+    const overInfo = getContainerAndIndex(overId);
+
+    if (!activeInfo || !overInfo) {
       return;
     }
 
-    const sourceId = source.droppableId;
-    const destId = destination.droppableId;
+    const sourceContainer = activeInfo.container;
+    const destContainer = overInfo.container;
 
-    if (sourceId === 'board' && destId === 'board') {
+    if (sourceContainer === 'board' && destContainer === 'board') {
       // Reordering within board
-      const newPdfs = [...workingPdfs];
-      const [movedPdf] = newPdfs.splice(source.index, 1);
-      newPdfs.splice(destination.index, 0, movedPdf);
-      setWorkingPdfs(newPdfs);
-      setHasUnsavedChanges(true);
-    } else if (sourceId === 'pending' && destId === 'pending') {
+      if (activeInfo.index !== overInfo.index) {
+        const newPdfs = arrayMove(workingPdfs, activeInfo.index, overInfo.index);
+        setWorkingPdfs(newPdfs);
+        setHasUnsavedChanges(true);
+      }
+    } else if (sourceContainer === 'pending' && destContainer === 'pending') {
       // Reordering within pending
-      const newPdfs = [...workingPendingPdfs];
-      const [movedPdf] = newPdfs.splice(source.index, 1);
-      newPdfs.splice(destination.index, 0, movedPdf);
-      setWorkingPendingPdfs(newPdfs);
-      setHasUnsavedChanges(true);
-    } else if (sourceId === 'pending' && destId === 'board') {
+      if (activeInfo.index !== overInfo.index) {
+        const newPdfs = arrayMove(workingPendingPdfs, activeInfo.index, overInfo.index);
+        setWorkingPendingPdfs(newPdfs);
+        setHasUnsavedChanges(true);
+      }
+    } else if (sourceContainer === 'pending' && destContainer === 'board') {
       // Moving from pending to board
       const newPendingPdfs = [...workingPendingPdfs];
-      const [movedPdf] = newPendingPdfs.splice(source.index, 1);
+      const [movedPdf] = newPendingPdfs.splice(activeInfo.index, 1);
 
       // Create a copy with updated status
       const updatedPdf = { ...movedPdf, is_pending: 0 };
 
       const newBoardPdfs = [...workingPdfs];
-      newBoardPdfs.splice(destination.index, 0, updatedPdf);
+      newBoardPdfs.splice(overInfo.index, 0, updatedPdf);
 
       setWorkingPendingPdfs(newPendingPdfs);
       setWorkingPdfs(newBoardPdfs);
       setHasUnsavedChanges(true);
-    } else if (sourceId === 'board' && destId === 'pending') {
+    } else if (sourceContainer === 'board' && destContainer === 'pending') {
       // Moving from board to pending
-      const newBoardPdfs = [...workingPdfs];
-      const [movedPdf] = newBoardPdfs.splice(source.index, 1);
+      const movedPdf = workingPdfs[activeInfo.index];
 
       // Prevent placeholders from being moved to pending
       if (movedPdf.is_placeholder) {
@@ -427,16 +474,23 @@ function AdminPage({ onLogout }) {
         return;
       }
 
+      const newBoardPdfs = [...workingPdfs];
+      newBoardPdfs.splice(activeInfo.index, 1);
+
       // Create a copy with updated status
       const updatedPdf = { ...movedPdf, is_pending: 1 };
 
       const newPendingPdfs = [...workingPendingPdfs];
-      newPendingPdfs.splice(destination.index, 0, updatedPdf);
+      newPendingPdfs.splice(overInfo.index, 0, updatedPdf);
 
       setWorkingPdfs(newBoardPdfs);
       setWorkingPendingPdfs(newPendingPdfs);
       setHasUnsavedChanges(true);
     }
+  };
+
+  const handleDragCancel = () => {
+    setActiveDragId(null);
   };
 
   if (loading) {
@@ -523,7 +577,13 @@ function AdminPage({ onLogout }) {
 
         {/* Main Content */}
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-          <DragDropContext onDragEnd={handleDragEnd}>
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+            onDragCancel={handleDragCancel}
+          >
             {editMode && (
               <>
                 <div className="mb-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4 transition-colors">
@@ -559,7 +619,7 @@ function AdminPage({ onLogout }) {
               onUploadToSlot={handleUploadToSlot}
               onMoveToPending={handleMovePdfToPending}
             />
-          </DragDropContext>
+          </DndContext>
         </main>
 
         {/* Modals */}

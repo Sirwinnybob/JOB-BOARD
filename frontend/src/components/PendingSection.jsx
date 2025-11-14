@@ -1,7 +1,108 @@
 import React from 'react';
-import { Droppable, Draggable } from '@hello-pangea/dnd';
+import { useDroppable } from '@dnd-kit/core';
+import { SortableContext, rectSortingStrategy, useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+
+function SortablePendingItem({ pdf, index, onMovePdfToBoard, onDelete }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({
+    id: `pending-${index}`,
+  });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.4 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className="relative bg-white dark:bg-gray-800 border-2 border-yellow-300 dark:border-yellow-600 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all cursor-move"
+    >
+      {/* Thumbnail */}
+      <div className="aspect-[5/7] bg-gray-100 dark:bg-gray-700 flex items-center justify-center transition-colors">
+        {pdf.thumbnail ? (
+          <img
+            src={`/thumbnails/${pdf.thumbnail}`}
+            alt={pdf.original_name}
+            className="w-full h-full object-cover dark:invert transition-all"
+          />
+        ) : (
+          <div className="text-gray-400 text-center p-4">
+            <svg
+              className="w-12 h-12 mx-auto mb-2"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
+              />
+            </svg>
+            <span className="text-xs">PDF</span>
+          </div>
+        )}
+      </div>
+
+      {/* PDF Name */}
+      <div className="p-2 bg-white dark:bg-gray-800 border-t border-yellow-200 dark:border-yellow-700 transition-colors">
+        <p className="text-xs text-gray-700 dark:text-gray-300 truncate transition-colors" title={pdf.original_name}>
+          {pdf.original_name}
+        </p>
+      </div>
+
+      {/* Actions */}
+      <div className="p-2 bg-white dark:bg-gray-800 border-t border-yellow-200 dark:border-yellow-700 flex gap-2 transition-colors">
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onMovePdfToBoard(pdf.id);
+          }}
+          className="flex-1 px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors"
+          title="Add to Board"
+        >
+          Add to Board
+        </button>
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onDelete(pdf.id);
+          }}
+          className="px-2 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition-colors"
+          title="Delete"
+        >
+          Delete
+        </button>
+      </div>
+
+      {/* Drag indicator */}
+      {!isDragging && (
+        <div className="absolute top-2 left-2 bg-yellow-600 dark:bg-yellow-500 text-white rounded-full w-6 h-6 flex items-center justify-center shadow-lg text-xs transition-colors">
+          ⋮⋮
+        </div>
+      )}
+    </div>
+  );
+}
 
 function PendingSection({ pdfs, onMovePdfToBoard, onMoveAllPdfsToBoard, onDelete, onUploadToPending }) {
+  const { setNodeRef } = useDroppable({
+    id: 'pending',
+  });
+
   if (pdfs.length === 0) {
     return (
       <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6 mb-6 transition-colors">
@@ -23,6 +124,8 @@ function PendingSection({ pdfs, onMovePdfToBoard, onMoveAllPdfsToBoard, onDelete
     );
   }
 
+  const pendingIds = pdfs.map((_, index) => `pending-${index}`);
+
   return (
     <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6 mb-6 transition-colors">
       <div className="flex justify-between items-center mb-4">
@@ -42,95 +145,22 @@ function PendingSection({ pdfs, onMovePdfToBoard, onMoveAllPdfsToBoard, onDelete
         </button>
       </div>
 
-      <Droppable droppableId="pending" type="PDF" direction="horizontal">
-        {(provided, snapshot) => (
-          <div
-            ref={provided.innerRef}
-            {...provided.droppableProps}
-            className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4"
-          >
-            {pdfs.map((pdf, index) => (
-              <Draggable
-                key={pdf.id}
-                draggableId={`pdf-${pdf.id}`}
-                index={index}
-              >
-                {(provided, snapshot) => (
-                  <div
-                    ref={provided.innerRef}
-                    {...provided.draggableProps}
-                    {...provided.dragHandleProps}
-                    className={`relative bg-white dark:bg-gray-800 border-2 border-yellow-300 dark:border-yellow-600 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-all cursor-move ${
-                      snapshot.isDragging ? 'opacity-40' : ''
-                    }`}
-                  >
-                    {/* Thumbnail */}
-                    <div className="aspect-[5/7] bg-gray-100 dark:bg-gray-700 flex items-center justify-center transition-colors">
-                      {pdf.thumbnail ? (
-                        <img
-                          src={`/thumbnails/${pdf.thumbnail}`}
-                          alt={pdf.original_name}
-                          className="w-full h-full object-cover dark:invert transition-all"
-                        />
-                      ) : (
-                        <div className="text-gray-400 text-center p-4">
-                          <svg
-                            className="w-12 h-12 mx-auto mb-2"
-                            fill="none"
-                            stroke="currentColor"
-                            viewBox="0 0 24 24"
-                          >
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"
-                            />
-                          </svg>
-                          <span className="text-xs">PDF</span>
-                        </div>
-                      )}
-                    </div>
-
-                    {/* PDF Name */}
-                    <div className="p-2 bg-white dark:bg-gray-800 border-t border-yellow-200 dark:border-yellow-700 transition-colors">
-                      <p className="text-xs text-gray-700 dark:text-gray-300 truncate transition-colors" title={pdf.original_name}>
-                        {pdf.original_name}
-                      </p>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="p-2 bg-white dark:bg-gray-800 border-t border-yellow-200 dark:border-yellow-700 flex gap-2 transition-colors">
-                      <button
-                        onClick={() => onMovePdfToBoard(pdf.id)}
-                        className="flex-1 px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors"
-                        title="Add to Board"
-                      >
-                        Add to Board
-                      </button>
-                      <button
-                        onClick={() => onDelete(pdf.id)}
-                        className="px-2 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition-colors"
-                        title="Delete"
-                      >
-                        Delete
-                      </button>
-                    </div>
-
-                    {/* Drag indicator */}
-                    {!snapshot.isDragging && (
-                      <div className="absolute top-2 left-2 bg-yellow-600 dark:bg-yellow-500 text-white rounded-full w-6 h-6 flex items-center justify-center shadow-lg text-xs transition-colors">
-                        ⋮⋮
-                      </div>
-                    )}
-                  </div>
-                )}
-              </Draggable>
-            ))}
-            {provided.placeholder}
-          </div>
-        )}
-      </Droppable>
+      <SortableContext items={pendingIds} strategy={rectSortingStrategy}>
+        <div
+          ref={setNodeRef}
+          className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4"
+        >
+          {pdfs.map((pdf, index) => (
+            <SortablePendingItem
+              key={pdf.id}
+              pdf={pdf}
+              index={index}
+              onMovePdfToBoard={onMovePdfToBoard}
+              onDelete={onDelete}
+            />
+          ))}
+        </div>
+      </SortableContext>
 
       {/* Bulk Actions */}
       {pdfs.length > 1 && (

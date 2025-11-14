@@ -240,8 +240,8 @@ function DraggablePDFCard({
           </svg>
         </div>
       )}
-      </div> {/* Close PDF Card div */}
-    </div> {/* Close wrapper div */}
+      </div>
+    </div>
   );
 }
 

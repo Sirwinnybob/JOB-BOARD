@@ -124,44 +124,9 @@ async function generatePdfImages(pdfPath, outputDir, baseFilename) {
 
     console.log(`Successfully generated first page image`);
 
-    // Generate dark mode version
-    let darkModeBaseFilename = null;
-    try {
-      console.log(`Starting dark mode conversion for ${baseFilename}...`);
-
-      // Create dark mode PDF
-      const darkModePdfPath = path.join(outputDir, `${baseFilename}-dark.pdf`);
-      await convertToDarkMode(pdfPath, darkModePdfPath);
-
-      // Generate PNG from dark mode PDF
-      darkModeBaseFilename = `${baseFilename}-dark`;
-      const darkModeOutputBase = path.join(outputDir, darkModeBaseFilename);
-      const darkModeCommand = `pdftocairo -png -f 1 -l 1 -singlefile -r 300 "${darkModePdfPath}" "${darkModeOutputBase}"`;
-      console.log(`Generating dark mode PNG: ${darkModeCommand}`);
-
-      await execAsync(darkModeCommand);
-
-      // Rename dark mode image
-      const darkModeGeneratedPath = path.join(outputDir, `${darkModeBaseFilename}.png`);
-      const darkModeTargetPath = path.join(outputDir, `${darkModeBaseFilename}-1.png`);
-
-      await fs.rename(darkModeGeneratedPath, darkModeTargetPath);
-      console.log(`Dark mode image created: ${darkModeTargetPath}`);
-
-      // Delete the dark mode PDF (we only need the PNG)
-      await fs.unlink(darkModePdfPath);
-      console.log(`Deleted temporary dark mode PDF: ${darkModePdfPath}`);
-
-    } catch (darkModeError) {
-      console.error('Error generating dark mode version:', darkModeError);
-      // Continue without dark mode - it's not critical
-      darkModeBaseFilename = null;
-    }
-
     return {
       pageCount,
       baseFilename,
-      darkModeBaseFilename,
     };
   } catch (error) {
     console.error('Error generating PDF images:', error);
@@ -169,4 +134,57 @@ async function generatePdfImages(pdfPath, outputDir, baseFilename) {
   }
 }
 
-module.exports = { generateThumbnail, generatePdfImages };
+/**
+ * Generate dark mode version of a PDF (asynchronous background processing)
+ * @param {string} pdfPath - Path to the original PDF file
+ * @param {string} outputDir - Directory to save the dark mode images
+ * @param {string} baseFilename - Base filename for the dark mode images
+ * @returns {Promise<string|null>} Dark mode base filename or null if failed
+ */
+async function generateDarkModeImages(pdfPath, outputDir, baseFilename) {
+  try {
+    console.log(`[Dark Mode] Starting conversion for ${baseFilename}...`);
+    const startTime = Date.now();
+
+    // Create dark mode PDF
+    const darkModePdfPath = path.join(outputDir, `${baseFilename}-dark.pdf`);
+    console.log(`[Dark Mode] Converting PDF with Python script...`);
+    await convertToDarkMode(pdfPath, darkModePdfPath);
+    console.log(`[Dark Mode] PDF conversion completed in ${Date.now() - startTime}ms`);
+
+    // Generate PNG from dark mode PDF
+    const darkModeBaseFilename = `${baseFilename}-dark`;
+    const darkModeOutputBase = path.join(outputDir, darkModeBaseFilename);
+    const darkModeCommand = `pdftocairo -png -f 1 -l 1 -singlefile -r 300 "${darkModePdfPath}" "${darkModeOutputBase}"`;
+    console.log(`[Dark Mode] Generating PNG from dark PDF...`);
+
+    await execAsync(darkModeCommand);
+
+    // Rename dark mode image
+    const darkModeGeneratedPath = path.join(outputDir, `${darkModeBaseFilename}.png`);
+    const darkModeTargetPath = path.join(outputDir, `${darkModeBaseFilename}-1.png`);
+
+    await fs.rename(darkModeGeneratedPath, darkModeTargetPath);
+    console.log(`[Dark Mode] PNG created: ${darkModeTargetPath}`);
+
+    // Delete the dark mode PDF (we only need the PNG)
+    await fs.unlink(darkModePdfPath);
+    console.log(`[Dark Mode] Deleted temporary dark PDF`);
+
+    const totalTime = Date.now() - startTime;
+    console.log(`[Dark Mode] ✅ Complete for ${baseFilename} in ${totalTime}ms`);
+
+    return darkModeBaseFilename;
+  } catch (darkModeError) {
+    console.error(`[Dark Mode] ❌ Error generating dark mode version:`, darkModeError);
+    console.error(`[Dark Mode] Error details:`, {
+      message: darkModeError.message,
+      stack: darkModeError.stack,
+      stderr: darkModeError.stderr,
+      stdout: darkModeError.stdout
+    });
+    return null;
+  }
+}
+
+module.exports = { generateThumbnail, generatePdfImages, generateDarkModeImages };

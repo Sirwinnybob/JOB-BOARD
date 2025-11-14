@@ -14,7 +14,7 @@ const { exec } = require('child_process');
 const { promisify } = require('util');
 const db = require('./db');
 const authMiddleware = require('./middleware/auth');
-const { generateThumbnail, generatePdfImages } = require('./utils/thumbnail');
+const { generateThumbnail, generatePdfImages, generateDarkModeImages } = require('./utils/thumbnail');
 const { extractMetadata } = require('./utils/textExtraction');
 
 const execAsync = promisify(exec);
@@ -259,18 +259,12 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
     // Generate thumbnail (fast)
     const thumbnailName = await generateThumbnail(pdfPath, thumbnailDir, baseFilename);
 
-    // Generate full PDF images for viewing (including dark mode version)
+    // Generate full PDF images for viewing (light mode only - fast)
     const imagesBase = `${baseFilename}-pages`;
-    const { pageCount, darkModeBaseFilename } = await generatePdfImages(pdfPath, thumbnailDir, imagesBase);
+    const { pageCount } = await generatePdfImages(pdfPath, thumbnailDir, imagesBase);
 
-    // Delete the original PDF file after generating images
-    try {
-      await fs.unlink(pdfPath);
-      console.log(`Deleted original PDF file: ${filename}`);
-    } catch (unlinkErr) {
-      console.error('Error deleting PDF file:', unlinkErr);
-      // Continue even if deletion fails
-    }
+    // Keep PDF for background processing (dark mode and OCR)
+    // Will be deleted after background processing completes
 
     // Determine position
     let newPosition;
@@ -289,10 +283,11 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
     }
 
     // Store null for filename since we no longer keep the PDF
-    // Initially store with null job_number and construction_method
+    // Initially store with null job_number, construction_method, and dark_mode_images_base
+    // Dark mode will be generated in background
     db.run(
       'INSERT INTO pdfs (filename, original_name, thumbnail, position, is_pending, page_count, images_base, dark_mode_images_base, job_number, construction_method) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [null, originalName, thumbnailName, newPosition, isPending, pageCount, imagesBase, darkModeBaseFilename, null, null],
+      [null, originalName, thumbnailName, newPosition, isPending, pageCount, imagesBase, null, null, null],
       function (err) {
         if (err) {
           console.error('Database error:', err);
@@ -311,7 +306,7 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
           is_pending: isPending,
           page_count: pageCount,
           images_base: imagesBase,
-          dark_mode_images_base: darkModeBaseFilename,
+          dark_mode_images_base: null, // Will be generated in background
           job_number: null,
           construction_method: null
         });
@@ -326,41 +321,97 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
           is_pending: isPending,
           page_count: pageCount,
           images_base: imagesBase,
-          dark_mode_images_base: darkModeBaseFilename,
+          dark_mode_images_base: null, // Will be generated in background
           job_number: null,
           construction_method: null
         });
 
-        // Process OCR in background (don't wait for response)
+        // Process OCR and Dark Mode in background (don't wait for response)
         setImmediate(async () => {
-          try {
-            console.log(`Starting background OCR extraction for PDF ${pdfId}...`);
-            const metadata = await extractMetadata(pdfPath);
-            console.log(`Background OCR complete for PDF ${pdfId}:`, metadata);
+          // Track completion of both background tasks
+          let ocrComplete = false;
+          let darkModeComplete = false;
 
-            // Update database with extracted metadata
-            db.run(
-              'UPDATE pdfs SET job_number = ?, construction_method = ? WHERE id = ?',
-              [metadata.job_number, metadata.construction_method, pdfId],
-              (updateErr) => {
-                if (updateErr) {
-                  console.error('Error updating metadata:', updateErr);
-                  return;
+          // OCR extraction
+          (async () => {
+            try {
+              console.log(`[OCR] Starting background extraction for PDF ${pdfId}...`);
+              const metadata = await extractMetadata(pdfPath);
+              console.log(`[OCR] Complete for PDF ${pdfId}:`, metadata);
+
+              // Update database with extracted metadata
+              db.run(
+                'UPDATE pdfs SET job_number = ?, construction_method = ? WHERE id = ?',
+                [metadata.job_number, metadata.construction_method, pdfId],
+                (updateErr) => {
+                  if (updateErr) {
+                    console.error('[OCR] Error updating metadata:', updateErr);
+                    return;
+                  }
+
+                  // Broadcast metadata update to all clients
+                  broadcastUpdate('pdf_metadata_updated', {
+                    id: pdfId,
+                    job_number: metadata.job_number,
+                    construction_method: metadata.construction_method
+                  });
+
+                  console.log(`[OCR] Metadata updated for PDF ${pdfId}`);
                 }
+              );
+            } catch (extractErr) {
+              console.error(`[OCR] Error in background extraction for PDF ${pdfId}:`, extractErr);
+            } finally {
+              ocrComplete = true;
+              checkAndCleanup();
+            }
+          })();
 
-                // Broadcast metadata update to all clients
-                broadcastUpdate('pdf_metadata_updated', {
-                  id: pdfId,
-                  job_number: metadata.job_number,
-                  construction_method: metadata.construction_method
-                });
+          // Dark mode generation
+          (async () => {
+            try {
+              const darkModeBaseFilename = await generateDarkModeImages(pdfPath, thumbnailDir, imagesBase);
 
-                console.log(`Metadata updated for PDF ${pdfId}`);
+              if (darkModeBaseFilename) {
+                // Update database with dark mode image path
+                db.run(
+                  'UPDATE pdfs SET dark_mode_images_base = ? WHERE id = ?',
+                  [darkModeBaseFilename, pdfId],
+                  (updateErr) => {
+                    if (updateErr) {
+                      console.error('[Dark Mode] Error updating database:', updateErr);
+                      return;
+                    }
+
+                    // Broadcast dark mode update to all clients
+                    broadcastUpdate('pdf_dark_mode_ready', {
+                      id: pdfId,
+                      dark_mode_images_base: darkModeBaseFilename
+                    });
+
+                    console.log(`[Dark Mode] Database updated for PDF ${pdfId}`);
+                  }
+                );
               }
-            );
-          } catch (extractErr) {
-            console.error(`Error in background OCR extraction for PDF ${pdfId}:`, extractErr);
-          }
+            } catch (darkModeErr) {
+              console.error(`[Dark Mode] Error in background generation for PDF ${pdfId}:`, darkModeErr);
+            } finally {
+              darkModeComplete = true;
+              checkAndCleanup();
+            }
+          })();
+
+          // Cleanup function - delete PDF after both tasks complete
+          const checkAndCleanup = async () => {
+            if (ocrComplete && darkModeComplete) {
+              try {
+                await fs.unlink(pdfPath);
+                console.log(`[Cleanup] Deleted original PDF file: ${filename}`);
+              } catch (unlinkErr) {
+                console.error('[Cleanup] Error deleting PDF file:', unlinkErr);
+              }
+            }
+          };
         });
       }
     );

@@ -1,4 +1,5 @@
 import React from 'react';
+import DraggableCoverSheetCard from './DraggableCoverSheetCard';
 
 function PDFGrid({ pdfs, rows, cols, onPdfClick }) {
   const totalSlots = rows * cols;
@@ -18,7 +19,7 @@ function PDFGrid({ pdfs, rows, cols, onPdfClick }) {
         return (
           <div
             key={pdf?.id || `empty-${index}`}
-            className="aspect-[4/3] transition-all duration-500 ease-in-out"
+            className="aspect-[4/3] pt-7 transition-all duration-500 ease-in-out"
           >
             {!pdf ? (
               <div className="w-full h-full bg-gray-200 dark:bg-gray-700 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 transition-colors" />
@@ -49,29 +50,14 @@ function PDFGrid({ pdfs, rows, cols, onPdfClick }) {
             ) : (
               <div
                 onClick={() => onPdfClick(pdf)}
-                className="relative w-full h-full bg-white dark:bg-gray-800 rounded-lg shadow-md hover:shadow-xl transform hover:scale-105 transition-all duration-500 cursor-pointer overflow-hidden border border-gray-200 dark:border-gray-700"
+                className="w-full h-full cursor-pointer hover:opacity-90 transition-opacity"
               >
-                <img
-                  src={`/thumbnails/${pdf.thumbnail}`}
-                  alt={pdf.original_name}
-                  className="w-full h-full object-cover dark:invert transition-all"
-                  loading="lazy"
+                <DraggableCoverSheetCard
+                  pdf={pdf}
+                  index={index}
+                  editMode={false}
+                  isDragging={false}
                 />
-
-                {/* Labels */}
-                {pdf.labels && pdf.labels.length > 0 && (
-                  <div className="absolute top-2 left-2 right-2 flex flex-wrap gap-1">
-                    {pdf.labels.map((label) => (
-                      <span
-                        key={label.id}
-                        className="px-2 py-0.5 text-xs font-bold text-white rounded shadow-lg"
-                        style={{ backgroundColor: label.color }}
-                      >
-                        {label.name}
-                      </span>
-                    ))}
-                  </div>
-                )}
               </div>
             )}
           </div>

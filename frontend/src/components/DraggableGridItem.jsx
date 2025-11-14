@@ -34,7 +34,7 @@ function DraggableGridItem({ id, pdf, index, editMode, onDelete, onLabelClick, o
     return (
       <div
         ref={setDropRef}
-        className={`aspect-[4/3] ${isOver ? 'ring-2 ring-blue-500' : ''}`}
+        className={`aspect-[4/3] pt-7 ${isOver ? 'ring-2 ring-blue-500' : ''}`}
       >
         <div
           ref={setDragRef}

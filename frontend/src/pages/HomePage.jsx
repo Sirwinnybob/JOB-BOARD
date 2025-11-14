@@ -52,6 +52,8 @@ function HomePage() {
       'pdfs_reordered',
       'pdf_labels_updated',
       'pdf_status_updated',
+      'pdf_metadata_updated',    // OCR extraction complete
+      'pdf_dark_mode_ready',      // Dark mode conversion complete
       'label_created',
       'label_deleted',
       'settings_updated'

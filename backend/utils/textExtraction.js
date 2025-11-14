@@ -208,15 +208,33 @@ function extractConstructionMethod(text) {
  */
 async function extractMetadata(pdfPath) {
   try {
-    const text = await extractText(pdfPath);
+    // First try with standard text extraction
+    let text = await extractText(pdfPath);
 
     if (!text) {
       console.log('No text extracted from PDF');
       return { job_number: null, construction_method: null };
     }
 
-    const job_number = extractJobNumber(text);
-    const construction_method = extractConstructionMethod(text);
+    let job_number = extractJobNumber(text);
+    let construction_method = extractConstructionMethod(text);
+
+    // If job number not found with standard extraction, try OCR
+    // OCR reads text spatially, which works better for PDFs where
+    // field labels and values are in separate text boxes but same visual location
+    if (!job_number) {
+      console.log('Job number not found with standard extraction, trying OCR...');
+      const ocrText = await extractTextWithOCR(pdfPath);
+      if (ocrText && ocrText.trim().length > 10) {
+        console.log('OCR extraction succeeded, re-attempting job number extraction');
+        job_number = extractJobNumber(ocrText);
+
+        // Also try construction method from OCR if not found earlier
+        if (!construction_method) {
+          construction_method = extractConstructionMethod(ocrText);
+        }
+      }
+    }
 
     console.log('Extracted metadata:', { job_number, construction_method });
 

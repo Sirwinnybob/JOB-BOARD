@@ -111,6 +111,17 @@ function OCRSettingsPage() {
     const region = regions.find(r => r.field_name === selectedRegion);
     if (!region) return;
 
+    // If region is not yet configured (0x0), start creating it
+    if (region.width === 0 || region.height === 0) {
+      setDragging({ region: selectedRegion, startX: pos.x, startY: pos.y, creating: true });
+      setRegions(regions.map(r =>
+        r.field_name === selectedRegion
+          ? { ...r, x: Math.round(pos.x), y: Math.round(pos.y), width: 0, height: 0 }
+          : r
+      ));
+      return;
+    }
+
     // Check if clicking on resize handle (bottom-right corner)
     const handleSize = 16;
     if (
@@ -140,14 +151,29 @@ function OCRSettingsPage() {
     if (dragging) {
       const region = regions.find(r => r.field_name === dragging.region);
       if (region) {
-        const newX = Math.max(0, Math.min(pos.x - dragging.offsetX, imageNaturalSize.width - region.width));
-        const newY = Math.max(0, Math.min(pos.y - dragging.offsetY, imageNaturalSize.height - region.height));
+        // Creating a new region by dragging
+        if (dragging.creating) {
+          const x = Math.min(dragging.startX, pos.x);
+          const y = Math.min(dragging.startY, pos.y);
+          const width = Math.abs(pos.x - dragging.startX);
+          const height = Math.abs(pos.y - dragging.startY);
 
-        setRegions(regions.map(r =>
-          r.field_name === dragging.region
-            ? { ...r, x: Math.round(newX), y: Math.round(newY) }
-            : r
-        ));
+          setRegions(regions.map(r =>
+            r.field_name === dragging.region
+              ? { ...r, x: Math.round(x), y: Math.round(y), width: Math.round(width), height: Math.round(height) }
+              : r
+          ));
+        } else {
+          // Moving existing region
+          const newX = Math.max(0, Math.min(pos.x - dragging.offsetX, imageNaturalSize.width - region.width));
+          const newY = Math.max(0, Math.min(pos.y - dragging.offsetY, imageNaturalSize.height - region.height));
+
+          setRegions(regions.map(r =>
+            r.field_name === dragging.region
+              ? { ...r, x: Math.round(newX), y: Math.round(newY) }
+              : r
+          ));
+        }
       }
     } else if (resizing) {
       const region = regions.find(r => r.field_name === resizing.region);

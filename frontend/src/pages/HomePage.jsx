@@ -3,7 +3,6 @@ import { useNavigate } from 'react-router-dom';
 import { pdfAPI, settingsAPI } from '../utils/api';
 import PDFGrid from '../components/PDFGrid';
 import SlideShowView from '../components/SlideShowView';
-import PDFModal from '../components/PDFModal';
 import useWebSocket from '../hooks/useWebSocket';
 import { useDarkMode } from '../contexts/DarkModeContext';
 
@@ -166,14 +165,12 @@ function HomePage() {
         )}
       </main>
 
-      {/* PDF Modal */}
+      {/* Fullscreen SlideShow View */}
       {selectedPdf && (
-        <PDFModal
-          pdf={selectedPdf}
+        <SlideShowView
+          pdfs={pdfs}
+          initialIndex={pdfs.filter(pdf => pdf && !pdf.is_placeholder).findIndex(p => p.id === selectedPdf.id)}
           onClose={handleCloseModal}
-          pdfs={pdfs.filter(pdf => pdf)}
-          currentIndex={pdfs.filter(pdf => pdf).findIndex(p => p.id === selectedPdf.id)}
-          onNavigate={handleNavigate}
         />
       )}
     </div>

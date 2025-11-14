@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
-import PDFModal from './PDFModal';
+import SlideShowView from './SlideShowView';
 
 function DraggablePendingItem({ pdf, index, onMovePdfToBoard, onDelete, editMode, onPdfClick }) {
 
@@ -214,14 +214,12 @@ function PendingSection({ pdfs, onMovePdfToBoard, onMoveAllPdfsToBoard, onDelete
         </div>
       )}
 
-      {/* PDF Modal */}
+      {/* Fullscreen SlideShow View */}
       {selectedPdf && (
-        <PDFModal
-          pdf={selectedPdf}
-          onClose={handleCloseModal}
+        <SlideShowView
           pdfs={pdfs}
-          currentIndex={pdfs.findIndex(p => p && p.id === selectedPdf.id)}
-          onNavigate={handleNavigate}
+          initialIndex={pdfs.findIndex(p => p && p.id === selectedPdf.id)}
+          onClose={handleCloseModal}
         />
       )}
     </div>

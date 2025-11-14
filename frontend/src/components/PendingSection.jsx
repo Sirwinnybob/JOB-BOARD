@@ -42,7 +42,7 @@ function PendingSection({ pdfs, onMovePdfToBoard, onMoveAllPdfsToBoard, onDelete
         </button>
       </div>
 
-      <Droppable droppableId="pending" direction="horizontal">
+      <Droppable droppableId="pending" type="PDF" direction="horizontal">
         {(provided, snapshot) => (
           <div
             ref={provided.innerRef}

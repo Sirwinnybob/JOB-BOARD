@@ -591,24 +591,23 @@ function AdminPage({ onLogout }) {
             onDragCancel={handleDragCancel}
           >
             {editMode && (
-              <>
-                <div className="mb-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4 transition-colors">
-                  <p className="text-blue-800 dark:text-blue-200 text-sm transition-colors">
-                    Drag and drop PDFs to reorder them. Click the tag icon to manage labels. Click the X to delete. Click the + button on empty slots to add placeholders.
-                    {hasUnsavedChanges && <strong className="ml-2">Changes will be saved when you click "Save Changes".</strong>}
-                  </p>
-                </div>
-
-                {/* Pending Section - Only visible in edit mode */}
-                <PendingSection
-                  pdfs={workingPendingPdfs}
-                  onMovePdfToBoard={handleMovePdfToBoard}
-                  onMoveAllPdfsToBoard={handleMoveAllPdfsToBoard}
-                  onDelete={handleDelete}
-                  onUploadToPending={handleUploadToPending}
-                />
-              </>
+              <div className="mb-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-4 transition-colors">
+                <p className="text-blue-800 dark:text-blue-200 text-sm transition-colors">
+                  Drag and drop PDFs to reorder them. Click the tag icon to manage labels. Click the X to delete. Click the + button on empty slots to add placeholders.
+                  {hasUnsavedChanges && <strong className="ml-2">Changes will be saved when you click "Save Changes".</strong>}
+                </p>
+              </div>
             )}
+
+            {/* Pending Section - Always visible */}
+            <PendingSection
+              pdfs={editMode ? workingPendingPdfs : pendingPdfs}
+              onMovePdfToBoard={editMode ? handleMovePdfToBoard : null}
+              onMoveAllPdfsToBoard={editMode ? handleMoveAllPdfsToBoard : null}
+              onDelete={editMode ? handleDelete : null}
+              onUploadToPending={handleUploadToPending}
+              editMode={editMode}
+            />
 
             <AdminGrid
               pdfs={editMode ? workingPdfs : pdfs}

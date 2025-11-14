@@ -1,15 +1,18 @@
 const { exec } = require('child_process');
 const { promisify } = require('util');
 const fs = require('fs').promises;
+const path = require('path');
+const db = require('../db');
 
 const execAsync = promisify(exec);
 
 /**
  * Extract text from PDF using OCR (tesseract)
  * @param {string} pdfPath - Path to the PDF file
+ * @param {Object} region - Optional region coordinates {x, y, width, height}
  * @returns {Promise<string>} Extracted text
  */
-async function extractTextWithOCR(pdfPath) {
+async function extractTextWithOCR(pdfPath, region = null) {
   try {
     // First convert PDF to images using pdftocairo
     const tempDir = '/tmp';
@@ -19,12 +22,34 @@ async function extractTextWithOCR(pdfPath) {
     // Convert PDF to PNG images (first page only, high resolution for OCR)
     await execAsync(`pdftocairo -png -f 1 -l 1 -r 300 "${pdfPath}" "${imageBase}"`);
 
-    // Run OCR on the first page
     const imagePath = `${imageBase}-1.png`;
-    const ocrCommand = `tesseract "${imagePath}" stdout`;
-    console.log(`Running OCR: ${ocrCommand}`);
 
-    const { stdout } = await execAsync(ocrCommand);
+    let ocrText;
+    if (region && region.width > 0 && region.height > 0) {
+      // Extract from specific region using ImageMagick crop + tesseract
+      const croppedImage = path.join(tempDir, `ocr-crop-${timestamp}.png`);
+      const cropCommand = `convert "${imagePath}" -crop ${region.width}x${region.height}+${region.x}+${region.y} "${croppedImage}"`;
+      console.log(`Cropping image: ${cropCommand}`);
+      await execAsync(cropCommand);
+
+      const ocrCommand = `tesseract "${croppedImage}" stdout`;
+      console.log(`Running region OCR: ${ocrCommand}`);
+      const { stdout } = await execAsync(ocrCommand);
+      ocrText = stdout;
+
+      // Clean up cropped image
+      try {
+        await fs.unlink(croppedImage);
+      } catch (unlinkError) {
+        console.error('Error deleting cropped image:', unlinkError);
+      }
+    } else {
+      // Full page OCR
+      const ocrCommand = `tesseract "${imagePath}" stdout`;
+      console.log(`Running full-page OCR: ${ocrCommand}`);
+      const { stdout } = await execAsync(ocrCommand);
+      ocrText = stdout;
+    }
 
     // Clean up temporary image
     try {
@@ -33,7 +58,7 @@ async function extractTextWithOCR(pdfPath) {
       console.error('Error deleting temporary OCR image:', unlinkError);
     }
 
-    return stdout;
+    return ocrText;
   } catch (error) {
     console.error('Error extracting text with OCR:', error);
     return null;
@@ -153,29 +178,83 @@ function extractConstructionMethod(text) {
 }
 
 /**
+ * Get saved OCR regions from database
+ * @returns {Promise<Object>} Object with field_name as keys and region objects as values
+ */
+async function getOcrRegions() {
+  return new Promise((resolve, reject) => {
+    db.all('SELECT * FROM ocr_regions', [], (err, rows) => {
+      if (err) {
+        reject(err);
+        return;
+      }
+      const regions = {};
+      rows.forEach(row => {
+        regions[row.field_name] = {
+          x: row.x,
+          y: row.y,
+          width: row.width,
+          height: row.height
+        };
+      });
+      resolve(regions);
+    });
+  });
+}
+
+/**
  * Extract metadata (job number and construction method) from PDF using OCR
+ * Uses saved region configurations if available, otherwise full-page OCR
  * @param {string} pdfPath - Path to the PDF file
  * @returns {Promise<{job_number: string|null, construction_method: string|null}>}
  */
 async function extractMetadata(pdfPath) {
   try {
-    // Extract text using OCR (reads text spatially, works for separate text boxes)
-    const text = await extractText(pdfPath);
+    // Get saved OCR regions
+    const regions = await getOcrRegions();
+    console.log('Loaded OCR regions:', regions);
 
-    if (!text) {
-      console.log('No text extracted from PDF');
-      return { job_number: null, construction_method: null };
+    let job_number = null;
+    let construction_method = null;
+
+    // Extract job number using region if configured
+    if (regions.job_number && regions.job_number.width > 0 && regions.job_number.height > 0) {
+      console.log('Using configured region for job_number');
+      const text = await extractTextWithOCR(pdfPath, regions.job_number);
+      if (text) {
+        job_number = extractJobNumber(text);
+      }
     }
 
-    const job_number = extractJobNumber(text);
-    const construction_method = extractConstructionMethod(text);
+    // Extract construction method using region if configured
+    if (regions.construction_method && regions.construction_method.width > 0 && regions.construction_method.height > 0) {
+      console.log('Using configured region for construction_method');
+      const text = await extractTextWithOCR(pdfPath, regions.construction_method);
+      if (text) {
+        construction_method = extractConstructionMethod(text);
+      }
+    }
+
+    // Fallback to full-page OCR if regions not configured or extraction failed
+    if (!job_number || !construction_method) {
+      console.log('Falling back to full-page OCR');
+      const fullText = await extractText(pdfPath);
+      if (fullText) {
+        if (!job_number) {
+          job_number = extractJobNumber(fullText);
+        }
+        if (!construction_method) {
+          construction_method = extractConstructionMethod(fullText);
+        }
+      }
+    }
 
     console.log('Extracted metadata:', { job_number, construction_method });
 
     return { job_number, construction_method };
   } catch (error) {
     console.error('Error extracting metadata from PDF:', error);
-    return { job_number, construction_method: null };
+    return { job_number: null, construction_method: null };
   }
 }
 

@@ -44,7 +44,8 @@ RUN apk add --no-cache \
     libffi-dev
 
 # Install Python packages for dark mode PDF conversion
-RUN pip3 install --no-cache-dir \
+# Using --break-system-packages for Alpine Linux PEP 668 compliance
+RUN pip3 install --no-cache-dir --break-system-packages \
     pikepdf>=8.0.0 \
     reportlab \
     Pillow>=10.0.0

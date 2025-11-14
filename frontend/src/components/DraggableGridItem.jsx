@@ -1,6 +1,6 @@
 import React from 'react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
-import DraggablePDFCard from './DraggablePDFCard';
+import DraggableCoverSheetCard from './DraggableCoverSheetCard';
 import PlaceholderCard from './PlaceholderCard';
 
 function DraggableGridItem({ id, pdf, index, editMode, onDelete, onLabelClick, onMoveToPending, onMetadataUpdate, onSlotMenuOpen, showSlotMenu, onSlotMenuClose, onAddPlaceholder, onUploadToSlot }) {
@@ -52,7 +52,7 @@ function DraggableGridItem({ id, pdf, index, editMode, onDelete, onLabelClick, o
               isDragging={isDragging}
             />
           ) : (
-            <DraggablePDFCard
+            <DraggableCoverSheetCard
               pdf={pdf}
               index={index}
               editMode={editMode}

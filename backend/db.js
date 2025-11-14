@@ -96,6 +96,16 @@ db.serialize(() => {
     }
   });
 
+  // Add dark_mode_images_base column to existing tables (migration)
+  db.run(`
+    ALTER TABLE pdfs ADD COLUMN dark_mode_images_base TEXT
+  `, (err) => {
+    // Ignore error if column already exists
+    if (err && !err.message.includes('duplicate column name')) {
+      console.error('Error adding dark_mode_images_base column:', err);
+    }
+  });
+
   // Settings table
   db.run(`
     CREATE TABLE IF NOT EXISTS settings (
@@ -140,6 +150,27 @@ db.serialize(() => {
   db.run(`INSERT OR IGNORE INTO labels (name, color) VALUES ('PENDING', '#f59e0b')`);
   db.run(`INSERT OR IGNORE INTO labels (name, color) VALUES ('URGENT', '#ef4444')`);
   db.run(`INSERT OR IGNORE INTO labels (name, color) VALUES ('COMPLETED', '#8b5cf6')`);
+
+  // OCR Regions table for configurable extraction
+  db.run(`
+    CREATE TABLE IF NOT EXISTS ocr_regions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      field_name TEXT UNIQUE NOT NULL,
+      x INTEGER NOT NULL,
+      y INTEGER NOT NULL,
+      width INTEGER NOT NULL,
+      height INTEGER NOT NULL,
+      description TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
+  // Insert default OCR regions if they don't exist
+  db.run(`INSERT OR IGNORE INTO ocr_regions (field_name, x, y, width, height, description)
+          VALUES ('job_number', 0, 0, 0, 0, 'Region where job number is located')`);
+  db.run(`INSERT OR IGNORE INTO ocr_regions (field_name, x, y, width, height, description)
+          VALUES ('construction_method', 0, 0, 0, 0, 'Region where construction method is located')`);
 
   // Create indexes for better query performance with multiple concurrent reads
   db.run(`CREATE INDEX IF NOT EXISTS idx_pdfs_position ON pdfs(position)`);

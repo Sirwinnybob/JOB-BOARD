@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import HomePage from './pages/HomePage';
 import AdminPage from './pages/AdminPage';
 import LoginPage from './pages/LoginPage';
+import OCRSettingsPage from './pages/OCRSettingsPage';
 import { authAPI } from './utils/api';
 import { DarkModeProvider } from './contexts/DarkModeContext';
 
@@ -38,6 +39,16 @@ function App() {
             element={
               isAuthenticated ? (
                 <AdminPage onLogout={handleLogout} />
+              ) : (
+                <Navigate to="/login" replace />
+              )
+            }
+          />
+          <Route
+            path="/admin/ocr-settings"
+            element={
+              isAuthenticated ? (
+                <OCRSettingsPage />
               ) : (
                 <Navigate to="/login" replace />
               )

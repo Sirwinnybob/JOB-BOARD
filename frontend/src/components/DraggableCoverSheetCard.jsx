@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { pdfAPI } from '../utils/api';
+import { useDarkMode } from '../contexts/DarkModeContext';
 
-function DraggablePDFCard({
+function DraggableCoverSheetCard({
   pdf,
   index,
   editMode,
@@ -13,6 +14,13 @@ function DraggablePDFCard({
 }) {
   const [editing, setEditing] = useState(null);
   const [editValue, setEditValue] = useState('');
+  const { isDarkMode } = useDarkMode();
+
+  // Determine which image to use based on dark mode
+  const imageBaseName = isDarkMode && pdf.dark_mode_images_base
+    ? pdf.dark_mode_images_base
+    : pdf.images_base;
+  const imageSrc = imageBaseName ? `/thumbnails/${imageBaseName}-1.png` : `/thumbnails/${pdf.thumbnail}`;
 
   const handleStartEdit = (field, currentValue) => {
     setEditing(field);
@@ -125,9 +133,9 @@ function DraggablePDFCard({
         } ${isDragging ? 'opacity-50' : ''}`}
       >
       <img
-        src={`/thumbnails/${pdf.thumbnail}`}
+        src={imageSrc}
         alt={pdf.original_name}
-        className="w-full h-full object-cover dark:invert transition-all"
+        className="w-full h-full object-cover transition-all"
         draggable={false}
       />
 
@@ -245,4 +253,4 @@ function DraggablePDFCard({
   );
 }
 
-export default DraggablePDFCard;
+export default DraggableCoverSheetCard;

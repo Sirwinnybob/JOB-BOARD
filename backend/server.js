@@ -10,10 +10,14 @@ const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs').promises;
+const { exec } = require('child_process');
+const { promisify } = require('util');
 const db = require('./db');
 const authMiddleware = require('./middleware/auth');
 const { generateThumbnail, generatePdfImages } = require('./utils/thumbnail');
 const { extractMetadata } = require('./utils/textExtraction');
+
+const execAsync = promisify(exec);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -252,25 +256,12 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
     const isPending = req.body.is_pending !== undefined ? parseInt(req.body.is_pending) : 1;
     const targetPosition = req.body.position !== undefined ? parseInt(req.body.position) : null;
 
-    // Extract metadata (job number and construction method) from PDF
-    let job_number = null;
-    let construction_method = null;
-    try {
-      const metadata = await extractMetadata(pdfPath);
-      job_number = metadata.job_number;
-      construction_method = metadata.construction_method;
-      console.log(`Extracted metadata from PDF: Job# ${job_number}, Method: ${construction_method}`);
-    } catch (extractErr) {
-      console.error('Error extracting metadata from PDF:', extractErr);
-      // Continue even if extraction fails
-    }
-
-    // Generate thumbnail
+    // Generate thumbnail (fast)
     const thumbnailName = await generateThumbnail(pdfPath, thumbnailDir, baseFilename);
 
-    // Generate full PDF images for viewing
+    // Generate full PDF images for viewing (including dark mode version)
     const imagesBase = `${baseFilename}-pages`;
-    const { pageCount } = await generatePdfImages(pdfPath, thumbnailDir, imagesBase);
+    const { pageCount, darkModeBaseFilename } = await generatePdfImages(pdfPath, thumbnailDir, imagesBase);
 
     // Delete the original PDF file after generating images
     try {
@@ -298,18 +289,21 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
     }
 
     // Store null for filename since we no longer keep the PDF
+    // Initially store with null job_number and construction_method
     db.run(
-      'INSERT INTO pdfs (filename, original_name, thumbnail, position, is_pending, page_count, images_base, job_number, construction_method) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [null, originalName, thumbnailName, newPosition, isPending, pageCount, imagesBase, job_number, construction_method],
+      'INSERT INTO pdfs (filename, original_name, thumbnail, position, is_pending, page_count, images_base, dark_mode_images_base, job_number, construction_method) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [null, originalName, thumbnailName, newPosition, isPending, pageCount, imagesBase, darkModeBaseFilename, null, null],
       function (err) {
         if (err) {
           console.error('Database error:', err);
           return res.status(500).json({ error: 'Database error' });
         }
 
+        const pdfId = this.lastID;
+
         // Broadcast update to all clients
         broadcastUpdate('pdf_uploaded', {
-          id: this.lastID,
+          id: pdfId,
           filename: null,
           original_name: originalName,
           thumbnail: thumbnailName,
@@ -317,12 +311,14 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
           is_pending: isPending,
           page_count: pageCount,
           images_base: imagesBase,
-          job_number: job_number,
-          construction_method: construction_method
+          dark_mode_images_base: darkModeBaseFilename,
+          job_number: null,
+          construction_method: null
         });
 
+        // Send immediate response to client (fast upload)
         res.json({
-          id: this.lastID,
+          id: pdfId,
           filename: null,
           original_name: originalName,
           thumbnail: thumbnailName,
@@ -330,8 +326,41 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
           is_pending: isPending,
           page_count: pageCount,
           images_base: imagesBase,
-          job_number: job_number,
-          construction_method: construction_method
+          dark_mode_images_base: darkModeBaseFilename,
+          job_number: null,
+          construction_method: null
+        });
+
+        // Process OCR in background (don't wait for response)
+        setImmediate(async () => {
+          try {
+            console.log(`Starting background OCR extraction for PDF ${pdfId}...`);
+            const metadata = await extractMetadata(pdfPath);
+            console.log(`Background OCR complete for PDF ${pdfId}:`, metadata);
+
+            // Update database with extracted metadata
+            db.run(
+              'UPDATE pdfs SET job_number = ?, construction_method = ? WHERE id = ?',
+              [metadata.job_number, metadata.construction_method, pdfId],
+              (updateErr) => {
+                if (updateErr) {
+                  console.error('Error updating metadata:', updateErr);
+                  return;
+                }
+
+                // Broadcast metadata update to all clients
+                broadcastUpdate('pdf_metadata_updated', {
+                  id: pdfId,
+                  job_number: metadata.job_number,
+                  construction_method: metadata.construction_method
+                });
+
+                console.log(`Metadata updated for PDF ${pdfId}`);
+              }
+            );
+          } catch (extractErr) {
+            console.error(`Error in background OCR extraction for PDF ${pdfId}:`, extractErr);
+          }
         });
       }
     );
@@ -788,6 +817,124 @@ app.put('/api/settings', authMiddleware, async (req, res) => {
   } catch (error) {
     console.error('Error updating settings:', error);
     res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// OCR Region Routes
+app.get('/api/ocr-regions', async (req, res) => {
+  try {
+    db.all('SELECT * FROM ocr_regions ORDER BY field_name ASC', [], (err, rows) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Database error' });
+      }
+      res.json(rows);
+    });
+  } catch (error) {
+    console.error('Error fetching OCR regions:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.put('/api/ocr-regions/:field_name', authMiddleware, async (req, res) => {
+  try {
+    const { field_name } = req.params;
+    const { x, y, width, height, description } = req.body;
+
+    if (x === undefined || y === undefined || width === undefined || height === undefined) {
+      return res.status(400).json({ error: 'x, y, width, and height required' });
+    }
+
+    db.run(
+      'UPDATE ocr_regions SET x = ?, y = ?, width = ?, height = ?, description = ?, updated_at = CURRENT_TIMESTAMP WHERE field_name = ?',
+      [parseInt(x), parseInt(y), parseInt(width), parseInt(height), description || null, field_name],
+      function (err) {
+        if (err) {
+          console.error('Database error:', err);
+          return res.status(500).json({ error: 'Database error' });
+        }
+
+        if (this.changes === 0) {
+          return res.status(404).json({ error: 'OCR region not found' });
+        }
+
+        // Broadcast update to all clients
+        broadcastUpdate('ocr_region_updated', {
+          field_name,
+          x: parseInt(x),
+          y: parseInt(y),
+          width: parseInt(width),
+          height: parseInt(height),
+          description
+        });
+
+        res.json({
+          field_name,
+          x: parseInt(x),
+          y: parseInt(y),
+          width: parseInt(width),
+          height: parseInt(height),
+          description
+        });
+      }
+    );
+  } catch (error) {
+    console.error('Error updating OCR region:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Test OCR on a specific region of an uploaded image
+app.post('/api/ocr-test', authMiddleware, upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file && !req.body.imagePath) {
+      return res.status(400).json({ error: 'No image provided' });
+    }
+
+    const { x, y, width, height } = req.body;
+
+    if (x === undefined || y === undefined || width === undefined || height === undefined) {
+      return res.status(400).json({ error: 'Region coordinates required' });
+    }
+
+    // Use provided image or uploaded file
+    let imagePath;
+    if (req.file) {
+      imagePath = req.file.path;
+    } else {
+      imagePath = path.join(thumbnailDir, req.body.imagePath);
+    }
+
+    // Run OCR on specific region using ImageMagick crop + tesseract
+    const tempDir = '/tmp';
+    const timestamp = Date.now();
+    const croppedImage = path.join(tempDir, `ocr-crop-${timestamp}.png`);
+
+    // Crop the image to the specified region
+    const cropCommand = `convert "${imagePath}" -crop ${width}x${height}+${x}+${y} "${croppedImage}"`;
+    console.log(`Cropping image: ${cropCommand}`);
+    await execAsync(cropCommand);
+
+    // Run OCR on cropped image
+    const { stdout } = await execAsync(`tesseract "${croppedImage}" stdout`);
+
+    // Clean up temporary files
+    try {
+      await fs.unlink(croppedImage);
+      if (req.file) {
+        await fs.unlink(imagePath);
+      }
+    } catch (unlinkErr) {
+      console.error('Error deleting temporary files:', unlinkErr);
+    }
+
+    res.json({
+      text: stdout.trim(),
+      region: { x: parseInt(x), y: parseInt(y), width: parseInt(width), height: parseInt(height) }
+    });
+  } catch (error) {
+    console.error('Error testing OCR:', error);
+    res.status(500).json({ error: 'Failed to test OCR', details: error.message });
   }
 });
 

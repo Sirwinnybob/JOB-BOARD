@@ -1,45 +1,11 @@
 const { exec } = require('child_process');
 const { promisify } = require('util');
 const fs = require('fs').promises;
-const pdfParse = require('pdf-parse');
 
 const execAsync = promisify(exec);
 
 /**
- * Extract text from PDF using pdf-parse library
- * @param {string} pdfPath - Path to the PDF file
- * @returns {Promise<string>} Extracted text
- */
-async function extractTextWithPdfParse(pdfPath) {
-  try {
-    const dataBuffer = await fs.readFile(pdfPath);
-    const data = await pdfParse(dataBuffer);
-    return data.text;
-  } catch (error) {
-    console.error('Error extracting text with pdf-parse:', error);
-    return null;
-  }
-}
-
-/**
- * Extract text from PDF using pdftotext (poppler-utils)
- * Fallback method if pdf-parse fails
- * @param {string} pdfPath - Path to the PDF file
- * @returns {Promise<string>} Extracted text
- */
-async function extractTextWithPdfToText(pdfPath) {
-  try {
-    const { stdout } = await execAsync(`pdftotext "${pdfPath}" -`);
-    return stdout;
-  } catch (error) {
-    console.error('Error extracting text with pdftotext:', error);
-    return null;
-  }
-}
-
-/**
  * Extract text from PDF using OCR (tesseract)
- * Used for image-based PDFs
  * @param {string} pdfPath - Path to the PDF file
  * @returns {Promise<string>} Extracted text
  */
@@ -50,12 +16,15 @@ async function extractTextWithOCR(pdfPath) {
     const timestamp = Date.now();
     const imageBase = `${tempDir}/ocr-temp-${timestamp}`;
 
-    // Convert PDF to PNG images
+    // Convert PDF to PNG images (first page only, high resolution for OCR)
     await execAsync(`pdftocairo -png -f 1 -l 1 -r 300 "${pdfPath}" "${imageBase}"`);
 
     // Run OCR on the first page
     const imagePath = `${imageBase}-1.png`;
-    const { stdout } = await execAsync(`tesseract "${imagePath}" stdout`);
+    const ocrCommand = `tesseract "${imagePath}" stdout`;
+    console.log(`Running OCR: ${ocrCommand}`);
+
+    const { stdout } = await execAsync(ocrCommand);
 
     // Clean up temporary image
     try {
@@ -72,39 +41,21 @@ async function extractTextWithOCR(pdfPath) {
 }
 
 /**
- * Extract text from PDF using multiple methods
- * Tries pdf-parse first, then pdftotext, then OCR
+ * Extract text from PDF using OCR only
  * @param {string} pdfPath - Path to the PDF file
  * @returns {Promise<string>} Extracted text
  */
 async function extractText(pdfPath) {
-  console.log(`Starting text extraction from: ${pdfPath}`);
+  console.log(`Starting OCR text extraction from: ${pdfPath}`);
 
-  // Try pdf-parse first (works for text-based PDFs)
-  let text = await extractTextWithPdfParse(pdfPath);
-
-  if (text && text.trim().length >= 10) {
-    console.log(`pdf-parse succeeded, extracted ${text.length} characters`);
-    return text;
-  }
-
-  console.log('pdf-parse failed or returned minimal text, trying pdftotext...');
-  text = await extractTextWithPdfToText(pdfPath);
-
-  if (text && text.trim().length >= 10) {
-    console.log(`pdftotext succeeded, extracted ${text.length} characters`);
-    return text;
-  }
-
-  console.log('pdftotext failed or returned minimal text, trying OCR...');
-  text = await extractTextWithOCR(pdfPath);
+  const text = await extractTextWithOCR(pdfPath);
 
   if (text && text.trim().length >= 10) {
     console.log(`OCR succeeded, extracted ${text.length} characters`);
     return text;
   }
 
-  console.log('All text extraction methods failed or returned minimal text');
+  console.log('OCR failed or returned minimal text');
   return text || '';
 }
 
@@ -202,46 +153,29 @@ function extractConstructionMethod(text) {
 }
 
 /**
- * Extract metadata (job number and construction method) from PDF
+ * Extract metadata (job number and construction method) from PDF using OCR
  * @param {string} pdfPath - Path to the PDF file
  * @returns {Promise<{job_number: string|null, construction_method: string|null}>}
  */
 async function extractMetadata(pdfPath) {
   try {
-    // First try with standard text extraction
-    let text = await extractText(pdfPath);
+    // Extract text using OCR (reads text spatially, works for separate text boxes)
+    const text = await extractText(pdfPath);
 
     if (!text) {
       console.log('No text extracted from PDF');
       return { job_number: null, construction_method: null };
     }
 
-    let job_number = extractJobNumber(text);
-    let construction_method = extractConstructionMethod(text);
-
-    // If job number not found with standard extraction, try OCR
-    // OCR reads text spatially, which works better for PDFs where
-    // field labels and values are in separate text boxes but same visual location
-    if (!job_number) {
-      console.log('Job number not found with standard extraction, trying OCR...');
-      const ocrText = await extractTextWithOCR(pdfPath);
-      if (ocrText && ocrText.trim().length > 10) {
-        console.log('OCR extraction succeeded, re-attempting job number extraction');
-        job_number = extractJobNumber(ocrText);
-
-        // Also try construction method from OCR if not found earlier
-        if (!construction_method) {
-          construction_method = extractConstructionMethod(ocrText);
-        }
-      }
-    }
+    const job_number = extractJobNumber(text);
+    const construction_method = extractConstructionMethod(text);
 
     console.log('Extracted metadata:', { job_number, construction_method });
 
     return { job_number, construction_method };
   } catch (error) {
     console.error('Error extracting metadata from PDF:', error);
-    return { job_number: null, construction_method: null };
+    return { job_number, construction_method: null };
   }
 }
 

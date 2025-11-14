@@ -98,7 +98,7 @@ function SlideShowView({ pdfs, onPdfClick }) {
             <div
               onClick={() => onPdfClick(pdf)}
               className="relative h-full max-w-4xl mx-auto bg-white dark:bg-gray-800 rounded-lg shadow-2xl overflow-hidden cursor-pointer hover:shadow-3xl transition-all"
-              style={{ aspectRatio: '5/7' }}
+              style={{ aspectRatio: '4/3' }}
             >
               <img
                 src={`/thumbnails/${pdf.thumbnail}`}

@@ -24,8 +24,8 @@ RUN npm run build
 # Stage 2: Build backend and final image
 FROM node:20-alpine
 
-# Install poppler-utils for PDF thumbnail generation
-RUN apk add --no-cache poppler-utils
+# Install poppler-utils for PDF thumbnail generation and tesseract for OCR
+RUN apk add --no-cache poppler-utils tesseract-ocr tesseract-ocr-data-eng
 
 WORKDIR /app
 

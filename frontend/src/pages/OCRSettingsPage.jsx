@@ -46,22 +46,37 @@ function OCRSettingsPage() {
     const file = e.target.files[0];
     if (!file) return;
 
+    // Check if it's a PDF (will be converted to image on server)
+    const isPDF = file.type === 'application/pdf';
+
     setTestImageFile(file);
 
-    // Display the image immediately for user feedback
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      setTestImage(event.target.result);
-    };
-    reader.readAsDataURL(file);
+    if (!isPDF) {
+      // For images, display immediately
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setTestImage(event.target.result);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      // For PDFs, show loading state
+      setTestImage(null);
+    }
 
-    // Save to backend for persistence
+    // Upload to backend (PDFs will be converted to images)
     try {
       await ocrAPI.uploadTestImage(file);
-      console.log('Test image uploaded successfully');
+      console.log('Test file uploaded successfully');
+
+      // If it was a PDF, reload the converted image from server
+      if (isPDF) {
+        await loadTestImage();
+      }
     } catch (error) {
-      console.error('Error uploading test image:', error);
-      alert('Failed to save test image to server');
+      console.error('Error uploading test file:', error);
+      alert('Failed to save test file to server');
+      setTestImage(null);
+      setTestImageFile(null);
     }
   };
 

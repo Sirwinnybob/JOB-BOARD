@@ -3,7 +3,7 @@ import { useDraggable, useDroppable } from '@dnd-kit/core';
 import DraggableCoverSheetCard from './DraggableCoverSheetCard';
 import PlaceholderCard from './PlaceholderCard';
 
-function DraggableGridItem({ id, pdf, index, editMode, onDelete, onLabelClick, onMoveToPending, onMetadataUpdate, onSlotMenuOpen, showSlotMenu, onSlotMenuClose, onAddPlaceholder, onUploadToSlot }) {
+function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10, editMode, onDelete, onLabelClick, onMoveToPending, onMetadataUpdate, onSlotMenuOpen, showSlotMenu, onSlotMenuClose, onAddPlaceholder, onUploadToSlot }) {
   // Make this slot droppable
   const { setNodeRef: setDropRef, isOver } = useDroppable({
     id: id,
@@ -35,7 +35,7 @@ function DraggableGridItem({ id, pdf, index, editMode, onDelete, onLabelClick, o
       <div
         ref={setDropRef}
         className={`flex flex-col ${isOver ? 'ring-2 ring-blue-500' : ''}`}
-        style={{ aspectRatio: '8.5 / 11' }}
+        style={{ aspectRatio: `${aspectWidth} / ${aspectHeight}` }}
       >
         <div
           ref={setDragRef}
@@ -76,7 +76,7 @@ function DraggableGridItem({ id, pdf, index, editMode, onDelete, onLabelClick, o
       className={`bg-gray-200 dark:bg-gray-700 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center relative group transition-colors ${
         isOver ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-900/20' : ''
       }`}
-      style={{ aspectRatio: '8.5 / 11' }}
+      style={{ aspectRatio: `${aspectWidth} / ${aspectHeight}` }}
     >
       {editMode ? (
         showSlotMenu === index ? (

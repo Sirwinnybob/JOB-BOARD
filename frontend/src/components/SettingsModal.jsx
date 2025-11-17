@@ -3,13 +3,24 @@ import React, { useState } from 'react';
 function SettingsModal({ settings, onClose, onSave }) {
   const [rows, setRows] = useState(settings.grid_rows);
   const [cols, setCols] = useState(settings.grid_cols);
+  const [aspectWidth, setAspectWidth] = useState(settings.aspect_ratio_width || 11);
+  const [aspectHeight, setAspectHeight] = useState(settings.aspect_ratio_height || 10);
 
   const handleSave = () => {
     if (rows < 1 || rows > 20 || cols < 1 || cols > 20) {
       alert('Rows and columns must be between 1 and 20');
       return;
     }
-    onSave({ grid_rows: rows, grid_cols: cols });
+    if (aspectWidth < 1 || aspectWidth > 50 || aspectHeight < 1 || aspectHeight > 50) {
+      alert('Aspect ratio dimensions must be between 1 and 50');
+      return;
+    }
+    onSave({
+      grid_rows: rows,
+      grid_cols: cols,
+      aspect_ratio_width: aspectWidth,
+      aspect_ratio_height: aspectHeight
+    });
   };
 
   return (
@@ -64,6 +75,62 @@ function SettingsModal({ settings, onClose, onSave }) {
             <p className="text-sm text-blue-800">
               Total slots: <strong>{rows * cols}</strong>
             </p>
+          </div>
+
+          <div className="border-t border-gray-300 pt-4">
+            <h3 className="text-lg font-semibold text-gray-900 mb-3">Slot Aspect Ratio</h3>
+            <p className="text-sm text-gray-600 mb-3">
+              Adjust the aspect ratio of job board slots (includes space for header)
+            </p>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label
+                  htmlFor="aspectWidth"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Width (1-50)
+                </label>
+                <input
+                  type="number"
+                  id="aspectWidth"
+                  min="1"
+                  max="50"
+                  step="0.1"
+                  value={aspectWidth}
+                  onChange={(e) => setAspectWidth(parseFloat(e.target.value))}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              <div>
+                <label
+                  htmlFor="aspectHeight"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Height (1-50)
+                </label>
+                <input
+                  type="number"
+                  id="aspectHeight"
+                  min="1"
+                  max="50"
+                  step="0.1"
+                  value={aspectHeight}
+                  onChange={(e) => setAspectHeight(parseFloat(e.target.value))}
+                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+            </div>
+
+            <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 mt-3">
+              <p className="text-sm text-gray-700">
+                Current ratio: <strong>{aspectWidth} : {aspectHeight}</strong>
+              </p>
+              <p className="text-xs text-gray-500 mt-1">
+                Portrait (8.5 x 11) | Landscape (11 x 8.5) | Landscape with header (11 x 10)
+              </p>
+            </div>
           </div>
         </div>
 

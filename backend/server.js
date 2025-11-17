@@ -879,7 +879,7 @@ app.get('/api/settings', async (req, res) => {
 
 app.put('/api/settings', authMiddleware, async (req, res) => {
   try {
-    const { grid_rows, grid_cols } = req.body;
+    const { grid_rows, grid_cols, aspect_ratio_width, aspect_ratio_height } = req.body;
 
     if (!grid_rows || !grid_cols) {
       return res.status(400).json({ error: 'grid_rows and grid_cols required' });
@@ -887,23 +887,68 @@ app.put('/api/settings', authMiddleware, async (req, res) => {
 
     const rows = parseInt(grid_rows);
     const cols = parseInt(grid_cols);
+    const aspectWidth = aspect_ratio_width ? parseFloat(aspect_ratio_width) : null;
+    const aspectHeight = aspect_ratio_height ? parseFloat(aspect_ratio_height) : null;
 
     if (rows < 1 || rows > 20 || cols < 1 || cols > 20) {
       return res.status(400).json({ error: 'Rows and columns must be between 1 and 20' });
     }
 
-    db.run('UPDATE settings SET value = ? WHERE key = ?', [rows, 'grid_rows']);
-    db.run('UPDATE settings SET value = ? WHERE key = ?', [cols, 'grid_cols'], (err) => {
-      if (err) {
+    if (aspectWidth !== null && (aspectWidth < 1 || aspectWidth > 50)) {
+      return res.status(400).json({ error: 'Aspect ratio width must be between 1 and 50' });
+    }
+
+    if (aspectHeight !== null && (aspectHeight < 1 || aspectHeight > 50)) {
+      return res.status(400).json({ error: 'Aspect ratio height must be between 1 and 50' });
+    }
+
+    const updates = [];
+    const responseData = { grid_rows: rows, grid_cols: cols };
+
+    updates.push(new Promise((resolve, reject) => {
+      db.run('UPDATE settings SET value = ? WHERE key = ?', [rows, 'grid_rows'], (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    }));
+
+    updates.push(new Promise((resolve, reject) => {
+      db.run('UPDATE settings SET value = ? WHERE key = ?', [cols, 'grid_cols'], (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    }));
+
+    if (aspectWidth !== null) {
+      updates.push(new Promise((resolve, reject) => {
+        db.run('UPDATE settings SET value = ? WHERE key = ?', [aspectWidth, 'aspect_ratio_width'], (err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      }));
+      responseData.aspect_ratio_width = aspectWidth;
+    }
+
+    if (aspectHeight !== null) {
+      updates.push(new Promise((resolve, reject) => {
+        db.run('UPDATE settings SET value = ? WHERE key = ?', [aspectHeight, 'aspect_ratio_height'], (err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      }));
+      responseData.aspect_ratio_height = aspectHeight;
+    }
+
+    Promise.all(updates)
+      .then(() => {
+        // Broadcast update to all clients
+        broadcastUpdate('settings_updated', responseData);
+        res.json(responseData);
+      })
+      .catch((err) => {
         console.error('Database error:', err);
-        return res.status(500).json({ error: 'Database error' });
-      }
-
-      // Broadcast update to all clients
-      broadcastUpdate('settings_updated', { grid_rows: rows, grid_cols: cols });
-
-      res.json({ grid_rows: rows, grid_cols: cols });
-    });
+        res.status(500).json({ error: 'Database error' });
+      });
   } catch (error) {
     console.error('Error updating settings:', error);
     res.status(500).json({ error: 'Internal server error' });

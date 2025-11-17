@@ -238,20 +238,30 @@ async function extractMetadata(pdfPath, existingImagePath = null) {
 
     // Extract job number using region if configured
     if (regions.job_number && regions.job_number.width > 0 && regions.job_number.height > 0) {
-      console.log('Using configured region for job_number');
+      console.log(`Using configured region for job_number: x=${regions.job_number.x}, y=${regions.job_number.y}, w=${regions.job_number.width}, h=${regions.job_number.height}`);
       const text = await extractTextWithOCR(pdfPath, regions.job_number, existingImagePath);
       if (text) {
+        console.log(`OCR text from job_number region: "${text.trim()}"`);
         job_number = extractJobNumber(text);
+      } else {
+        console.log('No text extracted from job_number region');
       }
+    } else {
+      console.log('No configured region for job_number, will use full-page OCR');
     }
 
     // Extract construction method using region if configured
     if (regions.construction_method && regions.construction_method.width > 0 && regions.construction_method.height > 0) {
-      console.log('Using configured region for construction_method');
+      console.log(`Using configured region for construction_method: x=${regions.construction_method.x}, y=${regions.construction_method.y}, w=${regions.construction_method.width}, h=${regions.construction_method.height}`);
       const text = await extractTextWithOCR(pdfPath, regions.construction_method, existingImagePath);
       if (text) {
+        console.log(`OCR text from construction_method region: "${text.trim()}"`);
         construction_method = extractConstructionMethod(text);
+      } else {
+        console.log('No text extracted from construction_method region');
       }
+    } else {
+      console.log('No configured region for construction_method, will use full-page OCR');
     }
 
     // Fallback to full-page OCR if regions not configured or extraction failed

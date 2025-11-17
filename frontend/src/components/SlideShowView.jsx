@@ -205,48 +205,33 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
     }
   }, []);
 
-  // Prevent body scroll when in fullscreen mode
+  // Prevent body scroll when in fullscreen mode (always in slideshow)
   useEffect(() => {
-    if (onClose) {
-      document.body.style.overflow = 'hidden';
-      return () => {
-        document.body.style.overflow = 'unset';
-      };
-    }
-  }, [onClose]);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, []);
 
   if (displayPdfs.length === 0) {
-    if (onClose) {
-      return (
-        <div className="fixed inset-0 bg-black z-50 flex items-center justify-center">
-          <div className="text-center">
-            <p className="text-xl text-white mb-4">No jobs to display</p>
-            <button
-              onClick={onClose}
-              className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200"
-            >
-              Close
-            </button>
-          </div>
-        </div>
-      );
-    }
     return (
-      <div className="flex items-center justify-center h-96">
-        <p className="text-xl text-gray-600 dark:text-gray-400 transition-colors">
-          No jobs to display
-        </p>
+      <div className="fixed inset-0 bg-black z-50 flex items-center justify-center">
+        <div className="text-center">
+          <p className="text-xl text-white mb-4">No jobs to display</p>
+          <button
+            onClick={onClose}
+            className="px-4 py-2 bg-white text-black rounded-lg hover:bg-gray-200"
+          >
+            Close
+          </button>
+        </div>
       </div>
     );
   }
 
-  // Fullscreen mode styling
-  const containerClass = onClose
-    ? "fixed inset-0 bg-white dark:bg-black z-50 transition-colors"
-    : "relative w-full";
-  const containerStyle = onClose
-    ? { height: '100vh' }
-    : { height: 'calc(100vh - 180px)' };
+  // Always use fullscreen styling for consistent appearance
+  const containerClass = "fixed inset-0 bg-white dark:bg-black z-50 transition-colors";
+  const containerStyle = { height: '100vh' };
 
   // Generate dynamic CSS animations based on originRect
   const generateAnimationCSS = () => {
@@ -342,7 +327,7 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
           return (
             <div
               key={pdf.id}
-              className="flex-shrink-0 w-full h-full snap-center flex items-center justify-center p-4"
+              className="flex-shrink-0 w-[95%] h-full snap-center flex items-center justify-center p-4"
             >
               <div
                 className="relative h-full max-w-6xl w-full mx-auto flex items-center justify-center"
@@ -368,8 +353,8 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
                   />
                 )}
 
-                {/* Job Info Overlay */}
-                <div className="absolute top-4 left-4 bg-gray-900/80 dark:bg-black/70 text-white px-4 py-2 rounded-lg transition-colors">
+                {/* Job Info Overlay - Moved to bottom to avoid close button */}
+                <div className="absolute bottom-4 left-4 bg-gray-900/80 dark:bg-black/70 text-white px-4 py-2 rounded-lg transition-colors">
                   <div className="text-sm font-medium">
                     {pdf.is_placeholder ? (
                       <div>{pdf.placeholder_text || 'PLACEHOLDER'}</div>
@@ -384,9 +369,9 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
                   </div>
                 </div>
 
-                {/* Labels */}
+                {/* Labels - Moved down to avoid counter */}
                 {pdf.labels && pdf.labels.length > 0 && (
-                  <div className="absolute top-4 right-4 flex flex-wrap gap-2 justify-end">
+                  <div className="absolute top-20 right-4 flex flex-wrap gap-2 justify-end">
                     {pdf.labels.map((label) => (
                       <span
                         key={label.id}
@@ -449,25 +434,21 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
         </div>
       )}
 
-      {/* Close Button - Large and prominent when entered via click */}
-      {onClose && (
-        <button
-          onClick={onClose}
-          className="absolute top-4 left-4 bg-gray-900/80 hover:bg-gray-900/95 dark:bg-black/70 dark:hover:bg-black/90 text-white p-4 rounded-full transition-all z-20 shadow-lg"
-          aria-label="Close"
-        >
-          <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-      )}
+      {/* Close/Toggle Button - Always visible */}
+      <button
+        onClick={onClose}
+        className="absolute top-4 left-4 bg-gray-900/80 hover:bg-gray-900/95 dark:bg-black/70 dark:hover:bg-black/90 text-white p-4 rounded-full transition-all z-20 shadow-lg"
+        aria-label="Close"
+      >
+        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
 
-      {/* Counter */}
-      {onClose && (
-        <div className="absolute top-4 right-4 bg-gray-900/80 dark:bg-black/70 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors z-10">
-          {currentIndex + 1} / {displayPdfs.length}
-        </div>
-      )}
+      {/* Counter - Always visible */}
+      <div className="absolute top-4 right-4 bg-gray-900/80 dark:bg-black/70 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors z-10">
+        {currentIndex + 1} / {displayPdfs.length}
+      </div>
     </div>
     </>
   );

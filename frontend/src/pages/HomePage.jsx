@@ -887,7 +887,7 @@ function HomePage() {
               <SlideShowView
                 pdfs={pdfs}
                 initialIndex={selectedPdf ? pdfs.findIndex(p => p && p.id === selectedPdf.id) : 0}
-                onClose={selectedPdf ? handleInitiateClose : null}
+                onClose={handleInitiateClose}
                 enteredViaClick={selectedPdf !== null}
                 isClosing={isClosingSlideshow}
                 onAnimationComplete={handleSlideshowAnimationComplete}

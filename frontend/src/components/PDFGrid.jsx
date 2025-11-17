@@ -53,7 +53,7 @@ function PDFGrid({ pdfs, rows, cols, aspectWidth = 11, aspectHeight = 10, onPdfC
               </div>
             ) : (
               <div
-                onClick={() => onPdfClick(pdf)}
+                onClick={(e) => onPdfClick(pdf, e)}
                 className="w-full h-full cursor-pointer hover:opacity-90 transition-opacity"
               >
                 <DraggableCoverSheetCard

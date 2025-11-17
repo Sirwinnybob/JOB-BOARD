@@ -1,7 +1,8 @@
-import React, { useRef, useState, useEffect, useLayoutEffect } from 'react';
+import React, { useRef, useState, useEffect, useLayoutEffect, useCallback } from 'react';
 
-function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick = false, isClosing = false, onAnimationComplete = null }) {
+function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick = false, isClosing = false, onAnimationComplete = null, originRect = null }) {
   const scrollContainerRef = useRef(null);
+  const containerRef = useRef(null);
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [isScrolling, setIsScrolling] = useState(false);
   const [animationState, setAnimationState] = useState('zoom-in');
@@ -14,6 +15,7 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
     // Default to system preference
     return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
+  const [animationTransform, setAnimationTransform] = useState(null);
 
   // Filter out placeholders for slideshow
   const displayPdfs = pdfs.filter(pdf => pdf && !pdf.is_placeholder);
@@ -22,6 +24,93 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
   useEffect(() => {
     localStorage.setItem('slideShowDarkMode', darkMode.toString());
   }, [darkMode]);
+
+  // Calculate animation transform from origin rect
+  const calculateTransform = useCallback(() => {
+    if (!originRect) {
+      // No origin rect - use simple center zoom (fallback for toggle button)
+      setAnimationTransform(null);
+      return;
+    }
+
+    // Edge case: Validate originRect has required properties
+    if (!originRect.width || !originRect.height || originRect.width <= 0 || originRect.height <= 0) {
+      console.warn('[SlideShowView] Invalid originRect dimensions, using fallback animation');
+      setAnimationTransform(null);
+      return;
+    }
+
+    // Get viewport dimensions
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+
+    // Edge case: Very small viewports (mobile in landscape, etc.)
+    if (viewportWidth < 200 || viewportHeight < 200) {
+      console.warn('[SlideShowView] Viewport too small, using fallback animation');
+      setAnimationTransform(null);
+      return;
+    }
+
+    // Calculate scale needed to go from grid item to fullscreen
+    const scaleX = viewportWidth / originRect.width;
+    const scaleY = viewportHeight / originRect.height;
+
+    // Use the smaller scale to maintain aspect ratio
+    // Edge case: Clamp scale to reasonable bounds (0.1 to 20)
+    const scale = Math.max(0.1, Math.min(20, Math.min(scaleX, scaleY)));
+
+    // Calculate the center of the clicked element
+    const originCenterX = originRect.left + (originRect.width / 2);
+    const originCenterY = originRect.top + (originRect.height / 2);
+
+    // Calculate the center of the viewport
+    const viewportCenterX = viewportWidth / 2;
+    const viewportCenterY = viewportHeight / 2;
+
+    // Calculate translation needed to move from element center to viewport center
+    const translateX = viewportCenterX - originCenterX;
+    const translateY = viewportCenterY - originCenterY;
+
+    // Edge case: Clamp translations to prevent extreme off-screen animations
+    const maxTranslate = Math.max(viewportWidth, viewportHeight) * 2;
+    const clampedTranslateX = Math.max(-maxTranslate, Math.min(maxTranslate, translateX));
+    const clampedTranslateY = Math.max(-maxTranslate, Math.min(maxTranslate, translateY));
+
+    setAnimationTransform({
+      scale,
+      translateX: clampedTranslateX,
+      translateY: clampedTranslateY,
+      originX: originCenterX,
+      originY: originCenterY,
+    });
+
+    console.log('[SlideShowView] Calculated animation transform:', {
+      scale,
+      translateX: clampedTranslateX,
+      translateY: clampedTranslateY,
+      originRect,
+      viewport: { width: viewportWidth, height: viewportHeight },
+    });
+  }, [originRect]);
+
+  useLayoutEffect(() => {
+    calculateTransform();
+  }, [calculateTransform]);
+
+  // Edge case: Handle window resize during slideshow
+  useEffect(() => {
+    // Only recalculate if we're still in zoom-in state (animation in progress)
+    // Don't recalculate during zoom-out as it would mess up the return animation
+    const handleResize = () => {
+      if (animationState === 'zoom-in' && originRect) {
+        console.log('[SlideShowView] Window resized during animation, recalculating transform');
+        calculateTransform();
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [animationState, originRect, calculateTransform]);
 
   // Turn off zoom-in animation after it completes
   useEffect(() => {
@@ -169,39 +258,83 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
     ? { height: '100vh' }
     : { height: 'calc(100vh - 180px)' };
 
+  // Generate dynamic CSS animations based on originRect
+  const generateAnimationCSS = () => {
+    if (!animationTransform) {
+      // Fallback to simple center zoom if no transform calculated
+      return `
+        @keyframes zoomIn {
+          from {
+            opacity: 0;
+            transform: scale(0.85);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1);
+          }
+        }
+        @keyframes zoomOut {
+          from {
+            opacity: 1;
+            transform: scale(1);
+          }
+          to {
+            opacity: 0;
+            transform: scale(0.85);
+          }
+        }
+      `;
+    }
+
+    const { scale, translateX, translateY, originX, originY } = animationTransform;
+
+    // Initial transform: position at origin (small) and translate to center
+    const initialScale = 1 / scale;
+    const initialTranslateX = -translateX / scale;
+    const initialTranslateY = -translateY / scale;
+
+    return `
+      @keyframes zoomIn {
+        from {
+          opacity: 0.3;
+          transform: translate(${initialTranslateX}px, ${initialTranslateY}px) scale(${initialScale});
+        }
+        to {
+          opacity: 1;
+          transform: translate(0, 0) scale(1);
+        }
+      }
+      @keyframes zoomOut {
+        from {
+          opacity: 1;
+          transform: translate(0, 0) scale(1);
+        }
+        to {
+          opacity: 0;
+          transform: translate(${initialTranslateX}px, ${initialTranslateY}px) scale(${initialScale});
+        }
+      }
+    `;
+  };
+
   return (
     <>
       <style>
+        {generateAnimationCSS()}
         {`
-          @keyframes zoomIn {
-            from {
-              opacity: 0;
-              transform: scale(0.5);
-            }
-            to {
-              opacity: 1;
-              transform: scale(1);
-            }
-          }
-          @keyframes zoomOut {
-            from {
-              opacity: 1;
-              transform: scale(1);
-            }
-            to {
-              opacity: 0;
-              transform: scale(0.5);
-            }
-          }
           .zoom-in-animation {
             animation: zoomIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
           }
           .zoom-out-animation {
-            animation: zoomOut 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            animation: zoomOut 0.4s cubic-bezier(0.7, 0, 0.84, 0);
           }
         `}
       </style>
-      <div className={`${containerClass} ${animationState === 'zoom-in' ? 'zoom-in-animation' : ''} ${animationState === 'zoom-out' ? 'zoom-out-animation' : ''}`} style={containerStyle}>
+      <div
+        ref={containerRef}
+        className={`${containerClass} ${animationState === 'zoom-in' ? 'zoom-in-animation' : ''} ${animationState === 'zoom-out' ? 'zoom-out-animation' : ''}`}
+        style={containerStyle}
+      >
         {/* Horizontal Scroll Container */}
         <div
           ref={scrollContainerRef}

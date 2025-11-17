@@ -499,6 +499,7 @@ function HomePage() {
     const displayPdfs = pdfs.filter(p => p && !p.is_placeholder);
     const clickedIndex = displayPdfs.findIndex(p => p.id === pdf.id);
 
+    console.log('[HomePage] handlePdfClick called for pdf:', pdf.id, 'clickedIndex:', clickedIndex);
     setViewMode('slideshow');
     localStorage.setItem('viewMode', 'slideshow');
 
@@ -508,11 +509,14 @@ function HomePage() {
   };
 
   const toggleViewMode = () => {
+    console.log('[HomePage] toggleViewMode called, current viewMode:', viewMode);
     if (viewMode === 'slideshow') {
       // Trigger zoom-out animation before closing
+      console.log('[HomePage] Triggering slideshow close animation');
       setIsClosingSlideshow(true);
     } else {
       // Switch to slideshow (will trigger zoom-in)
+      console.log('[HomePage] Switching to slideshow view');
       setViewMode('slideshow');
       localStorage.setItem('viewMode', 'slideshow');
       setSelectedPdf(null);
@@ -521,11 +525,13 @@ function HomePage() {
 
   const handleInitiateClose = () => {
     // Trigger zoom-out animation
+    console.log('[HomePage] handleInitiateClose called (X button clicked)');
     setIsClosingSlideshow(true);
   };
 
   const handleSlideshowAnimationComplete = () => {
     // Called after zoom-out animation completes
+    console.log('[HomePage] handleSlideshowAnimationComplete called, switching to grid view');
     setViewMode('grid');
     localStorage.setItem('viewMode', 'grid');
     setSelectedPdf(null);

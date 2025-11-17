@@ -1129,8 +1129,14 @@ app.get('/api/health', (req, res) => {
 });
 
 // Serve React app for all other routes (Express 5 compatible)
-app.get('/:path*', (req, res) => {
-  res.sendFile(path.join(frontendPath, 'index.html'));
+// Using app.use() instead of app.get() to avoid path-to-regexp issues
+app.use((req, res, next) => {
+  // Only handle GET requests for non-API routes
+  if (req.method === 'GET' && !req.path.startsWith('/api')) {
+    res.sendFile(path.join(frontendPath, 'index.html'));
+  } else {
+    next();
+  }
 });
 
 server.listen(PORT, '0.0.0.0', () => {

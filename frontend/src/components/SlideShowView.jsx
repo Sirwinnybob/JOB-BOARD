@@ -1,9 +1,10 @@
 import React, { useRef, useState, useEffect } from 'react';
 
-function SlideShowView({ pdfs, initialIndex = 0, onClose = null }) {
+function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick = false }) {
   const scrollContainerRef = useRef(null);
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [isScrolling, setIsScrolling] = useState(false);
+  const [showAnimation, setShowAnimation] = useState(enteredViaClick);
   const [darkMode, setDarkMode] = useState(() => {
     // Check localStorage first, then fall back to system preference
     const saved = localStorage.getItem('slideShowDarkMode');
@@ -21,6 +22,16 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null }) {
   useEffect(() => {
     localStorage.setItem('slideShowDarkMode', darkMode.toString());
   }, [darkMode]);
+
+  // Turn off animation after it completes
+  useEffect(() => {
+    if (showAnimation) {
+      const timer = setTimeout(() => {
+        setShowAnimation(false);
+      }, 500); // Match animation duration
+      return () => clearTimeout(timer);
+    }
+  }, [showAnimation]);
 
   useEffect(() => {
     const container = scrollContainerRef.current;
@@ -134,18 +145,36 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null }) {
     : { height: 'calc(100vh - 180px)' };
 
   return (
-    <div className={containerClass} style={containerStyle}>
-      {/* Horizontal Scroll Container */}
-      <div
-        ref={scrollContainerRef}
-        className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide h-full"
-        style={{
-          scrollSnapType: 'x mandatory',
-          WebkitOverflowScrolling: 'touch',
-          scrollbarWidth: 'none',
-          msOverflowStyle: 'none',
-        }}
-      >
+    <>
+      <style>
+        {`
+          @keyframes zoomIn {
+            from {
+              opacity: 0;
+              transform: scale(0.5);
+            }
+            to {
+              opacity: 1;
+              transform: scale(1);
+            }
+          }
+          .zoom-animation {
+            animation: zoomIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+          }
+        `}
+      </style>
+      <div className={`${containerClass} ${showAnimation ? 'zoom-animation' : ''}`} style={containerStyle}>
+        {/* Horizontal Scroll Container */}
+        <div
+          ref={scrollContainerRef}
+          className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide h-full"
+          style={{
+            scrollSnapType: 'x mandatory',
+            WebkitOverflowScrolling: 'touch',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
+          }}
+        >
         {displayPdfs.map((pdf, index) => {
           // Determine which image to show based on dark mode
           const isDarkMode = darkMode || (document.documentElement.classList.contains('dark') && !darkMode);
@@ -288,6 +317,7 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null }) {
         </div>
       </div>
     </div>
+    </>
   );
 }
 

@@ -513,6 +513,12 @@ function HomePage() {
     setSelectedPdf(null);
   };
 
+  const handleCloseSlideshow = () => {
+    setViewMode('grid');
+    localStorage.setItem('viewMode', 'grid');
+    setSelectedPdf(null);
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center transition-colors">
@@ -716,6 +722,8 @@ function HomePage() {
               <SlideShowView
                 pdfs={pdfs}
                 initialIndex={selectedPdf ? pdfs.filter(p => p && !p.is_placeholder).findIndex(p => p.id === selectedPdf.id) : 0}
+                onClose={selectedPdf ? handleCloseSlideshow : null}
+                enteredViaClick={selectedPdf !== null}
               />
             ) : (
               gridContent()

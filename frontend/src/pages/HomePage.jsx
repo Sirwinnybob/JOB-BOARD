@@ -1051,6 +1051,8 @@ function HomePage() {
                       onAnimationComplete={handleSlideshowAnimationComplete}
                       originRect={originRect}
                       onIndexChange={setCurrentSlideshowIndex}
+                      aspectWidth={settings.aspect_ratio_width}
+                      aspectHeight={settings.aspect_ratio_height}
                     />
                   );
                 })()}

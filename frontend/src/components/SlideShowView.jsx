@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect, useLayoutEffect, useCallback } from 'react';
 import { useDarkMode } from '../contexts/DarkModeContext';
 
-function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick = false, isClosing = false, onAnimationComplete = null, originRect = null, onIndexChange = null }) {
+function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick = false, isClosing = false, onAnimationComplete = null, originRect = null, onIndexChange = null, aspectWidth = 11, aspectHeight = 10 }) {
   const scrollContainerRef = useRef(null);
   const containerRef = useRef(null);
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
@@ -9,6 +9,7 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
   const [animationState, setAnimationState] = useState('zoom-in');
   const { darkMode, toggleDarkMode } = useDarkMode();
   const [animationTransform, setAnimationTransform] = useState(null);
+  const [showCloseButton, setShowCloseButton] = useState(false);
 
   // pdfs are already filtered (no nulls/undefined) from parent component
   const displayPdfs = pdfs;
@@ -225,6 +226,19 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
     }
   }, []);
 
+  // Show close button after delay, only if entered via click
+  useEffect(() => {
+    if (enteredViaClick && !isClosing) {
+      const timer = setTimeout(() => {
+        setShowCloseButton(true);
+      }, 1000); // 1 second delay
+
+      return () => clearTimeout(timer);
+    } else {
+      setShowCloseButton(false);
+    }
+  }, [enteredViaClick, isClosing]);
+
   // Prevent body scroll when in fullscreen mode (always in slideshow)
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -320,6 +334,19 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
           .zoom-out-animation {
             animation: zoomOut 0.4s cubic-bezier(0.7, 0, 0.84, 0);
           }
+          .animate-fade-in {
+            animation: fadeIn 0.3s ease-in;
+          }
+          @keyframes fadeIn {
+            from {
+              opacity: 0;
+              transform: scale(0.95);
+            }
+            to {
+              opacity: 1;
+              transform: scale(1);
+            }
+          }
         `}
       </style>
       <div
@@ -353,7 +380,7 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
                 className="relative h-full max-w-6xl w-full mx-auto flex items-center justify-center"
               >
                 {pdf.is_placeholder ? (
-                  <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-lg shadow-md border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center p-4 sm:p-6 md:p-8 transition-colors">
+                  <div className="max-w-full max-h-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-lg shadow-md border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center p-4 sm:p-6 md:p-8 transition-colors" style={{ aspectRatio: `${aspectWidth} / ${aspectHeight}` }}>
                     <p className="text-gray-600 dark:text-gray-400 text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-center break-words leading-tight transition-colors">
                       {pdf.placeholder_text || 'PLACEHOLDER'}
                     </p>
@@ -449,16 +476,18 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
         </div>
       )}
 
-      {/* Floating Close Button - Top Right */}
-      <button
-        onClick={onClose}
-        className="fixed top-20 right-4 sm:right-6 z-50 bg-gray-900/80 hover:bg-gray-800/90 dark:bg-black/80 dark:hover:bg-black/90 text-white p-3 sm:p-4 rounded-full transition-all shadow-2xl backdrop-blur-sm"
-        aria-label="Close slideshow"
-      >
-        <svg className="w-6 h-6 sm:w-7 sm:h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      </button>
+      {/* Floating Close Button - Top Right (only shown if entered via click, after 1s delay) */}
+      {showCloseButton && (
+        <button
+          onClick={onClose}
+          className="fixed top-20 right-4 sm:right-6 z-50 bg-gray-900/80 hover:bg-gray-800/90 dark:bg-black/80 dark:hover:bg-black/90 text-white p-3 sm:p-4 rounded-full transition-all shadow-2xl backdrop-blur-sm animate-fade-in"
+          aria-label="Close slideshow"
+        >
+          <svg className="w-6 h-6 sm:w-7 sm:h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      )}
     </div>
     </>
   );

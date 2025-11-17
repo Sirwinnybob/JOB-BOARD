@@ -15,9 +15,10 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
   // pdfs are already filtered (no nulls/undefined) from parent component
   const displayPdfs = pdfs;
 
-  // Get reference image dimensions from first non-placeholder PDF
+  // Get reference image dimensions from latest (most recent) non-placeholder PDF
   useEffect(() => {
-    const referencePdf = displayPdfs.find(pdf => !pdf.is_placeholder);
+    // Find the last non-placeholder PDF (most recent upload)
+    const referencePdf = [...displayPdfs].reverse().find(pdf => !pdf.is_placeholder);
     if (!referencePdf) return;
 
     const isDarkMode = darkMode || (document.documentElement.classList.contains('dark') && !darkMode);
@@ -161,9 +162,10 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
     const handleScroll = () => {
       setIsScrolling(true);
       const scrollLeft = container.scrollLeft;
-      // Each slide is w-[85%] of container, so use 85% for calculation
-      const slideWidth = container.offsetWidth * 0.85;
-      const index = Math.round(scrollLeft / slideWidth);
+      // Each slide is w-[60%] of container, with 20% left spacer
+      const slideWidth = container.offsetWidth * 0.6;
+      const leftSpacer = container.offsetWidth * 0.2;
+      const index = Math.round((scrollLeft - leftSpacer) / slideWidth);
       setCurrentIndex(index);
 
       // Clear the scrolling state after a delay
@@ -188,10 +190,11 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
   const scrollToIndex = (index, immediate = false) => {
     const container = scrollContainerRef.current;
     if (container) {
-      // Each slide is w-[85%] of container, so use 85% for calculation
-      const slideWidth = container.offsetWidth * 0.85;
+      // Each slide is w-[60%] of container, with 20% left spacer
+      const slideWidth = container.offsetWidth * 0.6;
+      const leftSpacer = container.offsetWidth * 0.2;
       container.scrollTo({
-        left: index * slideWidth,
+        left: leftSpacer + (index * slideWidth),
         behavior: immediate ? 'auto' : 'smooth'
       });
     }
@@ -233,11 +236,13 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
 
     const container = scrollContainerRef.current;
     if (container && initialIndex >= 0 && initialIndex < displayPdfs.length) {
-      // Each slide is w-[85%] of container, so use 85% for calculation
-      const slideWidth = container.offsetWidth * 0.85;
-      const scrollPosition = initialIndex * slideWidth;
+      // Each slide is w-[60%] of container, with 20% left spacer
+      const slideWidth = container.offsetWidth * 0.6;
+      const leftSpacer = container.offsetWidth * 0.2;
+      const scrollPosition = leftSpacer + (initialIndex * slideWidth);
       console.log('  - container.offsetWidth:', container.offsetWidth);
-      console.log('  - slideWidth (85%):', slideWidth);
+      console.log('  - slideWidth (60%):', slideWidth);
+      console.log('  - leftSpacer (20%):', leftSpacer);
       console.log('  - Calculated scroll position:', scrollPosition);
       container.scrollLeft = scrollPosition;
       console.log('  - Actual scrollLeft after setting:', container.scrollLeft);
@@ -386,6 +391,9 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
             msOverflowStyle: 'none',
           }}
         >
+        {/* Left spacer - allows first slide to center */}
+        <div className="flex-shrink-0 w-[20%] h-full snap-start"></div>
+
         {displayPdfs.map((pdf, index) => {
           // Determine which image to show based on dark mode
           const isDarkMode = darkMode || (document.documentElement.classList.contains('dark') && !darkMode);
@@ -395,7 +403,7 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
           return (
             <div
               key={pdf.id}
-              className="flex-shrink-0 w-[85%] h-full snap-center flex items-center justify-center p-4"
+              className="flex-shrink-0 w-[60%] h-full snap-center flex items-center justify-center p-4"
             >
               <div
                 className="relative h-full max-w-6xl w-full mx-auto flex items-center justify-center"
@@ -447,6 +455,9 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
             </div>
           );
         })}
+
+        {/* Right spacer - allows last slide to center */}
+        <div className="flex-shrink-0 w-[20%] h-full snap-end"></div>
       </div>
 
       {/* Navigation Arrows */}

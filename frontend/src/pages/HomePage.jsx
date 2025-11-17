@@ -43,6 +43,7 @@ function HomePage() {
     return saved;
   });
   const [isClosingSlideshow, setIsClosingSlideshow] = useState(false);
+  const [originRect, setOriginRect] = useState(null);
   const navigate = useNavigate();
 
   // Configure drag sensors
@@ -492,7 +493,7 @@ function HomePage() {
     setActiveDragId(null);
   };
 
-  const handlePdfClick = (pdf) => {
+  const handlePdfClick = (pdf, event) => {
     // Only allow slideshow in non-edit mode
     if (editMode) return;
 
@@ -500,6 +501,28 @@ function HomePage() {
     const clickedIndex = displayPdfs.findIndex(p => p.id === pdf.id);
 
     console.log('[HomePage] handlePdfClick called for pdf:', pdf.id, 'clickedIndex:', clickedIndex);
+
+    // Capture the clicked element's position for zoom animation
+    // Walk up the DOM to find the clickable div container
+    let target = event.target;
+    while (target && !target.classList.contains('cursor-pointer')) {
+      target = target.parentElement;
+    }
+
+    if (target) {
+      const rect = target.getBoundingClientRect();
+      setOriginRect({
+        top: rect.top,
+        left: rect.left,
+        width: rect.width,
+        height: rect.height,
+        // Store viewport scroll position for edge case handling
+        scrollX: window.scrollX || window.pageXOffset,
+        scrollY: window.scrollY || window.pageYOffset,
+      });
+      console.log('[HomePage] Captured origin rect:', rect);
+    }
+
     setViewMode('slideshow');
     localStorage.setItem('viewMode', 'slideshow');
 
@@ -536,6 +559,7 @@ function HomePage() {
     localStorage.setItem('viewMode', 'grid');
     setSelectedPdf(null);
     setIsClosingSlideshow(false);
+    setOriginRect(null); // Clear origin rect after animation
   };
 
   if (loading) {
@@ -745,6 +769,7 @@ function HomePage() {
                 enteredViaClick={selectedPdf !== null}
                 isClosing={isClosingSlideshow}
                 onAnimationComplete={handleSlideshowAnimationComplete}
+                originRect={originRect}
               />
             ) : (
               gridContent()

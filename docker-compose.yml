@@ -7,10 +7,10 @@ services:
     restart: unless-stopped
     pull_policy: always
     ports:
-      - "3000:3000"
+      - "${APP_PORT:-3000}:${APP_PORT:-3000}"
     environment:
       - NODE_ENV=production
-      - PORT=3000
+      - PORT=${APP_PORT:-3000}
       - JWT_SECRET=${JWT_SECRET:-change-this-to-a-secure-random-string}
       - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-changeme}
@@ -22,7 +22,7 @@ services:
     networks:
       - job-board-network
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      test: ["CMD", "sh", "-c", "node -e \"require('http').get('http://localhost:' + process.env.PORT + '/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})\""]
       interval: 30s
       timeout: 10s
       retries: 3

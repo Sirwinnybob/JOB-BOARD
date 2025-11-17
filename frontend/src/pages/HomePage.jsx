@@ -45,6 +45,7 @@ function HomePage() {
   const [isClosingSlideshow, setIsClosingSlideshow] = useState(false);
   const [originRect, setOriginRect] = useState(null);
   const [currentSlideshowIndex, setCurrentSlideshowIndex] = useState(0);
+  const [pullToRefresh, setPullToRefresh] = useState({ pulling: false, distance: 0, refreshing: false });
   const navigate = useNavigate();
 
   // Configure drag sensors
@@ -157,6 +158,79 @@ function HomePage() {
   }, [editMode, loadData, viewMode]);
 
   useWebSocket(handleWebSocketMessage, true);
+
+  // Pull-to-refresh functionality
+  useEffect(() => {
+    let touchStartY = 0;
+    let touchStartScrollTop = 0;
+
+    const handleTouchStart = (e) => {
+      // Only enable pull-to-refresh when in grid view and not in edit mode
+      if (viewMode === 'slideshow' || editMode || pullToRefresh.refreshing) return;
+
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+
+      // Only allow pull-to-refresh when at the top of the page
+      if (scrollTop === 0) {
+        touchStartY = e.touches[0].clientY;
+        touchStartScrollTop = scrollTop;
+      }
+    };
+
+    const handleTouchMove = (e) => {
+      if (viewMode === 'slideshow' || editMode || pullToRefresh.refreshing) return;
+      if (touchStartY === 0) return;
+
+      const touchY = e.touches[0].clientY;
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+      const pullDistance = touchY - touchStartY;
+
+      // Only trigger if pulling down from top
+      if (scrollTop === 0 && pullDistance > 0) {
+        setPullToRefresh({ pulling: true, distance: Math.min(pullDistance, 100), refreshing: false });
+
+        // Prevent default scroll when pulling
+        if (pullDistance > 10) {
+          e.preventDefault();
+        }
+      }
+    };
+
+    const handleTouchEnd = async () => {
+      if (viewMode === 'slideshow' || editMode) return;
+
+      const { pulling, distance } = pullToRefresh;
+
+      if (pulling && distance > 60) {
+        // Trigger refresh
+        setPullToRefresh({ pulling: false, distance: 0, refreshing: true });
+
+        try {
+          await loadData();
+        } finally {
+          setTimeout(() => {
+            setPullToRefresh({ pulling: false, distance: 0, refreshing: false });
+          }, 500);
+        }
+      } else {
+        // Reset if not pulled enough
+        setPullToRefresh({ pulling: false, distance: 0, refreshing: false });
+      }
+
+      touchStartY = 0;
+      touchStartScrollTop = 0;
+    };
+
+    document.addEventListener('touchstart', handleTouchStart, { passive: true });
+    document.addEventListener('touchmove', handleTouchMove, { passive: false });
+    document.addEventListener('touchend', handleTouchEnd);
+
+    return () => {
+      document.removeEventListener('touchstart', handleTouchStart);
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [viewMode, editMode, pullToRefresh, loadData]);
 
   const handleLogout = () => {
     authAPI.logout();
@@ -772,6 +846,36 @@ function HomePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800 transition-colors">
+      {/* Pull-to-Refresh Indicator */}
+      {(pullToRefresh.pulling || pullToRefresh.refreshing) && (
+        <div
+          className="fixed top-0 left-0 right-0 z-50 flex justify-center transition-all duration-200"
+          style={{
+            transform: `translateY(${pullToRefresh.pulling ? Math.min(pullToRefresh.distance - 60, 40) : 0}px)`,
+            opacity: pullToRefresh.refreshing ? 1 : Math.min(pullToRefresh.distance / 80, 1)
+          }}
+        >
+          <div className="mt-4 bg-white dark:bg-gray-800 rounded-full p-3 shadow-lg">
+            {pullToRefresh.refreshing ? (
+              <svg className="w-6 h-6 text-blue-600 dark:text-blue-400 animate-spin" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            ) : (
+              <svg
+                className="w-6 h-6 text-gray-600 dark:text-gray-300 transition-transform duration-200"
+                style={{ transform: `rotate(${Math.min(pullToRefresh.distance * 3, 180)}deg)` }}
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+              </svg>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <header className="bg-white dark:bg-gray-800 shadow-sm transition-colors">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4">

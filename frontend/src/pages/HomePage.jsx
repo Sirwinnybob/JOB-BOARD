@@ -636,21 +636,12 @@ function HomePage() {
                 {editMode ? (hasUnsavedChanges ? 'Save' : 'Done') : 'Edit'}
               </button>
               {editMode && (
-                <>
-                  <button
-                    onClick={handleUploadToPending}
-                    className="px-3 sm:px-4 py-1.5 sm:py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors text-sm whitespace-nowrap"
-                  >
-                    <span className="hidden sm:inline">+ Upload to Pending</span>
-                    <span className="sm:hidden">+ Upload</span>
-                  </button>
-                  <button
-                    onClick={() => setShowSettings(true)}
-                    className="px-3 sm:px-4 py-1.5 sm:py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors text-sm whitespace-nowrap"
-                  >
-                    Settings
-                  </button>
-                </>
+                <button
+                  onClick={() => setShowSettings(true)}
+                  className="px-3 sm:px-4 py-1.5 sm:py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors text-sm whitespace-nowrap"
+                >
+                  Settings
+                </button>
               )}
               <button
                 onClick={() => setShowLabelManagement(true)}

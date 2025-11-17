@@ -44,6 +44,7 @@ function HomePage() {
   });
   const [isClosingSlideshow, setIsClosingSlideshow] = useState(false);
   const [originRect, setOriginRect] = useState(null);
+  const [currentSlideshowIndex, setCurrentSlideshowIndex] = useState(0);
   const navigate = useNavigate();
 
   // Configure drag sensors
@@ -608,12 +609,68 @@ function HomePage() {
   const toggleViewMode = () => {
     console.log('[HomePage] toggleViewMode called, current viewMode:', viewMode);
     if (viewMode === 'slideshow') {
-      // Trigger zoom-out animation before closing
-      console.log('[HomePage] Triggering slideshow close animation');
+      // Exiting slideshow - switch to grid immediately, capture rect, then animate
+      console.log('[HomePage] Exiting slideshow via toggle');
+      setViewMode('grid');
+      localStorage.setItem('viewMode', 'grid');
+
+      const targetPdf = pdfs[currentSlideshowIndex];
+      if (targetPdf) {
+        // Wait for grid to be rendered, then find the card
+        requestAnimationFrame(() => {
+          const gridContainer = document.querySelector('.grid');
+          if (gridContainer) {
+            const cards = gridContainer.querySelectorAll('.cursor-pointer');
+            let foundCard = null;
+
+            // Find the card that matches the current slideshow item
+            cards.forEach(card => {
+              const thumbnail = card.querySelector('img[alt]');
+              if (thumbnail && targetPdf.images_base) {
+                if (thumbnail.src.includes(`${targetPdf.images_base}-1.png`) ||
+                    (targetPdf.thumbnail && thumbnail.src.includes(targetPdf.thumbnail))) {
+                  foundCard = card;
+                }
+              }
+            });
+
+            if (foundCard) {
+              const rect = foundCard.getBoundingClientRect();
+              setOriginRect({
+                top: rect.top,
+                left: rect.left,
+                width: rect.width,
+                height: rect.height,
+                scrollX: window.scrollX || window.pageXOffset,
+                scrollY: window.scrollY || window.pageYOffset,
+              });
+              console.log('[HomePage] Captured origin rect for toggle exit:', rect);
+            }
+          }
+        });
+      }
       setIsClosingSlideshow(true);
     } else {
-      // Switch to slideshow (will trigger zoom-in)
-      console.log('[HomePage] Switching to slideshow view');
+      // Entering slideshow - capture first item's rect before switching
+      console.log('[HomePage] Entering slideshow via toggle, capturing first item rect');
+      const gridContainer = document.querySelector('.grid');
+      if (gridContainer) {
+        const cards = gridContainer.querySelectorAll('.cursor-pointer');
+        if (cards.length > 0) {
+          const firstCard = cards[0];
+          const rect = firstCard.getBoundingClientRect();
+          setOriginRect({
+            top: rect.top,
+            left: rect.left,
+            width: rect.width,
+            height: rect.height,
+            scrollX: window.scrollX || window.pageXOffset,
+            scrollY: window.scrollY || window.pageYOffset,
+          });
+          console.log('[HomePage] Captured origin rect for toggle entry:', rect);
+        }
+      }
+      // Switch to slideshow after capturing rect
       setViewMode('slideshow');
       localStorage.setItem('viewMode', 'slideshow');
       setSelectedPdf(null);
@@ -622,51 +679,53 @@ function HomePage() {
 
   const handleInitiateClose = () => {
     // Trigger zoom-out animation
-    console.log('[HomePage] handleInitiateClose called (X button clicked)');
+    console.log('[HomePage] handleInitiateClose called');
 
-    // Edge case: Recapture origin position before closing
-    // The grid may have been reordered/updated while slideshow was open
-    if (selectedPdf) {
-      // Try to find the current position of this PDF in the DOM
-      const gridContainer = document.querySelector('.grid');
-      if (gridContainer) {
-        // Find all clickable cards
-        const cards = gridContainer.querySelectorAll('.cursor-pointer');
-        let foundCard = null;
+    // Switch to grid view immediately so it's already rendered underneath
+    setViewMode('grid');
+    localStorage.setItem('viewMode', 'grid');
 
-        // Search through cards to find one with matching PDF ID
-        cards.forEach(card => {
-          // The card should have the DraggableCoverSheetCard inside it
-          // We can check data attributes or search for the thumbnail
-          const thumbnail = card.querySelector('img[alt]');
-          if (thumbnail && thumbnail.alt && selectedPdf.original_name) {
-            if (thumbnail.alt.includes(selectedPdf.original_name) ||
-                thumbnail.src.includes(`${selectedPdf.thumbnail}`) ||
-                thumbnail.src.includes(`${selectedPdf.images_base}`)) {
-              foundCard = card;
+    // Get the currently viewed PDF based on slideshow index
+    const currentPdf = pdfs[currentSlideshowIndex];
+    console.log('[HomePage] Current slideshow index:', currentSlideshowIndex, 'PDF:', currentPdf);
+
+    if (currentPdf) {
+      // Wait for grid to render, then find the card for the currently viewed PDF
+      requestAnimationFrame(() => {
+        const gridContainer = document.querySelector('.grid');
+        if (gridContainer) {
+          const cards = gridContainer.querySelectorAll('.cursor-pointer');
+          let foundCard = null;
+
+          // Find the card that matches the currently viewed PDF
+          cards.forEach(card => {
+            const thumbnail = card.querySelector('img[alt]');
+            if (thumbnail && currentPdf.images_base) {
+              if (thumbnail.src.includes(`${currentPdf.images_base}-1.png`) ||
+                  (currentPdf.thumbnail && thumbnail.src.includes(currentPdf.thumbnail))) {
+                foundCard = card;
+              }
             }
-          }
-        });
+          });
 
-        if (foundCard) {
-          // Recapture the current position
-          const rect = foundCard.getBoundingClientRect();
-          const updatedOriginRect = {
-            top: rect.top,
-            left: rect.left,
-            width: rect.width,
-            height: rect.height,
-            scrollX: window.scrollX || window.pageXOffset,
-            scrollY: window.scrollY || window.pageYOffset,
-          };
-          setOriginRect(updatedOriginRect);
-          console.log('[HomePage] Recaptured origin rect before close (position may have changed):', updatedOriginRect);
-        } else {
-          // Card not found (might have been deleted) - clear originRect to use fallback
-          console.warn('[HomePage] Could not find selected PDF in grid, using fallback close animation');
-          setOriginRect(null);
+          if (foundCard) {
+            const rect = foundCard.getBoundingClientRect();
+            const updatedOriginRect = {
+              top: rect.top,
+              left: rect.left,
+              width: rect.width,
+              height: rect.height,
+              scrollX: window.scrollX || window.pageXOffset,
+              scrollY: window.scrollY || window.pageYOffset,
+            };
+            setOriginRect(updatedOriginRect);
+            console.log('[HomePage] Captured origin rect for current item:', updatedOriginRect);
+          } else {
+            console.warn('[HomePage] Could not find current PDF in grid, using fallback close animation');
+            setOriginRect(null);
+          }
         }
-      }
+      });
     }
 
     setIsClosingSlideshow(true);
@@ -674,9 +733,8 @@ function HomePage() {
 
   const handleSlideshowAnimationComplete = () => {
     // Called after zoom-out animation completes
-    console.log('[HomePage] handleSlideshowAnimationComplete called, switching to grid view');
-    setViewMode('grid');
-    localStorage.setItem('viewMode', 'grid');
+    console.log('[HomePage] handleSlideshowAnimationComplete called, cleaning up');
+    // Grid view already set in handleInitiateClose, just clean up states
     setSelectedPdf(null);
     setIsClosingSlideshow(false);
     setOriginRect(null); // Clear origin rect after animation
@@ -883,18 +941,25 @@ function HomePage() {
               <div className="text-center py-20">
                 <p className="text-xl text-gray-600 dark:text-gray-400 transition-colors">No job postings available</p>
               </div>
-            ) : viewMode === 'slideshow' ? (
-              <SlideShowView
-                pdfs={pdfs}
-                initialIndex={selectedPdf ? pdfs.findIndex(p => p && p.id === selectedPdf.id) : 0}
-                onClose={handleInitiateClose}
-                enteredViaClick={selectedPdf !== null}
-                isClosing={isClosingSlideshow}
-                onAnimationComplete={handleSlideshowAnimationComplete}
-                originRect={originRect}
-              />
             ) : (
-              gridContent()
+              <>
+                {/* Show grid when not in slideshow, or when closing slideshow (grid underneath) */}
+                {(viewMode === 'grid' || isClosingSlideshow) && gridContent()}
+
+                {/* Show slideshow when in slideshow mode, or when closing (overlay on top) */}
+                {(viewMode === 'slideshow' || isClosingSlideshow) && (
+                  <SlideShowView
+                    pdfs={pdfs}
+                    initialIndex={selectedPdf ? pdfs.findIndex(p => p && p.id === selectedPdf.id) : 0}
+                    onClose={handleInitiateClose}
+                    enteredViaClick={selectedPdf !== null}
+                    isClosing={isClosingSlideshow}
+                    onAnimationComplete={handleSlideshowAnimationComplete}
+                    originRect={originRect}
+                    onIndexChange={setCurrentSlideshowIndex}
+                  />
+                )}
+              </>
             )}
           </>
         )}

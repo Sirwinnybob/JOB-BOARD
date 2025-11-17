@@ -943,8 +943,10 @@ function HomePage() {
               </div>
             ) : (
               <>
-                {/* Show grid when not in slideshow, or when closing slideshow (grid underneath) */}
-                {(viewMode === 'grid' || isClosingSlideshow) && gridContent()}
+                {/* Grid is always loaded, hidden when in slideshow mode (unless closing) */}
+                <div className={viewMode === 'slideshow' && !isClosingSlideshow ? 'hidden' : ''}>
+                  {gridContent()}
+                </div>
 
                 {/* Show slideshow when in slideshow mode, or when closing (overlay on top) */}
                 {(viewMode === 'slideshow' || isClosingSlideshow) && (

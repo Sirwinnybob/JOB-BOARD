@@ -32,8 +32,8 @@ function PDFGrid({ pdfs, rows, cols, aspectWidth = 11, aspectHeight = 10, onPdfC
                 onClick={(e) => onPdfClick(pdf, e)}
                 className="relative w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-lg shadow-md border-2 border-dashed border-gray-300 dark:border-gray-600 overflow-hidden transition-all duration-500 cursor-pointer hover:opacity-90 transition-opacity"
               >
-                <div className="w-full h-full flex items-center justify-center p-4">
-                  <p className="text-gray-600 dark:text-gray-400 text-4xl font-bold text-center break-words leading-tight transition-colors">
+                <div className="w-full h-full flex items-center justify-center p-2 sm:p-3 md:p-4">
+                  <p className="text-gray-600 dark:text-gray-400 text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-center break-words leading-tight transition-colors">
                     {pdf.placeholder_text || 'PLACEHOLDER'}
                   </p>
                 </div>

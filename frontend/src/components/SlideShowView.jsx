@@ -340,8 +340,8 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
                 className="relative h-full max-w-6xl w-full mx-auto flex items-center justify-center"
               >
                 {pdf.is_placeholder ? (
-                  <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-lg shadow-md border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center p-8 transition-colors">
-                    <p className="text-gray-600 dark:text-gray-400 text-6xl font-bold text-center break-words leading-tight transition-colors">
+                  <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-lg shadow-md border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center p-4 sm:p-6 md:p-8 transition-colors">
+                    <p className="text-gray-600 dark:text-gray-400 text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-center break-words leading-tight transition-colors">
                       {pdf.placeholder_text || 'PLACEHOLDER'}
                     </p>
                   </div>
@@ -450,61 +450,16 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
         </div>
       )}
 
-      {/* Top Navigation Bar */}
-      <div className="absolute top-0 left-0 right-0 bg-gray-900/80 dark:bg-black/70 backdrop-blur-sm z-20 transition-colors">
-        <div className="flex items-center justify-between px-4 py-3">
-          {/* Left side - Close button (only when clicked from grid) */}
-          <div className="flex items-center gap-4">
-            {enteredViaClick && (
-              <button
-                onClick={onClose}
-                className="bg-gray-800/60 hover:bg-gray-700/80 dark:bg-black/50 dark:hover:bg-black/70 text-white p-2 rounded-lg transition-all shadow-lg"
-                aria-label="Close"
-              >
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-            )}
-          </div>
-
-          {/* Center - Counter */}
-          <div className="text-white px-4 py-1 text-sm font-medium">
-            {currentIndex + 1} / {displayPdfs.length}
-          </div>
-
-          {/* Right side - Controls */}
-          <div className="flex items-center gap-3">
-            {/* Dark Mode Toggle */}
-            <button
-              onClick={toggleDarkMode}
-              className="bg-gray-800/60 hover:bg-gray-700/80 dark:bg-black/50 dark:hover:bg-black/70 text-white p-2 rounded-lg transition-all"
-              aria-label="Toggle dark mode"
-            >
-              {darkMode ? (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
-              ) : (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                </svg>
-              )}
-            </button>
-
-            {/* View Mode Toggle */}
-            <button
-              onClick={onClose}
-              className="bg-gray-800/60 hover:bg-gray-700/80 dark:bg-black/50 dark:hover:bg-black/70 text-white p-2 rounded-lg transition-all"
-              aria-label="Switch to grid view"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
+      {/* Floating Close Button - Top Right */}
+      <button
+        onClick={onClose}
+        className="fixed top-20 right-4 sm:right-6 z-50 bg-gray-900/80 hover:bg-gray-800/90 dark:bg-black/80 dark:hover:bg-black/90 text-white p-3 sm:p-4 rounded-full transition-all shadow-2xl backdrop-blur-sm"
+        aria-label="Close slideshow"
+      >
+        <svg className="w-6 h-6 sm:w-7 sm:h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+        </svg>
+      </button>
     </div>
     </>
   );

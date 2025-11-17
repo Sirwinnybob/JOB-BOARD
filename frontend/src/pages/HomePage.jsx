@@ -122,9 +122,17 @@ function HomePage() {
     ];
 
     if (relevantTypes.includes(message.type)) {
+      // Edge case: If slideshow is open and grid is updated, clear originRect
+      // It will be recaptured when user closes the slideshow
+      if (viewMode === 'slideshow' &&
+          ['pdf_deleted', 'pdfs_reordered', 'pdf_uploaded'].includes(message.type)) {
+        console.log('[HomePage] Grid updated while slideshow open, clearing stale originRect');
+        setOriginRect(null);
+      }
+
       loadData();
     }
-  }, [editMode, loadData]);
+  }, [editMode, loadData, viewMode]);
 
   useWebSocket(handleWebSocketMessage, true);
 
@@ -549,6 +557,52 @@ function HomePage() {
   const handleInitiateClose = () => {
     // Trigger zoom-out animation
     console.log('[HomePage] handleInitiateClose called (X button clicked)');
+
+    // Edge case: Recapture origin position before closing
+    // The grid may have been reordered/updated while slideshow was open
+    if (selectedPdf) {
+      // Try to find the current position of this PDF in the DOM
+      const gridContainer = document.querySelector('.grid');
+      if (gridContainer) {
+        // Find all clickable cards
+        const cards = gridContainer.querySelectorAll('.cursor-pointer');
+        let foundCard = null;
+
+        // Search through cards to find one with matching PDF ID
+        cards.forEach(card => {
+          // The card should have the DraggableCoverSheetCard inside it
+          // We can check data attributes or search for the thumbnail
+          const thumbnail = card.querySelector('img[alt]');
+          if (thumbnail && thumbnail.alt && selectedPdf.original_name) {
+            if (thumbnail.alt.includes(selectedPdf.original_name) ||
+                thumbnail.src.includes(`${selectedPdf.thumbnail}`) ||
+                thumbnail.src.includes(`${selectedPdf.images_base}`)) {
+              foundCard = card;
+            }
+          }
+        });
+
+        if (foundCard) {
+          // Recapture the current position
+          const rect = foundCard.getBoundingClientRect();
+          const updatedOriginRect = {
+            top: rect.top,
+            left: rect.left,
+            width: rect.width,
+            height: rect.height,
+            scrollX: window.scrollX || window.pageXOffset,
+            scrollY: window.scrollY || window.pageYOffset,
+          };
+          setOriginRect(updatedOriginRect);
+          console.log('[HomePage] Recaptured origin rect before close (position may have changed):', updatedOriginRect);
+        } else {
+          // Card not found (might have been deleted) - clear originRect to use fallback
+          console.warn('[HomePage] Could not find selected PDF in grid, using fallback close animation');
+          setOriginRect(null);
+        }
+      }
+    }
+
     setIsClosingSlideshow(true);
   };
 

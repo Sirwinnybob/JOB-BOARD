@@ -51,13 +51,14 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
       return;
     }
 
-    // Calculate scale needed to go from grid item to fullscreen
-    const scaleX = viewportWidth / originRect.width;
-    const scaleY = viewportHeight / originRect.height;
+    // Calculate scale needed: grid item size relative to viewport
+    // This is how much we need to SHRINK the fullscreen view to match the grid item
+    const scaleX = originRect.width / viewportWidth;
+    const scaleY = originRect.height / viewportHeight;
 
     // Use the smaller scale to maintain aspect ratio
-    // Edge case: Clamp scale to reasonable bounds (0.1 to 20)
-    const scale = Math.max(0.1, Math.min(20, Math.min(scaleX, scaleY)));
+    // Edge case: Clamp scale to reasonable bounds (0.01 to 1)
+    const scale = Math.max(0.01, Math.min(1, Math.min(scaleX, scaleY)));
 
     // Calculate the center of the clicked element
     const originCenterX = originRect.left + (originRect.width / 2);
@@ -67,9 +68,10 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
     const viewportCenterX = viewportWidth / 2;
     const viewportCenterY = viewportHeight / 2;
 
-    // Calculate translation needed to move from element center to viewport center
-    const translateX = viewportCenterX - originCenterX;
-    const translateY = viewportCenterY - originCenterY;
+    // Calculate translation needed to move viewport center TO grid item center
+    // (This positions the fullscreen container to appear at the grid item location)
+    const translateX = originCenterX - viewportCenterX;
+    const translateY = originCenterY - viewportCenterY;
 
     // Edge case: Clamp translations to prevent extreme off-screen animations
     const maxTranslate = Math.max(viewportWidth, viewportHeight) * 2;
@@ -252,7 +254,7 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
 
   // Fullscreen mode styling
   const containerClass = onClose
-    ? "fixed inset-0 bg-black z-50"
+    ? "fixed inset-0 bg-white dark:bg-black z-50 transition-colors"
     : "relative w-full";
   const containerStyle = onClose
     ? { height: '100vh' }
@@ -286,18 +288,15 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
       `;
     }
 
-    const { scale, translateX, translateY, originX, originY } = animationTransform;
+    const { scale, translateX, translateY } = animationTransform;
 
-    // Initial transform: position at origin (small) and translate to center
-    const initialScale = 1 / scale;
-    const initialTranslateX = -translateX / scale;
-    const initialTranslateY = -translateY / scale;
-
+    // Initial state: positioned at grid item location, scaled to grid item size
+    // Final state: centered (translate 0,0), fullscreen (scale 1)
     return `
       @keyframes zoomIn {
         from {
           opacity: 0.3;
-          transform: translate(${initialTranslateX}px, ${initialTranslateY}px) scale(${initialScale});
+          transform: translate(${translateX}px, ${translateY}px) scale(${scale});
         }
         to {
           opacity: 1;
@@ -311,7 +310,7 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
         }
         to {
           opacity: 0;
-          transform: translate(${initialTranslateX}px, ${initialTranslateY}px) scale(${initialScale});
+          transform: translate(${translateX}px, ${translateY}px) scale(${scale});
         }
       }
     `;
@@ -374,7 +373,7 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
                 />
 
                 {/* Job Info Overlay */}
-                <div className="absolute top-4 left-4 bg-black/70 text-white px-4 py-2 rounded-lg">
+                <div className="absolute top-4 left-4 bg-gray-900/80 dark:bg-black/70 text-white px-4 py-2 rounded-lg transition-colors">
                   <div className="text-sm font-medium">
                     {pdf.job_number && <div>Job #{pdf.job_number}</div>}
                     {pdf.construction_method && (
@@ -409,7 +408,7 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
           <button
             onClick={handlePrevious}
             disabled={currentIndex === 0}
-            className="absolute left-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-4 rounded-full transition-all disabled:opacity-30 disabled:cursor-not-allowed z-10"
+            className="absolute left-4 top-1/2 -translate-y-1/2 bg-gray-800/60 hover:bg-gray-900/80 dark:bg-black/50 dark:hover:bg-black/70 text-white p-4 rounded-full transition-all disabled:opacity-30 disabled:cursor-not-allowed z-10"
             aria-label="Previous"
           >
             <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -420,7 +419,7 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
           <button
             onClick={handleNext}
             disabled={currentIndex === displayPdfs.length - 1}
-            className="absolute right-4 top-1/2 -translate-y-1/2 bg-black/50 hover:bg-black/70 text-white p-4 rounded-full transition-all disabled:opacity-30 disabled:cursor-not-allowed z-10"
+            className="absolute right-4 top-1/2 -translate-y-1/2 bg-gray-800/60 hover:bg-gray-900/80 dark:bg-black/50 dark:hover:bg-black/70 text-white p-4 rounded-full transition-all disabled:opacity-30 disabled:cursor-not-allowed z-10"
             aria-label="Next"
           >
             <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -432,7 +431,7 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
 
       {/* Position Indicator */}
       {displayPdfs.length > 1 && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 bg-black/50 px-4 py-2 rounded-full z-10">
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 bg-gray-800/60 dark:bg-black/50 px-4 py-2 rounded-full z-10 transition-colors">
           {displayPdfs.map((_, index) => (
             <button
               key={index}
@@ -452,7 +451,7 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
       {onClose && (
         <button
           onClick={onClose}
-          className="absolute top-4 left-4 bg-black/70 hover:bg-black/90 text-white p-4 rounded-full transition-all z-20 shadow-lg"
+          className="absolute top-4 left-4 bg-gray-900/80 hover:bg-gray-900/95 dark:bg-black/70 dark:hover:bg-black/90 text-white p-4 rounded-full transition-all z-20 shadow-lg"
           aria-label="Close"
         >
           <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
@@ -468,7 +467,7 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
             {/* Dark Mode Toggle */}
             <button
               onClick={() => setDarkMode(!darkMode)}
-              className="bg-black/70 hover:bg-black/90 text-white px-3 py-2 rounded-lg transition-colors flex items-center gap-2"
+              className="bg-gray-900/80 hover:bg-gray-900/95 dark:bg-black/70 dark:hover:bg-black/90 text-white px-3 py-2 rounded-lg transition-colors flex items-center gap-2"
               title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
             >
               {darkMode ? (
@@ -485,7 +484,7 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
         )}
 
         {/* Counter */}
-        <div className="bg-black/70 text-white px-4 py-2 rounded-lg text-sm font-medium">
+        <div className="bg-gray-900/80 dark:bg-black/70 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
           {currentIndex + 1} / {displayPdfs.length}
         </div>
       </div>

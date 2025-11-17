@@ -51,13 +51,14 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
       return;
     }
 
-    // Calculate scale needed to go from grid item to fullscreen
-    const scaleX = viewportWidth / originRect.width;
-    const scaleY = viewportHeight / originRect.height;
+    // Calculate scale needed: grid item size relative to viewport
+    // This is how much we need to SHRINK the fullscreen view to match the grid item
+    const scaleX = originRect.width / viewportWidth;
+    const scaleY = originRect.height / viewportHeight;
 
     // Use the smaller scale to maintain aspect ratio
-    // Edge case: Clamp scale to reasonable bounds (0.1 to 20)
-    const scale = Math.max(0.1, Math.min(20, Math.min(scaleX, scaleY)));
+    // Edge case: Clamp scale to reasonable bounds (0.01 to 1)
+    const scale = Math.max(0.01, Math.min(1, Math.min(scaleX, scaleY)));
 
     // Calculate the center of the clicked element
     const originCenterX = originRect.left + (originRect.width / 2);
@@ -67,9 +68,10 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
     const viewportCenterX = viewportWidth / 2;
     const viewportCenterY = viewportHeight / 2;
 
-    // Calculate translation needed to move from element center to viewport center
-    const translateX = viewportCenterX - originCenterX;
-    const translateY = viewportCenterY - originCenterY;
+    // Calculate translation needed to move viewport center TO grid item center
+    // (This positions the fullscreen container to appear at the grid item location)
+    const translateX = originCenterX - viewportCenterX;
+    const translateY = originCenterY - viewportCenterY;
 
     // Edge case: Clamp translations to prevent extreme off-screen animations
     const maxTranslate = Math.max(viewportWidth, viewportHeight) * 2;
@@ -286,18 +288,15 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
       `;
     }
 
-    const { scale, translateX, translateY, originX, originY } = animationTransform;
+    const { scale, translateX, translateY } = animationTransform;
 
-    // Initial transform: position at origin (small) and translate to center
-    const initialScale = 1 / scale;
-    const initialTranslateX = -translateX / scale;
-    const initialTranslateY = -translateY / scale;
-
+    // Initial state: positioned at grid item location, scaled to grid item size
+    // Final state: centered (translate 0,0), fullscreen (scale 1)
     return `
       @keyframes zoomIn {
         from {
           opacity: 0.3;
-          transform: translate(${initialTranslateX}px, ${initialTranslateY}px) scale(${initialScale});
+          transform: translate(${translateX}px, ${translateY}px) scale(${scale});
         }
         to {
           opacity: 1;
@@ -311,7 +310,7 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
         }
         to {
           opacity: 0;
-          transform: translate(${initialTranslateX}px, ${initialTranslateY}px) scale(${initialScale});
+          transform: translate(${translateX}px, ${translateY}px) scale(${scale});
         }
       }
     `;

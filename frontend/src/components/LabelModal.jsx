@@ -54,24 +54,24 @@ function LabelModal({ pdf, onClose, onSuccess }) {
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-lg shadow-2xl p-4 sm:p-6 w-full max-w-md max-h-[90vh] overflow-y-auto"
+        className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl p-4 sm:p-6 w-full max-w-md max-h-[90vh] overflow-y-auto transition-colors"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-2 transition-colors">
           Manage Labels
         </h2>
-        <p className="text-sm text-gray-600 mb-4 truncate">
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4 truncate transition-colors">
           {pdf.original_name}
         </p>
 
         {loading ? (
           <div className="text-center py-8">
-            <div className="text-gray-600">Loading labels...</div>
+            <div className="text-gray-600 dark:text-gray-400 transition-colors">Loading labels...</div>
           </div>
         ) : (
           <div className="space-y-2 max-h-96 overflow-y-auto">
             {labels.length === 0 ? (
-              <p className="text-gray-500 text-center py-4">
+              <p className="text-gray-500 dark:text-gray-400 text-center py-4 transition-colors">
                 No labels available. Contact admin to create labels.
               </p>
             ) : (
@@ -83,8 +83,8 @@ function LabelModal({ pdf, onClose, onSuccess }) {
                     onClick={() => toggleLabel(label.id)}
                     className={`w-full px-4 py-3 rounded-lg border-2 transition-all text-left flex items-center justify-between ${
                       isSelected
-                        ? 'border-blue-500 bg-blue-50'
-                        : 'border-gray-200 hover:border-gray-300'
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30'
+                        : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500'
                     }`}
                   >
                     <div className="flex items-center space-x-3">
@@ -92,7 +92,7 @@ function LabelModal({ pdf, onClose, onSuccess }) {
                         className="w-6 h-6 rounded"
                         style={{ backgroundColor: label.color }}
                       />
-                      <span className="font-medium text-gray-900">
+                      <span className="font-medium text-gray-900 dark:text-white transition-colors">
                         {label.name}
                       </span>
                     </div>
@@ -120,7 +120,7 @@ function LabelModal({ pdf, onClose, onSuccess }) {
           <button
             onClick={onClose}
             disabled={saving}
-            className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+            className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
           >
             Cancel
           </button>

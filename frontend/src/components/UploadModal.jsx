@@ -68,14 +68,14 @@ function UploadModal({ onClose, onSuccess, targetPosition = null, uploadToPendin
 
   return (
     <div
-      className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+      className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-3 sm:p-4"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-lg shadow-2xl p-6 w-full max-w-md"
+        className="bg-white rounded-lg shadow-2xl p-4 sm:p-6 w-full max-w-md"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3 sm:mb-4">
           Upload PDF {!uploadToPending && targetPosition !== null ? `to Slot ${targetPosition + 1}` : 'to Pending'}
         </h2>
 

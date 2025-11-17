@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import HomePage from './pages/HomePage';
-import AdminPage from './pages/AdminPage';
 import LoginPage from './pages/LoginPage';
 import OCRSettingsPage from './pages/OCRSettingsPage';
 import { authAPI } from './utils/api';
@@ -14,11 +13,6 @@ function App() {
     setIsAuthenticated(true);
   };
 
-  const handleLogout = () => {
-    authAPI.logout();
-    setIsAuthenticated(false);
-  };
-
   return (
     <DarkModeProvider>
       <Router>
@@ -28,19 +22,9 @@ function App() {
             path="/login"
             element={
               isAuthenticated ? (
-                <Navigate to="/admin" replace />
+                <Navigate to="/" replace />
               ) : (
                 <LoginPage onLogin={handleLogin} />
-              )
-            }
-          />
-          <Route
-            path="/admin"
-            element={
-              isAuthenticated ? (
-                <AdminPage onLogout={handleLogout} />
-              ) : (
-                <Navigate to="/login" replace />
               )
             }
           />

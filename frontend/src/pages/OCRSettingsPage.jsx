@@ -18,6 +18,7 @@ function OCRSettingsPage() {
 
   useEffect(() => {
     loadRegions();
+    loadTestImage();
   }, []);
 
   const loadRegions = async () => {
@@ -29,16 +30,55 @@ function OCRSettingsPage() {
     }
   };
 
+  const loadTestImage = async () => {
+    try {
+      const imageBlob = await ocrAPI.getTestImage();
+      if (imageBlob) {
+        const imageUrl = URL.createObjectURL(imageBlob);
+        setTestImage(imageUrl);
+      }
+    } catch (error) {
+      console.error('Error loading test image:', error);
+    }
+  };
+
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     setTestImageFile(file);
+
+    // Display the image immediately for user feedback
     const reader = new FileReader();
     reader.onload = (event) => {
       setTestImage(event.target.result);
     };
     reader.readAsDataURL(file);
+
+    // Save to backend for persistence
+    try {
+      await ocrAPI.uploadTestImage(file);
+      console.log('Test image uploaded successfully');
+    } catch (error) {
+      console.error('Error uploading test image:', error);
+      alert('Failed to save test image to server');
+    }
+  };
+
+  const handleRemoveImage = async () => {
+    if (!confirm('Are you sure you want to remove the test image?')) {
+      return;
+    }
+
+    try {
+      await ocrAPI.deleteTestImage();
+      setTestImage(null);
+      setTestImageFile(null);
+      console.log('Test image removed successfully');
+    } catch (error) {
+      console.error('Error removing test image:', error);
+      alert('Failed to remove test image');
+    }
   };
 
   const handleImageLoad = (e) => {
@@ -250,15 +290,30 @@ function OCRSettingsPage() {
 
           {/* Upload Section */}
           <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Upload Test Cover Sheet (PDF or Image)
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Upload Test Cover Sheet (PDF or Image)
+              </label>
+              {testImage && (
+                <button
+                  onClick={handleRemoveImage}
+                  className="text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 font-medium transition-colors"
+                >
+                  Remove Image
+                </button>
+              )}
+            </div>
             <input
               type="file"
               accept="image/*,.pdf"
               onChange={handleImageUpload}
-              className="block w-full text-sm text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-700 focus:outline-none"
+              className="block w-full text-sm text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-700 focus:outline-none transition-colors"
             />
+            {testImage && (
+              <p className="mt-2 text-xs text-green-600 dark:text-green-400">
+                ✓ Test image is saved and will persist across sessions
+              </p>
+            )}
           </div>
         </div>
 

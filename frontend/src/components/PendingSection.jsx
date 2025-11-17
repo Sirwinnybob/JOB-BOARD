@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
-import { pdfAPI } from '../utils/api';
 import { useDarkMode } from '../contexts/DarkModeContext';
 
 function DraggablePendingItem({ pdf, index, onMovePdfToBoard, onDelete, editMode, onMetadataUpdate }) {
@@ -40,26 +39,21 @@ function DraggablePendingItem({ pdf, index, onMovePdfToBoard, onDelete, editMode
     setEditValue(currentValue || '');
   };
 
-  const handleSaveEdit = async (field) => {
-    try {
-      const updates = {};
-      if (field === 'job_number') {
-        updates.job_number = editValue;
-        updates.construction_method = pdf.construction_method;
-      } else {
-        updates.job_number = pdf.job_number;
-        updates.construction_method = editValue;
-      }
-
-      await pdfAPI.updateMetadata(pdf.id, updates);
-      if (onMetadataUpdate) {
-        onMetadataUpdate(pdf.id, updates);
-      }
-      setEditing(null);
-    } catch (error) {
-      console.error('Error updating metadata:', error);
-      alert('Failed to update metadata');
+  const handleSaveEdit = (field) => {
+    const updates = {};
+    if (field === 'job_number') {
+      updates.job_number = editValue;
+      updates.construction_method = pdf.construction_method;
+    } else {
+      updates.job_number = pdf.job_number;
+      updates.construction_method = editValue;
     }
+
+    // Only update local state - don't save to backend until Save button is pressed
+    if (onMetadataUpdate) {
+      onMetadataUpdate(pdf.id, updates);
+    }
+    setEditing(null);
   };
 
   const handleCancelEdit = () => {

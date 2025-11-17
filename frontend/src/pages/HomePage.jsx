@@ -197,6 +197,36 @@ function HomePage() {
             await Promise.all(statusUpdates);
           }
 
+          // Update metadata for all PDFs that changed
+          const metadataUpdates = [];
+          const workingAllPdfs = [...workingPdfs, ...workingPendingPdfs];
+
+          workingAllPdfs.forEach(workingPdf => {
+            if (!workingPdf) return;
+
+            const originalPdf = [...pdfs, ...pendingPdfs].find(p => p && p.id === workingPdf.id);
+            if (originalPdf) {
+              const metadataChanged =
+                originalPdf.job_number !== workingPdf.job_number ||
+                originalPdf.construction_method !== workingPdf.construction_method ||
+                originalPdf.placeholder_text !== workingPdf.placeholder_text;
+
+              if (metadataChanged) {
+                metadataUpdates.push(
+                  pdfAPI.updateMetadata(workingPdf.id, {
+                    job_number: workingPdf.job_number,
+                    construction_method: workingPdf.construction_method,
+                    placeholder_text: workingPdf.placeholder_text
+                  })
+                );
+              }
+            }
+          });
+
+          if (metadataUpdates.length > 0) {
+            await Promise.all(metadataUpdates);
+          }
+
           await loadData();
         } catch (error) {
           console.error('Error saving changes:', error);
@@ -328,6 +358,9 @@ function HomePage() {
       setPendingPdfs(prevPending =>
         prevPending.map(pdf => (pdf && pdf.id === pdfId) ? { ...pdf, ...metadata } : pdf)
       );
+    } else {
+      // Mark changes as unsaved when in edit mode
+      setHasUnsavedChanges(true);
     }
   };
 

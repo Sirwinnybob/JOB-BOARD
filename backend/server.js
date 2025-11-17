@@ -1034,7 +1034,7 @@ const OCR_TEST_IMAGE = path.join(OCR_TEST_DIR, 'test-image.png');
   }
 })();
 
-// Upload OCR test image
+// Upload OCR test PDF (will be converted to image)
 const ocrTestUpload = multer({
   storage: multer.diskStorage({
     destination: async (req, file, cb) => {
@@ -1046,16 +1046,15 @@ const ocrTestUpload = multer({
       }
     },
     filename: (req, file, cb) => {
-      cb(null, 'test-image.png');
+      cb(null, 'test-upload.pdf');
     }
   }),
-  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB
   fileFilter: (req, file, cb) => {
-    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif'];
-    if (allowedTypes.includes(file.mimetype)) {
+    if (file.mimetype === 'application/pdf') {
       cb(null, true);
     } else {
-      cb(new Error('Only image files (PNG, JPG, GIF) are allowed'));
+      cb(new Error('Only PDF files are allowed'));
     }
   }
 });
@@ -1063,17 +1062,44 @@ const ocrTestUpload = multer({
 app.post('/api/ocr-test-image', authMiddleware, ocrTestUpload.single('image'), async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ error: 'No image file provided' });
+      return res.status(400).json({ error: 'No PDF file provided' });
     }
 
-    res.json({
-      message: 'Test image uploaded successfully',
-      filename: req.file.filename,
-      path: '/api/ocr-test-image'
-    });
+    const pdfPath = req.file.path;
+    console.log('Converting PDF to image for OCR testing:', pdfPath);
+
+    // Convert PDF to PNG using pdftocairo (same DPI as job board: 200dpi)
+    const outputBase = path.join(OCR_TEST_DIR, 'test-image');
+    const { execAsync } = require('./utils/helpers');
+
+    // Use same DPI as job board thumbnails (200dpi) for consistency
+    const command = `pdftocairo -png -f 1 -l 1 -singlefile -r 200 "${pdfPath}" "${outputBase}"`;
+    console.log(`Running pdftocairo command: ${command}`);
+
+    const { stdout, stderr } = await execAsync(command);
+    if (stdout) console.log(`pdftocairo stdout: ${stdout}`);
+    if (stderr) console.log(`pdftocairo stderr: ${stderr}`);
+
+    // Verify the output file exists
+    const outputPath = `${outputBase}.png`;
+    try {
+      await fs.access(outputPath);
+      console.log('OCR test image generated successfully at:', outputPath);
+
+      // Clean up the uploaded PDF
+      await fs.unlink(pdfPath);
+
+      res.json({
+        message: 'Test PDF converted to image successfully',
+        filename: 'test-image.png',
+        path: '/api/ocr-test-image'
+      });
+    } catch (err) {
+      throw new Error('Failed to generate image from PDF');
+    }
   } catch (error) {
-    console.error('Error uploading OCR test image:', error);
-    res.status(500).json({ error: 'Failed to upload test image' });
+    console.error('Error processing OCR test PDF:', error);
+    res.status(500).json({ error: error.message || 'Failed to process test PDF' });
   }
 });
 

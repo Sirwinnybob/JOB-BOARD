@@ -45,7 +45,7 @@ export const pdfAPI = {
   delete: (id) => api.delete(`/pdfs/${id}`),
   reorder: (pdfs) => api.put('/pdfs/reorder', { pdfs }),
   updateLabels: (id, labelIds) => api.put(`/pdfs/${id}/labels`, { labelIds }),
-  updateMetadata: (id, job_number, construction_method) => api.put(`/pdfs/${id}/metadata`, { job_number, construction_method }),
+  updateMetadata: (id, metadata) => api.put(`/pdfs/${id}/metadata`, metadata),
   createPlaceholder: (position) => api.post('/pdfs/placeholder', { position }),
   updateStatus: (id, is_pending) => api.put(`/pdfs/${id}/status`, { is_pending }),
 };

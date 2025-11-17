@@ -38,7 +38,7 @@ function DraggableCoverSheetCard({
         updates.construction_method = editValue;
       }
 
-      await pdfAPI.updateMetadata(pdf.id, updates.job_number, updates.construction_method);
+      await pdfAPI.updateMetadata(pdf.id, updates);
       if (onMetadataUpdate) {
         onMetadataUpdate(pdf.id, updates);
       }

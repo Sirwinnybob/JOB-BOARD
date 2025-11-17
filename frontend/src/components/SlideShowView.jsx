@@ -363,9 +363,15 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
                 {/* Job Info Overlay */}
                 <div className="absolute top-4 left-4 bg-gray-900/80 dark:bg-black/70 text-white px-4 py-2 rounded-lg transition-colors">
                   <div className="text-sm font-medium">
-                    {pdf.job_number && <div>Job #{pdf.job_number}</div>}
-                    {pdf.construction_method && (
-                      <div className="text-xs text-gray-300">{pdf.construction_method}</div>
+                    {pdf.is_placeholder ? (
+                      <div>{pdf.placeholder_text || 'PLACEHOLDER'}</div>
+                    ) : (
+                      <>
+                        {pdf.job_number && <div>Job #{pdf.job_number}</div>}
+                        {pdf.construction_method && (
+                          <div className="text-xs text-gray-300">{pdf.construction_method}</div>
+                        )}
+                      </>
                     )}
                   </div>
                 </div>

@@ -359,6 +359,19 @@ function HomePage() {
     }
   };
 
+  const handleEditPlaceholder = async (placeholder) => {
+    const newText = prompt('Enter placeholder text:', placeholder.placeholder_text || 'PLACEHOLDER');
+    if (newText === null) return; // User cancelled
+
+    try {
+      await pdfAPI.updateMetadata(placeholder.id, { placeholder_text: newText });
+      await loadData(); // Reload to show the updated text
+    } catch (error) {
+      console.error('Error updating placeholder text:', error);
+      alert('Failed to update placeholder text');
+    }
+  };
+
   const handleUploadToSlot = (position) => {
     setUploadTargetPosition(position + 1);
     setUploadToPending(false);
@@ -644,6 +657,7 @@ function HomePage() {
           onAddPlaceholder={handleAddPlaceholder}
           onUploadToSlot={handleUploadToSlot}
           onMoveToPending={handleMovePdfToPending}
+          onEditPlaceholder={handleEditPlaceholder}
         />
       );
     }
@@ -793,6 +807,7 @@ function HomePage() {
               onDelete={editMode ? handleDelete : null}
               onUploadToPending={handleUploadToPending}
               editMode={editMode}
+              onMetadataUpdate={handleMetadataUpdate}
             />
 
             {gridContent()}

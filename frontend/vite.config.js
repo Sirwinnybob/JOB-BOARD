@@ -16,6 +16,12 @@ export default defineConfig({
       '/thumbnails': {
         target: 'http://localhost:3000',
         changeOrigin: true
+      },
+      // WebSocket proxy - proxy all WebSocket connections to backend
+      '/': {
+        target: 'ws://localhost:3000',
+        ws: true,
+        changeOrigin: true
       }
     }
   }

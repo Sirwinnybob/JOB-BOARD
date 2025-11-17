@@ -37,7 +37,7 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
 
   // Handle zoom-out animation when closing
   useEffect(() => {
-    if (isClosing && animationState !== 'zoom-out') {
+    if (isClosing) {
       console.log('[SlideShowView] isClosing=true, starting zoom-out animation');
       setAnimationState('zoom-out');
       const timer = setTimeout(() => {
@@ -51,7 +51,7 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
         clearTimeout(timer);
       };
     }
-  }, [isClosing, animationState]);
+  }, [isClosing, onAnimationComplete]);
 
   useEffect(() => {
     const container = scrollContainerRef.current;

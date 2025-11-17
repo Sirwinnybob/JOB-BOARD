@@ -3,14 +3,17 @@ import DraggableCoverSheetCard from './DraggableCoverSheetCard';
 
 function PDFGrid({ pdfs, rows, cols, aspectWidth = 11, aspectHeight = 10, onPdfClick }) {
   const totalSlots = rows * cols;
+
+  // Responsive columns: 1 on mobile, 2 on small tablets, full cols on larger screens
+  const responsiveCols = Math.min(cols, 4); // Cap at 4 for better mobile experience
+
   const gridStyle = {
-    gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
-    gridTemplateRows: `repeat(${rows}, minmax(0, 1fr))`,
+    gridTemplateColumns: `repeat(${responsiveCols}, minmax(0, 1fr))`,
   };
 
   return (
     <div
-      className="grid gap-4 w-full"
+      className="grid gap-2 sm:gap-4 w-full"
       style={gridStyle}
     >
       {Array.from({ length: totalSlots }).map((_, index) => {

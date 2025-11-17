@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useLayoutEffect } from 'react';
 
 function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick = false, isClosing = false, onAnimationComplete = null }) {
   const scrollContainerRef = useRef(null);
@@ -114,11 +114,15 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentIndex, displayPdfs.length, onClose]);
 
-  // Scroll to initial index when component mounts
-  useEffect(() => {
-    console.log('[SlideShowView] Mounting with initialIndex:', initialIndex, 'displayPdfs.length:', displayPdfs.length);
-    if (initialIndex >= 0 && initialIndex < displayPdfs.length) {
-      scrollToIndex(initialIndex, true); // Use immediate scroll for initial position
+  // Scroll to initial index when component mounts (useLayoutEffect runs before paint)
+  useLayoutEffect(() => {
+    console.log('[SlideShowView] Setting initial scroll position to index:', initialIndex);
+    const container = scrollContainerRef.current;
+    if (container && initialIndex >= 0 && initialIndex < displayPdfs.length) {
+      // Directly set scrollLeft to avoid any scroll animation
+      const itemWidth = container.offsetWidth;
+      container.scrollLeft = initialIndex * itemWidth;
+      console.log('[SlideShowView] Scroll position set to:', container.scrollLeft);
     }
   }, []);
 

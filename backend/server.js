@@ -32,11 +32,42 @@ const wss = new WebSocket.Server({
   maxPayload: 1024 * 1024, // 1MB max message size
 });
 
+// Track device connections to prevent duplicates
+// Map: deviceId -> WebSocket connection
+const deviceConnections = new Map();
+
+// Helper function to generate a unique device identifier
+function getDeviceId(req) {
+  const ip = req.socket.remoteAddress;
+  const userAgent = req.headers['user-agent'] || 'unknown';
+  // Create a simple hash from IP + User-Agent
+  const deviceString = `${ip}|${userAgent}`;
+  return deviceString;
+}
+
 // WebSocket connection handler
-wss.on('connection', (ws) => {
-  console.log('New WebSocket client connected. Total clients:', wss.clients.size);
+wss.on('connection', (ws, req) => {
+  const deviceId = getDeviceId(req);
+
+  // Check if this device already has a connection
+  if (deviceConnections.has(deviceId)) {
+    const oldWs = deviceConnections.get(deviceId);
+    console.log(`🔄 Device reconnecting (closing old connection): ${deviceId.substring(0, 50)}...`);
+
+    // Close the old connection
+    try {
+      oldWs.close(1000, 'New connection from same device');
+    } catch (error) {
+      console.error('Error closing old WebSocket:', error);
+    }
+  }
+
+  // Store the new connection
+  deviceConnections.set(deviceId, ws);
+  console.log('✅ WebSocket client connected. Total unique devices:', deviceConnections.size);
 
   ws.isAlive = true;
+  ws.deviceId = deviceId; // Store deviceId on the WebSocket object
 
   // Handle pong responses
   ws.on('pong', () => {
@@ -44,11 +75,15 @@ wss.on('connection', (ws) => {
   });
 
   ws.on('close', () => {
-    console.log('WebSocket client disconnected. Total clients:', wss.clients.size);
+    // Remove from device connections map
+    if (ws.deviceId && deviceConnections.get(ws.deviceId) === ws) {
+      deviceConnections.delete(ws.deviceId);
+    }
+    console.log('🔌 WebSocket client disconnected. Total unique devices:', deviceConnections.size);
   });
 
   ws.on('error', (error) => {
-    console.error('WebSocket error:', error);
+    console.error('❌ WebSocket error:', error);
   });
 });
 
@@ -56,7 +91,11 @@ wss.on('connection', (ws) => {
 const heartbeatInterval = setInterval(() => {
   wss.clients.forEach((ws) => {
     if (ws.isAlive === false) {
-      console.log('Terminating inactive WebSocket connection');
+      console.log('⏱️  Terminating inactive WebSocket connection');
+      // Remove from device connections map before terminating
+      if (ws.deviceId && deviceConnections.get(ws.deviceId) === ws) {
+        deviceConnections.delete(ws.deviceId);
+      }
       return ws.terminate();
     }
 

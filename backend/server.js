@@ -379,7 +379,7 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
               console.log(`[OCR] Starting background extraction for PDF ${pdfId}...`);
 
               // Use existing converted image (300 DPI) instead of converting again
-              const existingImagePath = path.join(__dirname, 'thumbnails', `${imagesBase}-1.png`);
+              const existingImagePath = path.join(thumbnailDir, `${imagesBase}-1.png`);
               console.log(`[OCR] Using existing image at: ${existingImagePath}`);
 
               const metadata = await extractMetadata(pdfPath, existingImagePath);
@@ -498,8 +498,10 @@ app.delete('/api/pdfs/:id', authMiddleware, async (req, res) => {
               try {
                 await fs.unlink(path.join(thumbnailDir, `${row.images_base}-${i}.png`));
               } catch (pageErr) {
-                // Ignore if page image doesn't exist
-                console.error(`Error deleting page ${i}:`, pageErr);
+                // Silently ignore if page image doesn't exist (only page 1 is generated initially)
+                if (pageErr.code !== 'ENOENT') {
+                  console.error(`Error deleting page ${i}:`, pageErr);
+                }
               }
             }
           }

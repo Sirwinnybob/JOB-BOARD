@@ -388,6 +388,7 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
                     <img
+                      key={`${pdf.id}-${isDarkMode ? 'dark' : 'light'}`}
                       src={imageSrc}
                       alt={pdf.original_name}
                       className="max-w-full max-h-full object-contain rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 shadow-md transition-all"

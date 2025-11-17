@@ -30,4 +30,8 @@ services:
 
 networks:
   job-board-network:
+    # Use external network if using Nginx Proxy Manager
+    # Uncomment the line below and comment out "driver: bridge" if NPM is on a different network
+    # external: true
+    # name: npm_network  # Replace with your NPM network name
     driver: bridge

@@ -139,8 +139,9 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
     const handleScroll = () => {
       setIsScrolling(true);
       const scrollLeft = container.scrollLeft;
-      const itemWidth = container.offsetWidth;
-      const index = Math.round(scrollLeft / itemWidth);
+      // Each slide is w-[85%] of container, so use 85% for calculation
+      const slideWidth = container.offsetWidth * 0.85;
+      const index = Math.round(scrollLeft / slideWidth);
       setCurrentIndex(index);
 
       // Clear the scrolling state after a delay
@@ -165,9 +166,10 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
   const scrollToIndex = (index, immediate = false) => {
     const container = scrollContainerRef.current;
     if (container) {
-      const itemWidth = container.offsetWidth;
+      // Each slide is w-[85%] of container, so use 85% for calculation
+      const slideWidth = container.offsetWidth * 0.85;
       container.scrollTo({
-        left: index * itemWidth,
+        left: index * slideWidth,
         behavior: immediate ? 'auto' : 'smooth'
       });
     }
@@ -209,10 +211,11 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
 
     const container = scrollContainerRef.current;
     if (container && initialIndex >= 0 && initialIndex < displayPdfs.length) {
-      // Directly set scrollLeft to avoid any scroll animation
-      const itemWidth = container.offsetWidth;
-      const scrollPosition = initialIndex * itemWidth;
-      console.log('  - container.offsetWidth:', itemWidth);
+      // Each slide is w-[85%] of container, so use 85% for calculation
+      const slideWidth = container.offsetWidth * 0.85;
+      const scrollPosition = initialIndex * slideWidth;
+      console.log('  - container.offsetWidth:', container.offsetWidth);
+      console.log('  - slideWidth (85%):', slideWidth);
       console.log('  - Calculated scroll position:', scrollPosition);
       container.scrollLeft = scrollPosition;
       console.log('  - Actual scrollLeft after setting:', container.scrollLeft);

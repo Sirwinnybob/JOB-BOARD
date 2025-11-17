@@ -7,7 +7,7 @@ ARG CACHE_BUST=unknown
 FROM node:20-alpine AS frontend-builder
 
 # Update npm to latest version
-RUN npm install -g npm@11.6.2
+RUN npm install -g npm@latest
 
 WORKDIR /app/frontend
 
@@ -28,7 +28,7 @@ RUN npm run build
 FROM node:20-alpine
 
 # Update npm to latest version
-RUN npm install -g npm@11.6.2
+RUN npm install -g npm@latest
 
 # Install system dependencies:
 # - poppler-utils: PDF thumbnail generation (pdftocairo, pdfinfo)

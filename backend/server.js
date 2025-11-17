@@ -377,12 +377,17 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
           (async () => {
             try {
               console.log(`[OCR] Starting background extraction for PDF ${pdfId}...`);
-              const metadata = await extractMetadata(pdfPath);
+
+              // Use existing converted image (300 DPI) instead of converting again
+              const existingImagePath = path.join(__dirname, 'thumbnails', `${imagesBase}-1.png`);
+              console.log(`[OCR] Using existing image at: ${existingImagePath}`);
+
+              const metadata = await extractMetadata(pdfPath, existingImagePath);
               console.log(`[OCR] Complete for PDF ${pdfId}:`, metadata);
 
-              // Update database with extracted metadata
+              // Update database with extracted metadata (only if not manually set)
               db.run(
-                'UPDATE pdfs SET job_number = ?, construction_method = ? WHERE id = ?',
+                'UPDATE pdfs SET job_number = ?, construction_method = ? WHERE id = ? AND (job_number IS NULL OR job_number = \'\') AND (construction_method IS NULL OR construction_method = \'\')',
                 [metadata.job_number, metadata.construction_method, pdfId],
                 (updateErr) => {
                   if (updateErr) {
@@ -390,14 +395,19 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
                     return;
                   }
 
-                  // Broadcast metadata update to all clients
-                  broadcastUpdate('pdf_metadata_updated', {
-                    id: pdfId,
-                    job_number: metadata.job_number,
-                    construction_method: metadata.construction_method
-                  });
+                  // Only broadcast if we actually updated something
+                  if (this.changes > 0) {
+                    // Broadcast metadata update to all clients
+                    broadcastUpdate('pdf_metadata_updated', {
+                      id: pdfId,
+                      job_number: metadata.job_number,
+                      construction_method: metadata.construction_method
+                    });
 
-                  console.log(`[OCR] Metadata updated for PDF ${pdfId}`);
+                    console.log(`[OCR] Metadata updated for PDF ${pdfId}`);
+                  } else {
+                    console.log(`[OCR] Skipped update for PDF ${pdfId} (already has manual values)`);
+                  }
                 }
               );
             } catch (extractErr) {
@@ -1076,11 +1086,11 @@ app.post('/api/ocr-test-image', authMiddleware, ocrTestUpload.single('image'), a
     const pdfPath = req.file.path;
     console.log('Converting PDF to image for OCR testing:', pdfPath);
 
-    // Convert PDF to PNG using pdftocairo (same DPI as job board: 200dpi)
+    // Convert PDF to PNG using pdftocairo (same DPI as job board display images: 300dpi)
     const outputBase = path.join(OCR_TEST_DIR, 'test-image');
 
-    // Use same DPI as job board thumbnails (200dpi) for consistency
-    const command = `pdftocairo -png -f 1 -l 1 -singlefile -r 200 "${pdfPath}" "${outputBase}"`;
+    // Use same DPI as job board display images (300dpi) for consistency with OCR regions
+    const command = `pdftocairo -png -f 1 -l 1 -singlefile -r 300 "${pdfPath}" "${outputBase}"`;
     console.log(`Running pdftocairo command: ${command}`);
 
     const { stdout, stderr } = await execAsync(command);

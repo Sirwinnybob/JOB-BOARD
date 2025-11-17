@@ -1021,6 +1021,97 @@ app.put('/api/ocr-regions/:field_name', authMiddleware, async (req, res) => {
   }
 });
 
+// OCR Test Image Routes
+const OCR_TEST_DIR = path.join(__dirname, 'data', 'ocr-test');
+const OCR_TEST_IMAGE = path.join(OCR_TEST_DIR, 'test-image.png');
+
+// Ensure OCR test directory exists
+(async () => {
+  try {
+    await fs.mkdir(OCR_TEST_DIR, { recursive: true });
+  } catch (error) {
+    console.error('Error creating OCR test directory:', error);
+  }
+})();
+
+// Upload OCR test image
+const ocrTestUpload = multer({
+  storage: multer.diskStorage({
+    destination: async (req, file, cb) => {
+      try {
+        await fs.mkdir(OCR_TEST_DIR, { recursive: true });
+        cb(null, OCR_TEST_DIR);
+      } catch (error) {
+        cb(error);
+      }
+    },
+    filename: (req, file, cb) => {
+      cb(null, 'test-image.png');
+    }
+  }),
+  limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/jpg', 'image/gif'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image files (PNG, JPG, GIF) are allowed'));
+    }
+  }
+});
+
+app.post('/api/ocr-test-image', authMiddleware, ocrTestUpload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'No image file provided' });
+    }
+
+    res.json({
+      message: 'Test image uploaded successfully',
+      filename: req.file.filename,
+      path: '/api/ocr-test-image'
+    });
+  } catch (error) {
+    console.error('Error uploading OCR test image:', error);
+    res.status(500).json({ error: 'Failed to upload test image' });
+  }
+});
+
+app.get('/api/ocr-test-image', async (req, res) => {
+  try {
+    // Check if test image exists
+    try {
+      await fs.access(OCR_TEST_IMAGE);
+    } catch {
+      return res.status(404).json({ error: 'No test image found' });
+    }
+
+    res.sendFile(OCR_TEST_IMAGE);
+  } catch (error) {
+    console.error('Error fetching OCR test image:', error);
+    res.status(500).json({ error: 'Failed to fetch test image' });
+  }
+});
+
+app.delete('/api/ocr-test-image', authMiddleware, async (req, res) => {
+  try {
+    // Check if test image exists
+    try {
+      await fs.access(OCR_TEST_IMAGE);
+    } catch {
+      return res.status(404).json({ error: 'No test image found' });
+    }
+
+    // Delete the test image
+    await fs.unlink(OCR_TEST_IMAGE);
+
+    res.json({ message: 'Test image deleted successfully' });
+  } catch (error) {
+    console.error('Error deleting OCR test image:', error);
+    res.status(500).json({ error: 'Failed to delete test image' });
+  }
+});
+
 // Health check with database connectivity test
 app.get('/api/health', (req, res) => {
   // Quick database check

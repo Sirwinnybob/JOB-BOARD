@@ -1,7 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ocrAPI } from '../utils/api';
+import { useDarkMode } from '../contexts/DarkModeContext';
 
 function OCRSettingsPage() {
+  const { darkMode, toggleDarkMode } = useDarkMode();
+  const navigate = useNavigate();
   const [regions, setRegions] = useState([]);
   const [selectedRegion, setSelectedRegion] = useState(null);
   const [testImage, setTestImage] = useState(null);
@@ -14,6 +18,7 @@ function OCRSettingsPage() {
 
   useEffect(() => {
     loadRegions();
+    loadTestImage();
   }, []);
 
   const loadRegions = async () => {
@@ -25,16 +30,55 @@ function OCRSettingsPage() {
     }
   };
 
+  const loadTestImage = async () => {
+    try {
+      const imageBlob = await ocrAPI.getTestImage();
+      if (imageBlob) {
+        const imageUrl = URL.createObjectURL(imageBlob);
+        setTestImage(imageUrl);
+      }
+    } catch (error) {
+      console.error('Error loading test image:', error);
+    }
+  };
+
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     setTestImageFile(file);
+
+    // Display the image immediately for user feedback
     const reader = new FileReader();
     reader.onload = (event) => {
       setTestImage(event.target.result);
     };
     reader.readAsDataURL(file);
+
+    // Save to backend for persistence
+    try {
+      await ocrAPI.uploadTestImage(file);
+      console.log('Test image uploaded successfully');
+    } catch (error) {
+      console.error('Error uploading test image:', error);
+      alert('Failed to save test image to server');
+    }
+  };
+
+  const handleRemoveImage = async () => {
+    if (!confirm('Are you sure you want to remove the test image?')) {
+      return;
+    }
+
+    try {
+      await ocrAPI.deleteTestImage();
+      setTestImage(null);
+      setTestImageFile(null);
+      console.log('Test image removed successfully');
+    } catch (error) {
+      console.error('Error removing test image:', error);
+      alert('Failed to remove test image');
+    }
   };
 
   const handleImageLoad = (e) => {
@@ -206,27 +250,70 @@ function OCRSettingsPage() {
 
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-6">
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-6 relative">
+      {/* Dark Mode Toggle */}
+      <button
+        onClick={toggleDarkMode}
+        className="absolute top-4 right-4 p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 z-50"
+        title={darkMode ? 'Light Mode' : 'Dark Mode'}
+      >
+        {darkMode ? (
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+          </svg>
+        ) : (
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+          </svg>
+        )}
+      </button>
+
       <div className="max-w-7xl mx-auto">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-4">
-            OCR Region Configuration
-          </h1>
+          <div className="flex items-center justify-between mb-4">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              OCR Region Configuration
+            </h1>
+            <button
+              onClick={() => navigate('/')}
+              className="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+              </svg>
+              Back to Job Board
+            </button>
+          </div>
           <p className="text-gray-600 dark:text-gray-400 mb-4">
             Upload a test cover sheet, draw regions for job number and construction method, then test and save.
           </p>
 
           {/* Upload Section */}
           <div className="mb-6">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              Upload Test Cover Sheet (PDF or Image)
-            </label>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                Upload Test Cover Sheet (PDF or Image)
+              </label>
+              {testImage && (
+                <button
+                  onClick={handleRemoveImage}
+                  className="text-sm text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300 font-medium transition-colors"
+                >
+                  Remove Image
+                </button>
+              )}
+            </div>
             <input
               type="file"
               accept="image/*,.pdf"
               onChange={handleImageUpload}
-              className="block w-full text-sm text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-700 focus:outline-none"
+              className="block w-full text-sm text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-600 rounded-lg cursor-pointer bg-gray-50 dark:bg-gray-700 focus:outline-none transition-colors"
             />
+            {testImage && (
+              <p className="mt-2 text-xs text-green-600 dark:text-green-400">
+                ✓ Test image is saved and will persist across sessions
+              </p>
+            )}
           </div>
         </div>
 

@@ -84,6 +84,32 @@ export const ocrAPI = {
     });
     return response.data;
   },
+  uploadTestImage: async (imageFile) => {
+    const formData = new FormData();
+    formData.append('image', imageFile);
+
+    const response = await api.post('/ocr-test-image', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+  getTestImage: async () => {
+    try {
+      const response = await api.get('/ocr-test-image', {
+        responseType: 'blob',
+      });
+      return response.data;
+    } catch (error) {
+      if (error.response?.status === 404) {
+        return null;
+      }
+      throw error;
+    }
+  },
+  deleteTestImage: async () => {
+    const response = await api.delete('/ocr-test-image');
+    return response.data;
+  },
 };
 
 export default api;

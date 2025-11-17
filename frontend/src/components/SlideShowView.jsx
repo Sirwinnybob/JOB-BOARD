@@ -1,4 +1,5 @@
 import React, { useRef, useState, useEffect, useLayoutEffect, useCallback } from 'react';
+import { useDarkMode } from '../contexts/DarkModeContext';
 
 function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick = false, isClosing = false, onAnimationComplete = null, originRect = null }) {
   const scrollContainerRef = useRef(null);
@@ -6,24 +7,11 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [isScrolling, setIsScrolling] = useState(false);
   const [animationState, setAnimationState] = useState('zoom-in');
-  const [darkMode, setDarkMode] = useState(() => {
-    // Check localStorage first, then fall back to system preference
-    const saved = localStorage.getItem('slideShowDarkMode');
-    if (saved !== null) {
-      return saved === 'true';
-    }
-    // Default to system preference
-    return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-  });
+  const { darkMode } = useDarkMode();
   const [animationTransform, setAnimationTransform] = useState(null);
 
   // Filter out placeholders for slideshow
   const displayPdfs = pdfs.filter(pdf => pdf && !pdf.is_placeholder);
-
-  // Save dark mode preference to localStorage
-  useEffect(() => {
-    localStorage.setItem('slideShowDarkMode', darkMode.toString());
-  }, [darkMode]);
 
   // Calculate animation transform from origin rect
   const calculateTransform = useCallback(() => {
@@ -460,34 +448,12 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
         </button>
       )}
 
-      {/* Counter and Controls */}
-      <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
-        {onClose && (
-          <>
-            {/* Dark Mode Toggle */}
-            <button
-              onClick={() => setDarkMode(!darkMode)}
-              className="bg-gray-900/80 hover:bg-gray-900/95 dark:bg-black/70 dark:hover:bg-black/90 text-white px-3 py-2 rounded-lg transition-colors flex items-center gap-2"
-              title={darkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
-            >
-              {darkMode ? (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                </svg>
-              ) : (
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                </svg>
-              )}
-            </button>
-          </>
-        )}
-
-        {/* Counter */}
-        <div className="bg-gray-900/80 dark:bg-black/70 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors">
+      {/* Counter */}
+      {onClose && (
+        <div className="absolute top-4 right-4 bg-gray-900/80 dark:bg-black/70 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors z-10">
           {currentIndex + 1} / {displayPdfs.length}
         </div>
-      </div>
+      )}
     </div>
     </>
   );

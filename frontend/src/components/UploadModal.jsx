@@ -72,10 +72,10 @@ function UploadModal({ onClose, onSuccess, targetPosition = null, uploadToPendin
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-lg shadow-2xl p-4 sm:p-6 w-full max-w-md"
+        className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl p-4 sm:p-6 w-full max-w-md transition-colors"
         onClick={(e) => e.stopPropagation()}
       >
-        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-3 sm:mb-4">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-3 sm:mb-4 transition-colors">
           Upload PDF {!uploadToPending && targetPosition !== null ? `to Slot ${targetPosition + 1}` : 'to Pending'}
         </h2>
 
@@ -84,7 +84,7 @@ function UploadModal({ onClose, onSuccess, targetPosition = null, uploadToPendin
           onDrop={handleDrop}
           onDragOver={handleDragOver}
           onClick={() => fileInputRef.current?.click()}
-          className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-500 transition-colors"
+          className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center cursor-pointer hover:border-blue-500 transition-colors"
         >
           {file ? (
             <div>
@@ -101,15 +101,15 @@ function UploadModal({ onClose, onSuccess, targetPosition = null, uploadToPendin
                   d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
               </svg>
-              <p className="mt-2 text-sm text-gray-600">{file.name}</p>
-              <p className="text-xs text-gray-500">
+              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 transition-colors">{file.name}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-500 transition-colors">
                 {(file.size / 1024 / 1024).toFixed(2)} MB
               </p>
             </div>
           ) : (
             <div>
               <svg
-                className="mx-auto h-12 w-12 text-gray-400"
+                className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -121,10 +121,10 @@ function UploadModal({ onClose, onSuccess, targetPosition = null, uploadToPendin
                   d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
                 />
               </svg>
-              <p className="mt-2 text-sm text-gray-600">
+              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 transition-colors">
                 Click to upload or drag and drop
               </p>
-              <p className="text-xs text-gray-500">PDF files only (max 50MB)</p>
+              <p className="text-xs text-gray-500 transition-colors">PDF files only (max 50MB)</p>
             </div>
           )}
         </div>
@@ -140,13 +140,13 @@ function UploadModal({ onClose, onSuccess, targetPosition = null, uploadToPendin
         {/* Progress bar */}
         {uploading && (
           <div className="mt-4">
-            <div className="w-full bg-gray-200 rounded-full h-2">
+            <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 transition-colors">
               <div
                 className="bg-blue-600 h-2 rounded-full transition-all"
                 style={{ width: `${progress}%` }}
               />
             </div>
-            <p className="text-sm text-gray-600 mt-2 text-center">
+            <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 text-center transition-colors">
               Uploading... {progress}%
             </p>
           </div>
@@ -154,7 +154,7 @@ function UploadModal({ onClose, onSuccess, targetPosition = null, uploadToPendin
 
         {/* Error message */}
         {error && (
-          <div className="mt-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+          <div className="mt-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded-lg text-sm transition-colors">
             {error}
           </div>
         )}
@@ -164,7 +164,7 @@ function UploadModal({ onClose, onSuccess, targetPosition = null, uploadToPendin
           <button
             onClick={onClose}
             disabled={uploading}
-            className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+            className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors disabled:opacity-50"
           >
             Cancel
           </button>

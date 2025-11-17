@@ -14,10 +14,10 @@ function DraggableCoverSheetCard({
 }) {
   const [editing, setEditing] = useState(null);
   const [editValue, setEditValue] = useState('');
-  const { isDarkMode } = useDarkMode();
+  const { darkMode } = useDarkMode();
 
   // Determine which image to use based on dark mode
-  const imageBaseName = isDarkMode && pdf.dark_mode_images_base
+  const imageBaseName = darkMode && pdf.dark_mode_images_base
     ? pdf.dark_mode_images_base
     : pdf.images_base;
   const imageSrc = imageBaseName ? `/thumbnails/${imageBaseName}-1.png` : `/thumbnails/${pdf.thumbnail}`;
@@ -57,7 +57,7 @@ function DraggableCoverSheetCard({
   // Determine header background color based on construction method
   const getHeaderStyle = () => {
     if (!pdf.construction_method) {
-      return isDarkMode
+      return darkMode
         ? { backgroundColor: 'rgb(55, 65, 81)' } // dark:bg-gray-700
         : { backgroundColor: 'white' };
     }

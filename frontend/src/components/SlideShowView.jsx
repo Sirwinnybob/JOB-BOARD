@@ -10,8 +10,8 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
   const { darkMode, toggleDarkMode } = useDarkMode();
   const [animationTransform, setAnimationTransform] = useState(null);
 
-  // Include all PDFs and placeholders in slideshow
-  const displayPdfs = pdfs.filter(pdf => pdf);
+  // pdfs are already filtered (no nulls/undefined) from parent component
+  const displayPdfs = pdfs;
 
   // Calculate animation transform from origin rect
   const calculateTransform = useCallback(() => {

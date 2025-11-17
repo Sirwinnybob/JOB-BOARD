@@ -573,7 +573,9 @@ function HomePage() {
     // Only allow slideshow in non-edit mode
     if (editMode) return;
 
-    const clickedIndex = pdfs.findIndex(p => p && p.id === pdf.id);
+    // Use filtered pdfs (no nulls/undefined) for consistent indexing with SlideShowView
+    const displayPdfs = pdfs.filter(p => p);
+    const clickedIndex = displayPdfs.findIndex(p => p.id === pdf.id);
 
     console.log('[HomePage] handlePdfClick called for pdf:', pdf.id, 'clickedIndex:', clickedIndex);
 
@@ -614,7 +616,9 @@ function HomePage() {
       setViewMode('grid');
       localStorage.setItem('viewMode', 'grid');
 
-      const targetPdf = pdfs[currentSlideshowIndex];
+      // Use filtered pdfs (no nulls/undefined) for consistent indexing with SlideShowView
+      const displayPdfs = pdfs.filter(p => p);
+      const targetPdf = displayPdfs[currentSlideshowIndex];
       if (targetPdf) {
         // Wait for grid to be rendered, then find the card
         requestAnimationFrame(() => {
@@ -685,8 +689,10 @@ function HomePage() {
     setViewMode('grid');
     localStorage.setItem('viewMode', 'grid');
 
+    // Use filtered pdfs (no nulls/undefined) for consistent indexing with SlideShowView
+    const displayPdfs = pdfs.filter(p => p);
     // Get the currently viewed PDF based on slideshow index
-    const currentPdf = pdfs[currentSlideshowIndex];
+    const currentPdf = displayPdfs[currentSlideshowIndex];
     console.log('[HomePage] Current slideshow index:', currentSlideshowIndex, 'PDF:', currentPdf);
 
     if (currentPdf) {
@@ -949,18 +955,22 @@ function HomePage() {
                 </div>
 
                 {/* Show slideshow when in slideshow mode, or when closing (overlay on top) */}
-                {(viewMode === 'slideshow' || isClosingSlideshow) && (
-                  <SlideShowView
-                    pdfs={pdfs}
-                    initialIndex={selectedPdf ? pdfs.findIndex(p => p && p.id === selectedPdf.id) : 0}
-                    onClose={handleInitiateClose}
-                    enteredViaClick={selectedPdf !== null}
-                    isClosing={isClosingSlideshow}
-                    onAnimationComplete={handleSlideshowAnimationComplete}
-                    originRect={originRect}
-                    onIndexChange={setCurrentSlideshowIndex}
-                  />
-                )}
+                {(viewMode === 'slideshow' || isClosingSlideshow) && (() => {
+                  // Use filtered pdfs (no nulls/undefined) for consistent indexing
+                  const displayPdfs = pdfs.filter(p => p);
+                  return (
+                    <SlideShowView
+                      pdfs={displayPdfs}
+                      initialIndex={selectedPdf ? displayPdfs.findIndex(p => p.id === selectedPdf.id) : 0}
+                      onClose={handleInitiateClose}
+                      enteredViaClick={selectedPdf !== null}
+                      isClosing={isClosingSlideshow}
+                      onAnimationComplete={handleSlideshowAnimationComplete}
+                      originRect={originRect}
+                      onIndexChange={setCurrentSlideshowIndex}
+                    />
+                  );
+                })()}
               </>
             )}
           </>

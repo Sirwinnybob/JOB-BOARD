@@ -202,13 +202,23 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
 
   // Scroll to initial index when component mounts (useLayoutEffect runs before paint)
   useLayoutEffect(() => {
-    console.log('[SlideShowView] Setting initial scroll position to index:', initialIndex);
+    console.log('[SlideShowView] Initial scroll DEBUG:');
+    console.log('  - initialIndex:', initialIndex);
+    console.log('  - displayPdfs.length:', displayPdfs.length);
+    console.log('  - displayPdfs:', displayPdfs.map(p => ({ id: p.id, is_placeholder: p.is_placeholder })));
+
     const container = scrollContainerRef.current;
     if (container && initialIndex >= 0 && initialIndex < displayPdfs.length) {
       // Directly set scrollLeft to avoid any scroll animation
       const itemWidth = container.offsetWidth;
-      container.scrollLeft = initialIndex * itemWidth;
-      console.log('[SlideShowView] Scroll position set to:', container.scrollLeft);
+      const scrollPosition = initialIndex * itemWidth;
+      console.log('  - container.offsetWidth:', itemWidth);
+      console.log('  - Calculated scroll position:', scrollPosition);
+      container.scrollLeft = scrollPosition;
+      console.log('  - Actual scrollLeft after setting:', container.scrollLeft);
+
+      // Set currentIndex immediately to match initialIndex
+      setCurrentIndex(initialIndex);
     }
   }, []);
 
@@ -236,9 +246,9 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
     );
   }
 
-  // Always use fullscreen styling for consistent appearance
-  const containerClass = "fixed inset-0 bg-white dark:bg-black z-50 transition-colors";
-  const containerStyle = { height: '100vh' };
+  // Always use fullscreen styling but start below header
+  const containerClass = "fixed left-0 right-0 bottom-0 top-16 bg-white dark:bg-black z-50 transition-colors";
+  const containerStyle = {};
 
   // Generate dynamic CSS animations based on originRect
   const generateAnimationCSS = () => {
@@ -362,29 +372,6 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
                   </div>
                 )}
 
-                {/* Job Info Mini Header - Top Center */}
-                {!pdf.is_placeholder && (pdf.job_number || pdf.construction_method) && (
-                  <div
-                    className="absolute top-20 left-1/2 -translate-x-1/2 px-6 py-3 rounded-lg shadow-lg transition-colors"
-                    style={{
-                      backgroundColor: pdf.construction_method === 'Face Frame' ? 'rgb(150, 179, 82)' :
-                                       pdf.construction_method === 'Frameless' ? 'rgb(237, 146, 35)' :
-                                       pdf.construction_method === 'Both' ? 'rgb(0, 133, 138)' :
-                                       'rgb(55, 65, 81)'
-                    }}
-                  >
-                    <div className="text-white font-bold text-lg whitespace-nowrap">
-                      {pdf.job_number && pdf.construction_method ? (
-                        <span>Job #{pdf.job_number} • {pdf.construction_method}</span>
-                      ) : pdf.job_number ? (
-                        <span>Job #{pdf.job_number}</span>
-                      ) : (
-                        <span>{pdf.construction_method}</span>
-                      )}
-                    </div>
-                  </div>
-                )}
-
                 {/* Labels - Bottom Left (Bigger) */}
                 {pdf.labels && pdf.labels.length > 0 && (
                   <div className="absolute bottom-4 left-4 flex flex-wrap gap-2">
@@ -432,21 +419,30 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
         </>
       )}
 
-      {/* Position Indicator */}
+      {/* Position Indicator with Dots and Page Number */}
       {displayPdfs.length > 1 && (
-        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-2 bg-gray-800/60 dark:bg-black/50 px-4 py-2 rounded-full z-10 transition-colors">
-          {displayPdfs.map((_, index) => (
-            <button
-              key={index}
-              onClick={() => scrollToIndex(index)}
-              className={`w-2 h-2 rounded-full transition-all ${
-                index === currentIndex
-                  ? 'bg-white w-8'
-                  : 'bg-white/50 hover:bg-white/75'
-              }`}
-              aria-label={`Go to slide ${index + 1}`}
-            />
-          ))}
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-3 bg-gray-800/60 dark:bg-black/50 px-4 py-2 rounded-full z-10 transition-colors">
+          {/* Page Number */}
+          <div className="text-white text-sm font-medium whitespace-nowrap">
+            {currentIndex + 1} / {displayPdfs.length}
+          </div>
+          {/* Separator */}
+          <div className="w-px h-4 bg-white/30"></div>
+          {/* Dots */}
+          <div className="flex gap-2">
+            {displayPdfs.map((_, index) => (
+              <button
+                key={index}
+                onClick={() => scrollToIndex(index)}
+                className={`w-2 h-2 rounded-full transition-all ${
+                  index === currentIndex
+                    ? 'bg-white w-8'
+                    : 'bg-white/50 hover:bg-white/75'
+                }`}
+                aria-label={`Go to slide ${index + 1}`}
+              />
+            ))}
+          </div>
         </div>
       )}
 

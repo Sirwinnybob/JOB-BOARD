@@ -577,7 +577,12 @@ function HomePage() {
     const displayPdfs = pdfs.filter(p => p);
     const clickedIndex = displayPdfs.findIndex(p => p.id === pdf.id);
 
-    console.log('[HomePage] handlePdfClick called for pdf:', pdf.id, 'clickedIndex:', clickedIndex);
+    console.log('[HomePage] handlePdfClick DEBUG:');
+    console.log('  - Clicked PDF:', pdf);
+    console.log('  - Total pdfs (with nulls):', pdfs.length);
+    console.log('  - displayPdfs (filtered):', displayPdfs.length);
+    console.log('  - Clicked index in displayPdfs:', clickedIndex);
+    console.log('  - displayPdfs:', displayPdfs.map(p => ({ id: p.id, is_placeholder: p.is_placeholder })));
 
     // Capture the clicked element's position for zoom animation
     // Walk up the DOM to find the clickable div container

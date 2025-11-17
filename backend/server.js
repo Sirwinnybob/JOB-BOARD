@@ -133,6 +133,9 @@ function broadcastUpdate(type, data = {}) {
 }
 
 // Middleware
+// Trust proxy - needed for accurate rate limiting behind reverse proxies
+app.set('trust proxy', 1); // Trust first proxy (nginx, load balancer, etc.)
+
 // Configure helmet with relaxed settings for local network access
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },

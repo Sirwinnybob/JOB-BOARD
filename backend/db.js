@@ -106,6 +106,16 @@ db.serialize(() => {
     }
   });
 
+  // Add placeholder_text column to existing tables (migration)
+  db.run(`
+    ALTER TABLE pdfs ADD COLUMN placeholder_text TEXT DEFAULT 'PLACEHOLDER'
+  `, (err) => {
+    // Ignore error if column already exists
+    if (err && !err.message.includes('duplicate column name')) {
+      console.error('Error adding placeholder_text column:', err);
+    }
+  });
+
   // Settings table
   db.run(`
     CREATE TABLE IF NOT EXISTS settings (

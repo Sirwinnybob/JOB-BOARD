@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
 import { useDraggable, useDroppable } from '@dnd-kit/core';
+import { useDarkMode } from '../contexts/DarkModeContext';
 
-function DraggablePendingItem({ pdf, index, onMovePdfToBoard, onDelete, editMode }) {
+function DraggablePendingItem({ pdf, index, onMovePdfToBoard, onDelete, editMode, onMetadataUpdate }) {
+  const [editing, setEditing] = useState(null);
+  const [editValue, setEditValue] = useState('');
+  const { darkMode } = useDarkMode();
 
   const {
     attributes,
@@ -30,18 +34,147 @@ function DraggablePendingItem({ pdf, index, onMovePdfToBoard, onDelete, editMode
     pointerEvents: 'none',
   } : {};
 
+  const handleStartEdit = (field, currentValue) => {
+    setEditing(field);
+    setEditValue(currentValue || '');
+  };
+
+  const handleSaveEdit = (field) => {
+    const updates = {};
+    if (field === 'job_number') {
+      updates.job_number = editValue;
+      updates.construction_method = pdf.construction_method;
+    } else {
+      updates.job_number = pdf.job_number;
+      updates.construction_method = editValue;
+    }
+
+    // Only update local state - don't save to backend until Save button is pressed
+    if (onMetadataUpdate) {
+      onMetadataUpdate(pdf.id, updates);
+    }
+    setEditing(null);
+  };
+
+  const handleCancelEdit = () => {
+    setEditing(null);
+    setEditValue('');
+  };
+
+  // Determine header background color based on construction method
+  const getHeaderStyle = () => {
+    if (!pdf.construction_method) {
+      return darkMode
+        ? { backgroundColor: 'rgb(55, 65, 81)' } // dark:bg-gray-700
+        : { backgroundColor: 'white' };
+    }
+
+    const colorMap = {
+      'Face Frame': 'rgb(150, 179, 82)',
+      'Frameless': 'rgb(237, 146, 35)',
+      'Both': 'rgb(0, 133, 138)'
+    };
+
+    return { backgroundColor: colorMap[pdf.construction_method] || 'white' };
+  };
+
   return (
     <div
       ref={setNodeRef}
       style={{...style, ...draggingStyle}}
       {...attributes}
       {...listeners}
-      className={`relative bg-white dark:bg-gray-800 border-2 border-yellow-300 dark:border-yellow-600 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow ${
+      className={`relative bg-white dark:bg-gray-800 border-2 border-yellow-300 dark:border-yellow-600 rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow flex flex-col ${
         editMode ? 'cursor-move' : ''
       } ${isDragging ? 'opacity-40' : ''}`}
     >
+      {/* Job Info Header */}
+      <div
+        className="border-b border-yellow-300 dark:border-yellow-600 px-2 py-1 flex justify-between items-center text-xs transition-colors shadow-sm z-10 flex-shrink-0"
+        style={getHeaderStyle()}
+      >
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-1">
+            <span className={`font-semibold ${pdf.construction_method ? 'text-white' : 'text-gray-600 dark:text-gray-400'}`}>Job#:</span>
+            {editMode && editing === 'job_number' ? (
+              <input
+                type="text"
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleSaveEdit('job_number');
+                  if (e.key === 'Escape') handleCancelEdit();
+                }}
+                onBlur={() => handleSaveEdit('job_number')}
+                className="flex-1 px-1 py-0.5 border border-blue-500 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-xs focus:outline-none"
+                autoFocus
+                onClick={(e) => e.stopPropagation()}
+              />
+            ) : (
+              <span
+                onClick={(e) => {
+                  if (editMode) {
+                    e.stopPropagation();
+                    handleStartEdit('job_number', pdf.job_number);
+                  }
+                }}
+                className={`flex-1 truncate px-1 rounded ${
+                  pdf.construction_method ? 'text-white' : 'text-gray-900 dark:text-white'
+                } ${
+                  editMode ? 'cursor-pointer hover:bg-black/10' : 'cursor-default'
+                }`}
+                title={editMode ? (pdf.job_number || 'Click to add job number') : pdf.job_number}
+              >
+                {pdf.job_number || '—'}
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="flex-1 min-w-0 ml-2">
+          <div className="flex items-center gap-1">
+            <span className={`font-semibold ${pdf.construction_method ? 'text-white' : 'text-gray-600 dark:text-gray-400'}`}>Type:</span>
+            {editMode && editing === 'construction_method' ? (
+              <select
+                value={editValue}
+                onChange={(e) => setEditValue(e.target.value)}
+                onBlur={() => handleSaveEdit('construction_method')}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleSaveEdit('construction_method');
+                  if (e.key === 'Escape') handleCancelEdit();
+                }}
+                className="flex-1 px-1 py-0.5 border border-blue-500 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-xs focus:outline-none"
+                autoFocus
+                onClick={(e) => e.stopPropagation()}
+              >
+                <option value="">—</option>
+                <option value="Frameless">Frameless</option>
+                <option value="Face Frame">Face Frame</option>
+                <option value="Both">Both</option>
+              </select>
+            ) : (
+              <span
+                onClick={(e) => {
+                  if (editMode) {
+                    e.stopPropagation();
+                    handleStartEdit('construction_method', pdf.construction_method);
+                  }
+                }}
+                className={`flex-1 truncate px-1 rounded ${
+                  pdf.construction_method ? 'text-white' : 'text-gray-900 dark:text-white'
+                } ${
+                  editMode ? 'cursor-pointer hover:bg-black/10' : 'cursor-default'
+                }`}
+                title={editMode ? (pdf.construction_method || 'Click to select type') : pdf.construction_method}
+              >
+                {pdf.construction_method || '—'}
+              </span>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Thumbnail */}
-      <div className="aspect-[4/3] bg-gray-100 dark:bg-gray-700 flex items-center justify-center transition-colors">
+      <div className="flex-1 aspect-[4/3] bg-gray-100 dark:bg-gray-700 flex items-center justify-center transition-colors min-h-0">
         {pdf.thumbnail ? (
           <img
             src={`/thumbnails/${pdf.thumbnail}`}
@@ -104,7 +237,7 @@ function DraggablePendingItem({ pdf, index, onMovePdfToBoard, onDelete, editMode
   );
 }
 
-function PendingSection({ pdfs, onMovePdfToBoard, onMoveAllPdfsToBoard, onDelete, onUploadToPending, editMode }) {
+function PendingSection({ pdfs, onMovePdfToBoard, onMoveAllPdfsToBoard, onDelete, onUploadToPending, editMode, onMetadataUpdate }) {
   const { setNodeRef, isOver } = useDroppable({
     id: 'pending-container',
   });
@@ -173,6 +306,7 @@ function PendingSection({ pdfs, onMovePdfToBoard, onMoveAllPdfsToBoard, onDelete
             onMovePdfToBoard={onMovePdfToBoard}
             onDelete={onDelete}
             editMode={editMode}
+            onMetadataUpdate={onMetadataUpdate}
           />
         ))}
       </div>

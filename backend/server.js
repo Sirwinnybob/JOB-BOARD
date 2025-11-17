@@ -556,8 +556,8 @@ app.post('/api/pdfs/placeholder', authMiddleware, async (req, res) => {
     }
 
     db.run(
-      'INSERT INTO pdfs (filename, original_name, thumbnail, position, is_placeholder, is_pending) VALUES (?, ?, ?, ?, ?, ?)',
-      [null, null, null, position, 1, 0],
+      'INSERT INTO pdfs (filename, original_name, thumbnail, position, is_placeholder, is_pending, placeholder_text) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [null, null, null, position, 1, 0, 'PLACEHOLDER'],
       function (err) {
         if (err) {
           console.error('Database error:', err);
@@ -571,7 +571,8 @@ app.post('/api/pdfs/placeholder', authMiddleware, async (req, res) => {
           thumbnail: null,
           position: position,
           is_placeholder: 1,
-          is_pending: 0
+          is_pending: 0,
+          placeholder_text: 'PLACEHOLDER'
         };
 
         // Broadcast update to all clients
@@ -623,7 +624,7 @@ app.put('/api/pdfs/:id/status', authMiddleware, async (req, res) => {
 app.put('/api/pdfs/:id/metadata', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
-    const { job_number, construction_method } = req.body;
+    const { job_number, construction_method, placeholder_text } = req.body;
 
     // Build dynamic update query based on provided fields
     const updates = [];
@@ -637,6 +638,11 @@ app.put('/api/pdfs/:id/metadata', authMiddleware, async (req, res) => {
     if (construction_method !== undefined) {
       updates.push('construction_method = ?');
       values.push(construction_method);
+    }
+
+    if (placeholder_text !== undefined) {
+      updates.push('placeholder_text = ?');
+      values.push(placeholder_text);
     }
 
     if (updates.length === 0) {
@@ -669,14 +675,16 @@ app.put('/api/pdfs/:id/metadata', authMiddleware, async (req, res) => {
           broadcastUpdate('pdf_metadata_updated', {
             id: pdf.id,
             job_number: pdf.job_number,
-            construction_method: pdf.construction_method
+            construction_method: pdf.construction_method,
+            placeholder_text: pdf.placeholder_text
           });
 
           res.json({
             success: true,
             id: pdf.id,
             job_number: pdf.job_number,
-            construction_method: pdf.construction_method
+            construction_method: pdf.construction_method,
+            placeholder_text: pdf.placeholder_text
           });
         });
       }
@@ -1070,7 +1078,6 @@ app.post('/api/ocr-test-image', authMiddleware, ocrTestUpload.single('image'), a
 
     // Convert PDF to PNG using pdftocairo (same DPI as job board: 200dpi)
     const outputBase = path.join(OCR_TEST_DIR, 'test-image');
-    const { execAsync } = require('./utils/helpers');
 
     // Use same DPI as job board thumbnails (200dpi) for consistency
     const command = `pdftocairo -png -f 1 -l 1 -singlefile -r 200 "${pdfPath}" "${outputBase}"`;

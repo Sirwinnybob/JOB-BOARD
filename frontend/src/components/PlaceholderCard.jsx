@@ -6,6 +6,7 @@ function PlaceholderCard({
   editMode,
   onDelete,
   isDragging,
+  onEdit,
 }) {
   return (
     <div
@@ -31,31 +32,55 @@ function PlaceholderCard({
           </svg>
         </div>
         <p className="text-gray-500 text-sm font-medium text-center">
-          Placeholder
+          {placeholder.placeholder_text || 'PLACEHOLDER'}
         </p>
       </div>
 
-      {/* Delete button in edit mode */}
+      {/* Edit and Delete buttons in edit mode */}
       {editMode && (
-        <button
-          onClick={() => onDelete(placeholder.id)}
-          className="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg transition-colors z-10"
-          aria-label="Delete"
-        >
-          <svg
-            className="w-5 h-5"
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
+        <>
+          {/* Edit button */}
+          <button
+            onClick={() => onEdit && onEdit(placeholder)}
+            className="absolute top-2 right-12 bg-blue-600 hover:bg-blue-700 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg transition-colors z-10"
+            aria-label="Edit"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M6 18L18 6M6 6l12 12"
-            />
-          </svg>
-        </button>
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"
+              />
+            </svg>
+          </button>
+
+          {/* Delete button */}
+          <button
+            onClick={() => onDelete(placeholder.id)}
+            className="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg transition-colors z-10"
+            aria-label="Delete"
+          >
+            <svg
+              className="w-5 h-5"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
+            </svg>
+          </button>
+        </>
       )}
 
       {/* Drag indicator */}

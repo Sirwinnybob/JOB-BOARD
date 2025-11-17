@@ -8,15 +8,17 @@
     "dev": "nodemon server.js"
   },
   "dependencies": {
-    "express": "^5.1.0",
-    "cors": "^2.8.5",
-    "jsonwebtoken": "^9.0.2",
     "bcryptjs": "^3.0.3",
-    "multer": "^2.0.2",
-    "sqlite3": "^5.1.7",
+    "bufferutil": "^4.0.9",
+    "cors": "^2.8.5",
     "dotenv": "^17.2.3",
+    "express": "^5.1.0",
     "express-rate-limit": "^8.2.1",
     "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^2.0.2",
+    "sqlite3": "^5.1.7",
+    "utf-8-validate": "^6.0.5",
     "ws": "^8.18.3"
   },
   "devDependencies": {

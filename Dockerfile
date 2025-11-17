@@ -6,6 +6,9 @@ ARG CACHE_BUST=unknown
 # Stage 1: Build frontend
 FROM node:20-alpine AS frontend-builder
 
+# Update npm to latest version
+RUN npm install -g npm@11.6.2
+
 WORKDIR /app/frontend
 
 # Copy frontend package files
@@ -23,6 +26,9 @@ RUN npm run build
 
 # Stage 2: Build backend and final image
 FROM node:20-alpine
+
+# Update npm to latest version
+RUN npm install -g npm@11.6.2
 
 # Install system dependencies:
 # - poppler-utils: PDF thumbnail generation (pdftocairo, pdfinfo)

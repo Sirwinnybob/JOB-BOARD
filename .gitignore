@@ -10,3 +10,6 @@ thumbnails/*.png
 !thumbnails/.gitkeep
 database.sqlite
 __pycache__/
+# Runtime data directory (contains database, uploads, thumbnails)
+data/
+backend/data/

@@ -7,7 +7,7 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [isScrolling, setIsScrolling] = useState(false);
   const [animationState, setAnimationState] = useState('zoom-in');
-  const { darkMode } = useDarkMode();
+  const { darkMode, toggleDarkMode } = useDarkMode();
   const [animationTransform, setAnimationTransform] = useState(null);
 
   // Include all PDFs and placeholders in slideshow
@@ -327,7 +327,7 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
           return (
             <div
               key={pdf.id}
-              className="flex-shrink-0 w-[95%] h-full snap-center flex items-center justify-center p-4"
+              className="flex-shrink-0 w-[85%] h-full snap-center flex items-center justify-center p-4"
             >
               <div
                 className="relative h-full max-w-6xl w-full mx-auto flex items-center justify-center"
@@ -339,43 +339,52 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
                     </p>
                   </div>
                 ) : (
-                  <img
-                    src={imageSrc}
-                    alt={pdf.original_name}
-                    className="max-w-full max-h-full object-contain transition-all"
-                    loading="lazy"
-                    onError={(e) => {
-                      // Fallback to regular image if dark mode image fails
-                      if (isDarkMode && pdf.dark_mode_images_base && e.target.src.includes('-dark-')) {
-                        e.target.src = `/thumbnails/${pdf.images_base}-1.png`;
-                      }
-                    }}
-                  />
+                  <div className="w-full h-full flex items-center justify-center">
+                    <img
+                      src={imageSrc}
+                      alt={pdf.original_name}
+                      className="max-w-full max-h-full object-contain rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 shadow-md transition-all"
+                      loading="lazy"
+                      onError={(e) => {
+                        // Fallback to regular image if dark mode image fails
+                        if (isDarkMode && pdf.dark_mode_images_base && e.target.src.includes('-dark-')) {
+                          e.target.src = `/thumbnails/${pdf.images_base}-1.png`;
+                        }
+                      }}
+                    />
+                  </div>
                 )}
 
-                {/* Job Info Overlay - Moved to bottom to avoid close button */}
-                <div className="absolute bottom-4 left-4 bg-gray-900/80 dark:bg-black/70 text-white px-4 py-2 rounded-lg transition-colors">
-                  <div className="text-sm font-medium">
-                    {pdf.is_placeholder ? (
-                      <div>{pdf.placeholder_text || 'PLACEHOLDER'}</div>
-                    ) : (
-                      <>
-                        {pdf.job_number && <div>Job #{pdf.job_number}</div>}
-                        {pdf.construction_method && (
-                          <div className="text-xs text-gray-300">{pdf.construction_method}</div>
-                        )}
-                      </>
-                    )}
+                {/* Job Info Mini Header - Top Center */}
+                {!pdf.is_placeholder && (pdf.job_number || pdf.construction_method) && (
+                  <div
+                    className="absolute top-20 left-1/2 -translate-x-1/2 px-6 py-3 rounded-lg shadow-lg transition-colors"
+                    style={{
+                      backgroundColor: pdf.construction_method === 'Face Frame' ? 'rgb(150, 179, 82)' :
+                                       pdf.construction_method === 'Frameless' ? 'rgb(237, 146, 35)' :
+                                       pdf.construction_method === 'Both' ? 'rgb(0, 133, 138)' :
+                                       'rgb(55, 65, 81)'
+                    }}
+                  >
+                    <div className="text-white font-bold text-lg whitespace-nowrap">
+                      {pdf.job_number && pdf.construction_method ? (
+                        <span>Job #{pdf.job_number} • {pdf.construction_method}</span>
+                      ) : pdf.job_number ? (
+                        <span>Job #{pdf.job_number}</span>
+                      ) : (
+                        <span>{pdf.construction_method}</span>
+                      )}
+                    </div>
                   </div>
-                </div>
+                )}
 
-                {/* Labels - Moved down to avoid counter */}
+                {/* Labels - Bottom Left (Bigger) */}
                 {pdf.labels && pdf.labels.length > 0 && (
-                  <div className="absolute top-20 right-4 flex flex-wrap gap-2 justify-end">
+                  <div className="absolute bottom-4 left-4 flex flex-wrap gap-2">
                     {pdf.labels.map((label) => (
                       <span
                         key={label.id}
-                        className="px-3 py-1 text-sm font-bold text-white rounded-lg shadow-lg"
+                        className="px-4 py-2 text-base font-bold text-white rounded-lg shadow-lg"
                         style={{ backgroundColor: label.color }}
                       >
                         {label.name}
@@ -434,20 +443,60 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
         </div>
       )}
 
-      {/* Close/Toggle Button - Always visible */}
-      <button
-        onClick={onClose}
-        className="absolute top-4 left-4 bg-gray-900/80 hover:bg-gray-900/95 dark:bg-black/70 dark:hover:bg-black/90 text-white p-4 rounded-full transition-all z-20 shadow-lg"
-        aria-label="Close"
-      >
-        <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-        </svg>
-      </button>
+      {/* Top Navigation Bar */}
+      <div className="absolute top-0 left-0 right-0 bg-gray-900/80 dark:bg-black/70 backdrop-blur-sm z-20 transition-colors">
+        <div className="flex items-center justify-between px-4 py-3">
+          {/* Left side - Close button (only when clicked from grid) */}
+          <div className="flex items-center gap-4">
+            {enteredViaClick && (
+              <button
+                onClick={onClose}
+                className="bg-gray-800/60 hover:bg-gray-700/80 dark:bg-black/50 dark:hover:bg-black/70 text-white p-2 rounded-lg transition-all shadow-lg"
+                aria-label="Close"
+              >
+                <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
+          </div>
 
-      {/* Counter - Always visible */}
-      <div className="absolute top-4 right-4 bg-gray-900/80 dark:bg-black/70 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors z-10">
-        {currentIndex + 1} / {displayPdfs.length}
+          {/* Center - Counter */}
+          <div className="text-white px-4 py-1 text-sm font-medium">
+            {currentIndex + 1} / {displayPdfs.length}
+          </div>
+
+          {/* Right side - Controls */}
+          <div className="flex items-center gap-3">
+            {/* Dark Mode Toggle */}
+            <button
+              onClick={toggleDarkMode}
+              className="bg-gray-800/60 hover:bg-gray-700/80 dark:bg-black/50 dark:hover:bg-black/70 text-white p-2 rounded-lg transition-all"
+              aria-label="Toggle dark mode"
+            >
+              {darkMode ? (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                </svg>
+              )}
+            </button>
+
+            {/* View Mode Toggle */}
+            <button
+              onClick={onClose}
+              className="bg-gray-800/60 hover:bg-gray-700/80 dark:bg-black/50 dark:hover:bg-black/70 text-white p-2 rounded-lg transition-all"
+              aria-label="Switch to grid view"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+              </svg>
+            </button>
+          </div>
+        </div>
       </div>
     </div>
     </>

@@ -44,6 +44,7 @@ function HomePage() {
   });
   const [isClosingSlideshow, setIsClosingSlideshow] = useState(false);
   const [originRect, setOriginRect] = useState(null);
+  const [currentSlideshowIndex, setCurrentSlideshowIndex] = useState(0);
   const navigate = useNavigate();
 
   // Configure drag sensors
@@ -608,12 +609,65 @@ function HomePage() {
   const toggleViewMode = () => {
     console.log('[HomePage] toggleViewMode called, current viewMode:', viewMode);
     if (viewMode === 'slideshow') {
-      // Trigger zoom-out animation before closing
-      console.log('[HomePage] Triggering slideshow close animation');
+      // Exiting slideshow - capture current item's rect before starting animation
+      console.log('[HomePage] Exiting slideshow via toggle, capturing current item rect');
+      const targetPdf = pdfs[currentSlideshowIndex];
+      if (targetPdf) {
+        // Wait for grid to be rendered, then find the card
+        requestAnimationFrame(() => {
+          const gridContainer = document.querySelector('.grid');
+          if (gridContainer) {
+            const cards = gridContainer.querySelectorAll('.cursor-pointer');
+            let foundCard = null;
+
+            // Find the card that matches the current slideshow item
+            cards.forEach(card => {
+              const thumbnail = card.querySelector('img[alt]');
+              if (thumbnail && targetPdf.images_base) {
+                if (thumbnail.src.includes(`${targetPdf.images_base}-1.png`) ||
+                    (targetPdf.thumbnail && thumbnail.src.includes(targetPdf.thumbnail))) {
+                  foundCard = card;
+                }
+              }
+            });
+
+            if (foundCard) {
+              const rect = foundCard.getBoundingClientRect();
+              setOriginRect({
+                top: rect.top,
+                left: rect.left,
+                width: rect.width,
+                height: rect.height,
+                scrollX: window.scrollX || window.pageXOffset,
+                scrollY: window.scrollY || window.pageYOffset,
+              });
+              console.log('[HomePage] Captured origin rect for toggle exit:', rect);
+            }
+          }
+        });
+      }
       setIsClosingSlideshow(true);
     } else {
-      // Switch to slideshow (will trigger zoom-in)
-      console.log('[HomePage] Switching to slideshow view');
+      // Entering slideshow - capture first item's rect before switching
+      console.log('[HomePage] Entering slideshow via toggle, capturing first item rect');
+      const gridContainer = document.querySelector('.grid');
+      if (gridContainer) {
+        const cards = gridContainer.querySelectorAll('.cursor-pointer');
+        if (cards.length > 0) {
+          const firstCard = cards[0];
+          const rect = firstCard.getBoundingClientRect();
+          setOriginRect({
+            top: rect.top,
+            left: rect.left,
+            width: rect.width,
+            height: rect.height,
+            scrollX: window.scrollX || window.pageXOffset,
+            scrollY: window.scrollY || window.pageYOffset,
+          });
+          console.log('[HomePage] Captured origin rect for toggle entry:', rect);
+        }
+      }
+      // Switch to slideshow after capturing rect
       setViewMode('slideshow');
       localStorage.setItem('viewMode', 'slideshow');
       setSelectedPdf(null);
@@ -892,6 +946,7 @@ function HomePage() {
                 isClosing={isClosingSlideshow}
                 onAnimationComplete={handleSlideshowAnimationComplete}
                 originRect={originRect}
+                onIndexChange={setCurrentSlideshowIndex}
               />
             ) : (
               gridContent()

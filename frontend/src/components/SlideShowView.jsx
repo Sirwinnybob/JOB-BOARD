@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect, useLayoutEffect, useCallback } from 'react';
 import { useDarkMode } from '../contexts/DarkModeContext';
 
-function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick = false, isClosing = false, onAnimationComplete = null, originRect = null }) {
+function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick = false, isClosing = false, onAnimationComplete = null, originRect = null, onIndexChange = null }) {
   const scrollContainerRef = useRef(null);
   const containerRef = useRef(null);
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
@@ -154,6 +154,13 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
     container.addEventListener('scroll', handleScroll);
     return () => container.removeEventListener('scroll', handleScroll);
   }, []);
+
+  // Report current index to parent
+  useEffect(() => {
+    if (onIndexChange) {
+      onIndexChange(currentIndex);
+    }
+  }, [currentIndex, onIndexChange]);
 
   const scrollToIndex = (index, immediate = false) => {
     const container = scrollContainerRef.current;

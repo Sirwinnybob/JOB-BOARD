@@ -10,30 +10,39 @@ const execAsync = promisify(exec);
  * Extract text from PDF using OCR (tesseract)
  * @param {string} pdfPath - Path to the PDF file
  * @param {Object} region - Optional region coordinates {x, y, width, height}
+ * @param {string} existingImagePath - Optional path to pre-existing converted image (skip conversion if provided)
  * @returns {Promise<string>} Extracted text
  */
-async function extractTextWithOCR(pdfPath, region = null) {
+async function extractTextWithOCR(pdfPath, region = null, existingImagePath = null) {
   try {
-    // First convert PDF to images using pdftocairo
-    const tempDir = '/tmp';
-    const timestamp = Date.now();
-    const imageBase = `${tempDir}/ocr-temp-${timestamp}`;
+    let imagePath = existingImagePath;
+    let shouldCleanup = false;
 
-    // Convert PDF to PNG images (first page only, high resolution for OCR)
-    // -singlefile creates single file without page numbers
-    await execAsync(`pdftocairo -png -f 1 -l 1 -singlefile -r 300 "${pdfPath}" "${imageBase}"`);
+    // If no existing image provided, convert PDF to image
+    if (!imagePath) {
+      const tempDir = '/tmp';
+      const timestamp = Date.now();
+      const imageBase = `${tempDir}/ocr-temp-${timestamp}`;
 
-    // With -singlefile, pdftocairo creates imageBase.png (no page number suffix)
-    const generatedImagePath = `${imageBase}.png`;
-    const imagePath = `${imageBase}-1.png`;
+      // Convert PDF to PNG images (first page only, 300 DPI to match display images)
+      // -singlefile creates single file without page numbers
+      await execAsync(`pdftocairo -png -f 1 -l 1 -singlefile -r 300 "${pdfPath}" "${imageBase}"`);
 
-    // Rename to expected format
-    await fs.rename(generatedImagePath, imagePath);
+      // With -singlefile, pdftocairo creates imageBase.png (no page number suffix)
+      const generatedImagePath = `${imageBase}.png`;
+      imagePath = `${imageBase}-1.png`;
+
+      // Rename to expected format
+      await fs.rename(generatedImagePath, imagePath);
+      shouldCleanup = true;
+    } else {
+      console.log(`Using existing image for OCR: ${existingImagePath}`);
+    }
 
     let ocrText;
     if (region && region.width > 0 && region.height > 0) {
       // Extract from specific region using ImageMagick crop + tesseract
-      const croppedImage = path.join(tempDir, `ocr-crop-${timestamp}.png`);
+      const croppedImage = path.join('/tmp', `ocr-crop-${Date.now()}.png`);
       const cropCommand = `magick "${imagePath}" -crop ${region.width}x${region.height}+${region.x}+${region.y} "${croppedImage}"`;
       console.log(`Cropping image: ${cropCommand}`);
       await execAsync(cropCommand);
@@ -57,11 +66,13 @@ async function extractTextWithOCR(pdfPath, region = null) {
       ocrText = stdout;
     }
 
-    // Clean up temporary image
-    try {
-      await fs.unlink(imagePath);
-    } catch (unlinkError) {
-      console.error('Error deleting temporary OCR image:', unlinkError);
+    // Clean up temporary image (only if we created it)
+    if (shouldCleanup) {
+      try {
+        await fs.unlink(imagePath);
+      } catch (unlinkError) {
+        console.error('Error deleting temporary OCR image:', unlinkError);
+      }
     }
 
     return ocrText;
@@ -74,12 +85,13 @@ async function extractTextWithOCR(pdfPath, region = null) {
 /**
  * Extract text from PDF using OCR only
  * @param {string} pdfPath - Path to the PDF file
+ * @param {string} existingImagePath - Optional path to pre-existing converted image
  * @returns {Promise<string>} Extracted text
  */
-async function extractText(pdfPath) {
+async function extractText(pdfPath, existingImagePath = null) {
   console.log(`Starting OCR text extraction from: ${pdfPath}`);
 
-  const text = await extractTextWithOCR(pdfPath);
+  const text = await extractTextWithOCR(pdfPath, null, existingImagePath);
 
   if (text && text.trim().length >= 10) {
     console.log(`OCR succeeded, extracted ${text.length} characters`);
@@ -212,9 +224,10 @@ async function getOcrRegions() {
  * Extract metadata (job number and construction method) from PDF using OCR
  * Uses saved region configurations if available, otherwise full-page OCR
  * @param {string} pdfPath - Path to the PDF file
+ * @param {string} existingImagePath - Optional path to pre-existing converted image (e.g., from thumbnails/images_base-1.png)
  * @returns {Promise<{job_number: string|null, construction_method: string|null}>}
  */
-async function extractMetadata(pdfPath) {
+async function extractMetadata(pdfPath, existingImagePath = null) {
   try {
     // Get saved OCR regions
     const regions = await getOcrRegions();
@@ -226,7 +239,7 @@ async function extractMetadata(pdfPath) {
     // Extract job number using region if configured
     if (regions.job_number && regions.job_number.width > 0 && regions.job_number.height > 0) {
       console.log('Using configured region for job_number');
-      const text = await extractTextWithOCR(pdfPath, regions.job_number);
+      const text = await extractTextWithOCR(pdfPath, regions.job_number, existingImagePath);
       if (text) {
         job_number = extractJobNumber(text);
       }
@@ -235,7 +248,7 @@ async function extractMetadata(pdfPath) {
     // Extract construction method using region if configured
     if (regions.construction_method && regions.construction_method.width > 0 && regions.construction_method.height > 0) {
       console.log('Using configured region for construction_method');
-      const text = await extractTextWithOCR(pdfPath, regions.construction_method);
+      const text = await extractTextWithOCR(pdfPath, regions.construction_method, existingImagePath);
       if (text) {
         construction_method = extractConstructionMethod(text);
       }
@@ -244,7 +257,7 @@ async function extractMetadata(pdfPath) {
     // Fallback to full-page OCR if regions not configured or extraction failed
     if (!job_number || !construction_method) {
       console.log('Falling back to full-page OCR');
-      const fullText = await extractText(pdfPath);
+      const fullText = await extractText(pdfPath, existingImagePath);
       if (fullText) {
         if (!job_number) {
           job_number = extractJobNumber(fullText);

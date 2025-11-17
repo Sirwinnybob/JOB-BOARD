@@ -1,12 +1,12 @@
 {
   "name": "Kustom Kraft Cabinets - Job Board",
-  "short_name": "KK Job Board",
+  "short_name": "KKC Job Board",
   "description": "Job board for Kustom Kraft Cabinets delivery sheets and project tracking",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#1f2937",
-  "orientation": "portrait-primary",
+  "orientation": "any",
   "icons": [
     {
       "src": "/icon-192.png",

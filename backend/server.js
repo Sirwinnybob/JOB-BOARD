@@ -54,11 +54,13 @@ wss.on('connection', (ws, req) => {
     const oldWs = deviceConnections.get(deviceId);
     console.log(`🔄 Device reconnecting (closing old connection): ${deviceId.substring(0, 50)}...`);
 
-    // Close the old connection
-    try {
-      oldWs.close(1000, 'New connection from same device');
-    } catch (error) {
-      console.error('Error closing old WebSocket:', error);
+    // Only close the old connection if it's still open
+    if (oldWs.readyState === WebSocket.OPEN || oldWs.readyState === WebSocket.CONNECTING) {
+      try {
+        oldWs.close(1000, 'New connection from same device');
+      } catch (error) {
+        console.error('Error closing old WebSocket:', error);
+      }
     }
   }
 
@@ -87,11 +89,11 @@ wss.on('connection', (ws, req) => {
   });
 });
 
-// Heartbeat to detect broken connections
+// Heartbeat to detect broken connections (increased to 60s for better stability)
 const heartbeatInterval = setInterval(() => {
   wss.clients.forEach((ws) => {
     if (ws.isAlive === false) {
-      console.log('⏱️  Terminating inactive WebSocket connection');
+      console.log('⏱️  Terminating inactive WebSocket connection (no pong received)');
       // Remove from device connections map before terminating
       if (ws.deviceId && deviceConnections.get(ws.deviceId) === ws) {
         deviceConnections.delete(ws.deviceId);
@@ -102,7 +104,7 @@ const heartbeatInterval = setInterval(() => {
     ws.isAlive = false;
     ws.ping();
   });
-}, 30000); // Check every 30 seconds
+}, 60000); // Check every 60 seconds (was 30s, increased for stability)
 
 // Clean up on server shutdown
 wss.on('close', () => {
@@ -1019,9 +1021,20 @@ app.put('/api/ocr-regions/:field_name', authMiddleware, async (req, res) => {
   }
 });
 
-// Health check
+// Health check with database connectivity test
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok' });
+  // Quick database check
+  db.get('SELECT 1', [], (err) => {
+    if (err) {
+      console.error('Health check failed - database error:', err);
+      return res.status(503).json({ status: 'error', error: 'database unavailable' });
+    }
+    res.json({
+      status: 'ok',
+      timestamp: Date.now(),
+      connections: deviceConnections.size
+    });
+  });
 });
 
 // Serve React app for all other routes

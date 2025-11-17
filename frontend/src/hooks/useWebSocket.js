@@ -25,25 +25,22 @@ function useWebSocket(onMessage, enabled = true) {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const wsUrl = `${protocol}//${window.location.host}`;
 
-      console.log('🔌 WebSocket Connection Attempt');
-      console.log('  Protocol:', protocol);
-      console.log('  URL:', wsUrl);
-      console.log('  Page Protocol:', window.location.protocol);
-      console.log('  Host:', window.location.host);
+      console.log('🔌 Connecting to WebSocket:', wsUrl);
 
       const ws = new WebSocket(wsUrl);
 
       ws.onopen = () => {
-        console.log('✅ WebSocket connected successfully');
-        console.log('  Ready State:', ws.readyState);
-        console.log('  Protocol:', ws.protocol);
+        console.log('✅ WebSocket connected');
         reconnectAttemptsRef.current = 0;
       };
 
       ws.onmessage = (event) => {
         try {
           const data = JSON.parse(event.data);
-          console.log('📨 WebSocket message received:', data.type);
+          // Only log important message types to reduce console noise
+          if (!['ping', 'pong'].includes(data.type)) {
+            console.log('📨 WebSocket message:', data.type);
+          }
           if (onMessageRef.current) {
             onMessageRef.current(data);
           }
@@ -89,11 +86,17 @@ function useWebSocket(onMessage, enabled = true) {
           console.log('ℹ️  Close code 1001: Going away (normal closure)');
         } else if (event.code === 1000) {
           console.log('ℹ️  Close code 1000: Normal closure');
+          // If it's a normal closure from server (duplicate connection), don't reconnect immediately
+          if (event.reason === 'New connection from same device') {
+            console.log('     Server replaced this connection with a newer one. Not reconnecting.');
+            return; // Don't reconnect
+          }
         }
 
-        // Attempt to reconnect with exponential backoff
+        // Attempt to reconnect with exponential backoff (minimum 2 seconds to avoid loops)
         if (enabled && reconnectAttemptsRef.current < 10) {
-          const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 30000);
+          const baseDelay = Math.max(2000, 1000 * Math.pow(2, reconnectAttemptsRef.current));
+          const delay = Math.min(baseDelay, 30000);
           console.log(`🔄 Reconnecting in ${delay}ms (attempt ${reconnectAttemptsRef.current + 1}/10)`);
 
           reconnectTimeoutRef.current = setTimeout(() => {

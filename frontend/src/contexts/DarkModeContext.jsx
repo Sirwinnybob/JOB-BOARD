@@ -21,6 +21,8 @@ export function DarkModeProvider({ children }) {
     return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
   });
 
+  const [isTransitioning, setIsTransitioning] = useState(false);
+
   // Listen for system preference changes
   useEffect(() => {
     const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
@@ -46,10 +48,18 @@ export function DarkModeProvider({ children }) {
     }
   }, [darkMode]);
 
-  const toggleDarkMode = () => setDarkMode(prev => !prev);
+  const toggleDarkMode = () => {
+    setIsTransitioning(true);
+    setDarkMode(prev => !prev);
+
+    // Reset transition state after animation completes
+    setTimeout(() => {
+      setIsTransitioning(false);
+    }, 2500); // Allow enough time for all cascading animations
+  };
 
   return (
-    <DarkModeContext.Provider value={{ darkMode, toggleDarkMode }}>
+    <DarkModeContext.Provider value={{ darkMode, toggleDarkMode, isTransitioning }}>
       {children}
     </DarkModeContext.Provider>
   );

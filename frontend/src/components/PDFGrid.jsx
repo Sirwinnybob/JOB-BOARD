@@ -1,7 +1,7 @@
 import React from 'react';
 import DraggableCoverSheetCard from './DraggableCoverSheetCard';
 
-function PDFGrid({ pdfs, rows, cols, aspectWidth = 11, aspectHeight = 10, onPdfClick }) {
+function PDFGrid({ pdfs, rows, cols, aspectWidth = 11, aspectHeight = 10, onPdfClick, isTransitioning }) {
   const totalSlots = rows * cols;
 
   // Responsive columns: 1 on mobile, 2 on small tablets, full cols on larger screens
@@ -18,12 +18,16 @@ function PDFGrid({ pdfs, rows, cols, aspectWidth = 11, aspectHeight = 10, onPdfC
     >
       {Array.from({ length: totalSlots }).map((_, index) => {
         const pdf = pdfs[index];
+        const animationDelay = isTransitioning ? `${0.4 + index * 0.1}s` : '0s';
 
         return (
           <div
             key={pdf?.id || `empty-${index}`}
-            className="flex flex-col transition-all duration-500 ease-in-out"
-            style={{ aspectRatio: `${aspectWidth} / ${aspectHeight}` }}
+            className={`flex flex-col transition-all duration-500 ease-in-out ${isTransitioning ? 'animate-theme-item' : ''}`}
+            style={{
+              aspectRatio: `${aspectWidth} / ${aspectHeight}`,
+              animationDelay
+            }}
           >
             {!pdf ? (
               <div className="w-full h-full bg-gray-200 dark:bg-gray-700 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 transition-colors" />

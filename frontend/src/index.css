@@ -40,3 +40,43 @@ body {
     display: none;  /* Chrome, Safari and Opera */
   }
 }
+
+/* Theme transition animations */
+@keyframes theme-fade-invert {
+  0% {
+    opacity: 1;
+    filter: brightness(1) contrast(1);
+  }
+  50% {
+    opacity: 0.3;
+    filter: brightness(0.8) contrast(1.2);
+  }
+  100% {
+    opacity: 1;
+    filter: brightness(1) contrast(1);
+  }
+}
+
+@keyframes theme-fade {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.2;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@utility animate-theme-bg {
+  animation: theme-fade-invert 0.8s ease-in-out;
+}
+
+@utility animate-theme-header {
+  animation: theme-fade-invert 0.7s ease-in-out 0.2s backwards;
+}
+
+@utility animate-theme-item {
+  animation: theme-fade 0.6s ease-in-out backwards;
+}

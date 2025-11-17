@@ -1,10 +1,10 @@
 import React, { useRef, useState, useEffect } from 'react';
 
-function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick = false }) {
+function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick = false, isClosing = false, onAnimationComplete = null }) {
   const scrollContainerRef = useRef(null);
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
   const [isScrolling, setIsScrolling] = useState(false);
-  const [showAnimation, setShowAnimation] = useState(enteredViaClick);
+  const [animationState, setAnimationState] = useState('zoom-in');
   const [darkMode, setDarkMode] = useState(() => {
     // Check localStorage first, then fall back to system preference
     const saved = localStorage.getItem('slideShowDarkMode');
@@ -23,15 +23,26 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
     localStorage.setItem('slideShowDarkMode', darkMode.toString());
   }, [darkMode]);
 
-  // Turn off animation after it completes
+  // Turn off zoom-in animation after it completes
   useEffect(() => {
-    if (showAnimation) {
+    if (animationState === 'zoom-in') {
       const timer = setTimeout(() => {
-        setShowAnimation(false);
-      }, 500); // Match animation duration
+        setAnimationState('none');
+      }, 400); // Match animation duration
       return () => clearTimeout(timer);
     }
-  }, [showAnimation]);
+  }, []);
+
+  // Handle zoom-out animation when closing
+  useEffect(() => {
+    if (isClosing && animationState !== 'zoom-out') {
+      setAnimationState('zoom-out');
+      const timer = setTimeout(() => {
+        onAnimationComplete && onAnimationComplete();
+      }, 400); // Match animation duration
+      return () => clearTimeout(timer);
+    }
+  }, [isClosing, animationState, onAnimationComplete]);
 
   useEffect(() => {
     const container = scrollContainerRef.current;
@@ -158,12 +169,25 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
               transform: scale(1);
             }
           }
-          .zoom-animation {
+          @keyframes zoomOut {
+            from {
+              opacity: 1;
+              transform: scale(1);
+            }
+            to {
+              opacity: 0;
+              transform: scale(0.5);
+            }
+          }
+          .zoom-in-animation {
             animation: zoomIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+          }
+          .zoom-out-animation {
+            animation: zoomOut 0.4s cubic-bezier(0.16, 1, 0.3, 1);
           }
         `}
       </style>
-      <div className={`${containerClass} ${showAnimation ? 'zoom-animation' : ''}`} style={containerStyle}>
+      <div className={`${containerClass} ${animationState === 'zoom-in' ? 'zoom-in-animation' : ''} ${animationState === 'zoom-out' ? 'zoom-out-animation' : ''}`} style={containerStyle}>
         {/* Horizontal Scroll Container */}
         <div
           ref={scrollContainerRef}

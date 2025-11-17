@@ -353,7 +353,7 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
                 className="relative h-full max-w-6xl w-full mx-auto flex items-center justify-center"
               >
                 {pdf.is_placeholder ? (
-                  <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-lg shadow-md border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center p-4 sm:p-6 md:p-8 transition-colors">
+                  <div className="max-w-full max-h-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-lg shadow-md border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center p-4 sm:p-6 md:p-8 transition-colors" style={{ aspectRatio: '11 / 10' }}>
                     <p className="text-gray-600 dark:text-gray-400 text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-center break-words leading-tight transition-colors">
                       {pdf.placeholder_text || 'PLACEHOLDER'}
                     </p>

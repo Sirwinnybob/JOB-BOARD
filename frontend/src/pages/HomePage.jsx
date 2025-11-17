@@ -42,6 +42,7 @@ function HomePage() {
     }
     return saved;
   });
+  const [isClosingSlideshow, setIsClosingSlideshow] = useState(false);
   const navigate = useNavigate();
 
   // Configure drag sensors
@@ -507,10 +508,28 @@ function HomePage() {
   };
 
   const toggleViewMode = () => {
-    const newMode = viewMode === 'grid' ? 'slideshow' : 'grid';
-    setViewMode(newMode);
-    localStorage.setItem('viewMode', newMode);
+    if (viewMode === 'slideshow') {
+      // Trigger zoom-out animation before closing
+      setIsClosingSlideshow(true);
+    } else {
+      // Switch to slideshow (will trigger zoom-in)
+      setViewMode('slideshow');
+      localStorage.setItem('viewMode', 'slideshow');
+      setSelectedPdf(null);
+    }
+  };
+
+  const handleInitiateClose = () => {
+    // Trigger zoom-out animation
+    setIsClosingSlideshow(true);
+  };
+
+  const handleSlideshowAnimationComplete = () => {
+    // Called after zoom-out animation completes
+    setViewMode('grid');
+    localStorage.setItem('viewMode', 'grid');
     setSelectedPdf(null);
+    setIsClosingSlideshow(false);
   };
 
   if (loading) {
@@ -716,6 +735,10 @@ function HomePage() {
               <SlideShowView
                 pdfs={pdfs}
                 initialIndex={selectedPdf ? pdfs.filter(p => p && !p.is_placeholder).findIndex(p => p.id === selectedPdf.id) : 0}
+                onClose={handleInitiateClose}
+                enteredViaClick={selectedPdf !== null}
+                isClosing={isClosingSlideshow}
+                onAnimationComplete={handleSlideshowAnimationComplete}
               />
             ) : (
               gridContent()

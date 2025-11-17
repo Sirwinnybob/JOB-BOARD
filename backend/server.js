@@ -1129,7 +1129,7 @@ app.get('/api/health', (req, res) => {
 });
 
 // Serve React app for all other routes (Express 5 compatible)
-app.get('/(.*)', (req, res) => {
+app.get('/:path*', (req, res) => {
   res.sendFile(path.join(frontendPath, 'index.html'));
 });
 

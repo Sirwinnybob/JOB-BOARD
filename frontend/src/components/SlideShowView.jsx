@@ -301,6 +301,19 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
         </div>
       )}
 
+      {/* Close Button - Large and prominent when entered via click */}
+      {onClose && (
+        <button
+          onClick={onClose}
+          className="absolute top-4 left-4 bg-black/70 hover:bg-black/90 text-white p-4 rounded-full transition-all z-20 shadow-lg"
+          aria-label="Close"
+        >
+          <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={3}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      )}
+
       {/* Counter and Controls */}
       <div className="absolute top-4 right-4 flex items-center gap-2 z-10">
         {onClose && (
@@ -320,17 +333,6 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
                 </svg>
               )}
-            </button>
-
-            {/* Close Button */}
-            <button
-              onClick={onClose}
-              className="bg-black/70 hover:bg-black/90 text-white p-2 rounded-lg transition-colors"
-              aria-label="Close"
-            >
-              <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
             </button>
           </>
         )}

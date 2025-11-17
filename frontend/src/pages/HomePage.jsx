@@ -627,34 +627,22 @@ function HomePage() {
       if (targetPdf) {
         // Wait for grid to be rendered, then find the card
         requestAnimationFrame(() => {
-          const gridContainer = document.querySelector('.grid');
-          if (gridContainer) {
-            const cards = gridContainer.querySelectorAll('.cursor-pointer');
-            let foundCard = null;
+          // Find the card by data-pdf-id attribute
+          const foundCard = document.querySelector(`[data-pdf-id="${targetPdf.id}"]`);
 
-            // Find the card that matches the current slideshow item
-            cards.forEach(card => {
-              const thumbnail = card.querySelector('img[alt]');
-              if (thumbnail && targetPdf.images_base) {
-                if (thumbnail.src.includes(`${targetPdf.images_base}-1.png`) ||
-                    (targetPdf.thumbnail && thumbnail.src.includes(targetPdf.thumbnail))) {
-                  foundCard = card;
-                }
-              }
+          if (foundCard) {
+            const rect = foundCard.getBoundingClientRect();
+            setOriginRect({
+              top: rect.top,
+              left: rect.left,
+              width: rect.width,
+              height: rect.height,
+              scrollX: window.scrollX || window.pageXOffset,
+              scrollY: window.scrollY || window.pageYOffset,
             });
-
-            if (foundCard) {
-              const rect = foundCard.getBoundingClientRect();
-              setOriginRect({
-                top: rect.top,
-                left: rect.left,
-                width: rect.width,
-                height: rect.height,
-                scrollX: window.scrollX || window.pageXOffset,
-                scrollY: window.scrollY || window.pageYOffset,
-              });
-              console.log('[HomePage] Captured origin rect for toggle exit:', rect);
-            }
+            console.log('[HomePage] Captured origin rect for toggle exit:', rect);
+          } else {
+            console.warn('[HomePage] Could not find card for toggle exit, using fallback');
           }
         });
       }
@@ -703,38 +691,24 @@ function HomePage() {
     if (currentPdf) {
       // Wait for grid to render, then find the card for the currently viewed PDF
       requestAnimationFrame(() => {
-        const gridContainer = document.querySelector('.grid');
-        if (gridContainer) {
-          const cards = gridContainer.querySelectorAll('.cursor-pointer');
-          let foundCard = null;
+        // Find the card by data-pdf-id attribute
+        const foundCard = document.querySelector(`[data-pdf-id="${currentPdf.id}"]`);
 
-          // Find the card that matches the currently viewed PDF
-          cards.forEach(card => {
-            const thumbnail = card.querySelector('img[alt]');
-            if (thumbnail && currentPdf.images_base) {
-              if (thumbnail.src.includes(`${currentPdf.images_base}-1.png`) ||
-                  (currentPdf.thumbnail && thumbnail.src.includes(currentPdf.thumbnail))) {
-                foundCard = card;
-              }
-            }
-          });
-
-          if (foundCard) {
-            const rect = foundCard.getBoundingClientRect();
-            const updatedOriginRect = {
-              top: rect.top,
-              left: rect.left,
-              width: rect.width,
-              height: rect.height,
-              scrollX: window.scrollX || window.pageXOffset,
-              scrollY: window.scrollY || window.pageYOffset,
-            };
-            setOriginRect(updatedOriginRect);
-            console.log('[HomePage] Captured origin rect for current item:', updatedOriginRect);
-          } else {
-            console.warn('[HomePage] Could not find current PDF in grid, using fallback close animation');
-            setOriginRect(null);
-          }
+        if (foundCard) {
+          const rect = foundCard.getBoundingClientRect();
+          const updatedOriginRect = {
+            top: rect.top,
+            left: rect.left,
+            width: rect.width,
+            height: rect.height,
+            scrollX: window.scrollX || window.pageXOffset,
+            scrollY: window.scrollY || window.pageYOffset,
+          };
+          setOriginRect(updatedOriginRect);
+          console.log('[HomePage] Captured origin rect for current item:', updatedOriginRect);
+        } else {
+          console.warn('[HomePage] Could not find current PDF in grid, using fallback close animation');
+          setOriginRect(null);
         }
       });
     }

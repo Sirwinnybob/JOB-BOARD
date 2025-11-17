@@ -572,8 +572,7 @@ function HomePage() {
     // Only allow slideshow in non-edit mode
     if (editMode) return;
 
-    const displayPdfs = pdfs.filter(p => p && !p.is_placeholder);
-    const clickedIndex = displayPdfs.findIndex(p => p.id === pdf.id);
+    const clickedIndex = pdfs.findIndex(p => p && p.id === pdf.id);
 
     console.log('[HomePage] handlePdfClick called for pdf:', pdf.id, 'clickedIndex:', clickedIndex);
 
@@ -887,8 +886,8 @@ function HomePage() {
             ) : viewMode === 'slideshow' ? (
               <SlideShowView
                 pdfs={pdfs}
-                initialIndex={selectedPdf ? pdfs.filter(p => p && !p.is_placeholder).findIndex(p => p.id === selectedPdf.id) : 0}
-                onClose={selectedPdf ? handleInitiateClose : null}
+                initialIndex={selectedPdf ? pdfs.findIndex(p => p && p.id === selectedPdf.id) : 0}
+                onClose={handleInitiateClose}
                 enteredViaClick={selectedPdf !== null}
                 isClosing={isClosingSlideshow}
                 onAnimationComplete={handleSlideshowAnimationComplete}

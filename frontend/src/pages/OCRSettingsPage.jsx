@@ -263,6 +263,53 @@ function OCRSettingsPage() {
     }
   };
 
+  const clearRegion = async (fieldName) => {
+    if (!confirm(`Clear the "${fieldName}" region? This will reset it to empty.`)) {
+      return;
+    }
+
+    const clearedRegion = { x: 0, y: 0, width: 0, height: 0 };
+
+    // Update local state
+    setRegions(regions.map(r =>
+      r.field_name === fieldName
+        ? { ...r, ...clearedRegion }
+        : r
+    ));
+
+    // Save to backend
+    try {
+      await ocrAPI.updateRegion(fieldName, { field_name: fieldName, ...clearedRegion });
+      console.log(`Region "${fieldName}" cleared successfully`);
+    } catch (error) {
+      console.error('Error clearing region:', error);
+      alert('Failed to clear region on server');
+    }
+  };
+
+  const clearAllRegions = async () => {
+    if (!confirm('Clear ALL regions? This will reset all OCR detection regions.')) {
+      return;
+    }
+
+    const clearedRegion = { x: 0, y: 0, width: 0, height: 0 };
+
+    // Update local state for all regions
+    setRegions(regions.map(r => ({ ...r, ...clearedRegion })));
+
+    // Save all to backend
+    try {
+      const savePromises = regions.map(r =>
+        ocrAPI.updateRegion(r.field_name, { field_name: r.field_name, ...clearedRegion })
+      );
+      await Promise.all(savePromises);
+      alert('All regions cleared successfully!');
+    } catch (error) {
+      console.error('Error clearing all regions:', error);
+      alert('Failed to clear all regions on server');
+    }
+  };
+
 
   return (
     <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-6 relative">
@@ -289,15 +336,26 @@ function OCRSettingsPage() {
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
               OCR Region Configuration
             </h1>
-            <button
-              onClick={() => navigate('/')}
-              className="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-              </svg>
-              Back to Job Board
-            </button>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={clearAllRegions}
+                className="flex items-center gap-2 px-4 py-2 text-sm text-white bg-red-600 hover:bg-red-700 rounded-lg transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Clear All Regions
+              </button>
+              <button
+                onClick={() => navigate('/')}
+                className="flex items-center gap-2 px-4 py-2 text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                </svg>
+                Back to Job Board
+              </button>
+            </div>
           </div>
           <p className="text-gray-600 dark:text-gray-400 mb-4">
             Upload a test cover sheet, draw regions for job number and construction method, then test and save.
@@ -386,15 +444,25 @@ function OCRSettingsPage() {
                   <div>Size: {region.width}x{region.height}px</div>
                 </div>
 
-                <div className="mt-3">
+                <div className="mt-3 flex gap-2">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
                       saveRegion(region);
                     }}
-                    className="w-full px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm"
+                    className="flex-1 px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm"
                   >
                     Save
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      clearRegion(region.field_name);
+                    }}
+                    className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-sm"
+                    title="Clear this region"
+                  >
+                    Clear
                   </button>
                 </div>
               </div>

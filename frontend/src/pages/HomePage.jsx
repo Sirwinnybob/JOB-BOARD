@@ -101,7 +101,28 @@ function HomePage() {
   const handleWebSocketMessage = useCallback((message) => {
     console.log('Received update:', message.type);
 
-    // Skip reload during edit mode
+    // Handle metadata updates even during edit mode (OCR results)
+    if (editMode && message.type === 'pdf_metadata_updated') {
+      console.log('Updating metadata during edit mode:', message.data);
+      const { id, job_number, construction_method } = message.data;
+
+      // Update function to apply metadata changes to a PDF
+      const updatePdfMetadata = (pdf) => {
+        if (pdf.id === id) {
+          return { ...pdf, job_number, construction_method };
+        }
+        return pdf;
+      };
+
+      // Update both working copies and main state
+      setWorkingPdfs(prev => prev.map(updatePdfMetadata));
+      setWorkingPendingPdfs(prev => prev.map(updatePdfMetadata));
+      setPdfs(prev => prev.map(updatePdfMetadata));
+      setPendingPdfs(prev => prev.map(updatePdfMetadata));
+      return;
+    }
+
+    // Skip other reloads during edit mode
     if (editMode) {
       console.log('Skipping reload during edit mode');
       return;

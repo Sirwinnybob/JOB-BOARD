@@ -347,18 +347,26 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
               <div
                 className="relative h-full max-w-6xl w-full mx-auto flex items-center justify-center"
               >
-                <img
-                  src={imageSrc}
-                  alt={pdf.original_name}
-                  className="max-w-full max-h-full object-contain transition-all"
-                  loading="lazy"
-                  onError={(e) => {
-                    // Fallback to regular image if dark mode image fails
-                    if (isDarkMode && pdf.dark_mode_images_base && e.target.src.includes('-dark-')) {
-                      e.target.src = `/thumbnails/${pdf.images_base}-1.png`;
-                    }
-                  }}
-                />
+                {pdf.is_placeholder ? (
+                  <div className="w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-lg shadow-md border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center p-8 transition-colors">
+                    <p className="text-gray-600 dark:text-gray-400 text-6xl font-bold text-center break-words leading-tight transition-colors">
+                      {pdf.placeholder_text || 'PLACEHOLDER'}
+                    </p>
+                  </div>
+                ) : (
+                  <img
+                    src={imageSrc}
+                    alt={pdf.original_name}
+                    className="max-w-full max-h-full object-contain transition-all"
+                    loading="lazy"
+                    onError={(e) => {
+                      // Fallback to regular image if dark mode image fails
+                      if (isDarkMode && pdf.dark_mode_images_base && e.target.src.includes('-dark-')) {
+                        e.target.src = `/thumbnails/${pdf.images_base}-1.png`;
+                      }
+                    }}
+                  />
+                )}
 
                 {/* Job Info Overlay */}
                 <div className="absolute top-4 left-4 bg-gray-900/80 dark:bg-black/70 text-white px-4 py-2 rounded-lg transition-colors">

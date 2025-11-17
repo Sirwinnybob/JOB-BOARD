@@ -15,3 +15,16 @@ if (import.meta.env.DEV) {
 } else {
   root.render(<App />);
 }
+
+// Register service worker for PWA support
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js')
+      .then((registration) => {
+        console.log('[PWA] Service worker registered:', registration.scope);
+      })
+      .catch((error) => {
+        console.error('[PWA] Service worker registration failed:', error);
+      });
+  });
+}

@@ -1,7 +1,7 @@
 import React from 'react';
 import DraggableGridItem from './DraggableGridItem';
 
-function AdminGrid({ pdfs, rows, cols, editMode, onReorder, onDelete, onLabelClick, onMetadataUpdate, onSlotMenuOpen, showSlotMenu, onSlotMenuClose, onAddPlaceholder, onUploadToSlot, onMoveToPending }) {
+function AdminGrid({ pdfs, rows, cols, aspectWidth, aspectHeight, editMode, onReorder, onDelete, onLabelClick, onMetadataUpdate, onSlotMenuOpen, showSlotMenu, onSlotMenuClose, onAddPlaceholder, onUploadToSlot, onMoveToPending }) {
   const totalSlots = rows * cols;
 
   const gridStyle = {
@@ -23,6 +23,8 @@ function AdminGrid({ pdfs, rows, cols, editMode, onReorder, onDelete, onLabelCli
             id={`board-${index}`}
             pdf={pdf}
             index={index}
+            aspectWidth={aspectWidth}
+            aspectHeight={aspectHeight}
             editMode={editMode}
             onDelete={onDelete}
             onLabelClick={onLabelClick}

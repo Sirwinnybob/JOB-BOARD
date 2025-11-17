@@ -9,7 +9,7 @@ import { useDarkMode } from '../contexts/DarkModeContext';
 function HomePage() {
   const { darkMode, toggleDarkMode } = useDarkMode();
   const [pdfs, setPdfs] = useState([]);
-  const [settings, setSettings] = useState({ grid_rows: 6, grid_cols: 4 });
+  const [settings, setSettings] = useState({ grid_rows: 6, grid_cols: 4, aspect_ratio_width: 11, aspect_ratio_height: 10 });
   const [selectedPdf, setSelectedPdf] = useState(null);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState(() => {
@@ -28,6 +28,8 @@ function HomePage() {
       setSettings({
         grid_rows: parseInt(settingsRes.data.grid_rows),
         grid_cols: parseInt(settingsRes.data.grid_cols),
+        aspect_ratio_width: parseFloat(settingsRes.data.aspect_ratio_width || 11),
+        aspect_ratio_height: parseFloat(settingsRes.data.aspect_ratio_height || 10),
       });
     } catch (error) {
       console.error('Error loading data:', error);
@@ -158,6 +160,8 @@ function HomePage() {
             pdfs={pdfs}
             rows={settings.grid_rows}
             cols={settings.grid_cols}
+            aspectWidth={settings.aspect_ratio_width}
+            aspectHeight={settings.aspect_ratio_height}
             onPdfClick={handlePdfClick}
           />
         )}

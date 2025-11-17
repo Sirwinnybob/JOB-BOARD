@@ -1,7 +1,7 @@
 import React from 'react';
 import DraggableCoverSheetCard from './DraggableCoverSheetCard';
 
-function PDFGrid({ pdfs, rows, cols, onPdfClick }) {
+function PDFGrid({ pdfs, rows, cols, aspectWidth = 11, aspectHeight = 10, onPdfClick }) {
   const totalSlots = rows * cols;
   const gridStyle = {
     gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
@@ -20,7 +20,7 @@ function PDFGrid({ pdfs, rows, cols, onPdfClick }) {
           <div
             key={pdf?.id || `empty-${index}`}
             className="flex flex-col transition-all duration-500 ease-in-out"
-            style={{ aspectRatio: '8.5 / 11' }}
+            style={{ aspectRatio: `${aspectWidth} / ${aspectHeight}` }}
           >
             {!pdf ? (
               <div className="w-full h-full bg-gray-200 dark:bg-gray-700 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 transition-colors" />

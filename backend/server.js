@@ -54,11 +54,13 @@ wss.on('connection', (ws, req) => {
     const oldWs = deviceConnections.get(deviceId);
     console.log(`🔄 Device reconnecting (closing old connection): ${deviceId.substring(0, 50)}...`);
 
-    // Close the old connection
-    try {
-      oldWs.close(1000, 'New connection from same device');
-    } catch (error) {
-      console.error('Error closing old WebSocket:', error);
+    // Only close the old connection if it's still open
+    if (oldWs.readyState === WebSocket.OPEN || oldWs.readyState === WebSocket.CONNECTING) {
+      try {
+        oldWs.close(1000, 'New connection from same device');
+      } catch (error) {
+        console.error('Error closing old WebSocket:', error);
+      }
     }
   }
 
@@ -87,11 +89,11 @@ wss.on('connection', (ws, req) => {
   });
 });
 
-// Heartbeat to detect broken connections
+// Heartbeat to detect broken connections (increased to 60s for better stability)
 const heartbeatInterval = setInterval(() => {
   wss.clients.forEach((ws) => {
     if (ws.isAlive === false) {
-      console.log('⏱️  Terminating inactive WebSocket connection');
+      console.log('⏱️  Terminating inactive WebSocket connection (no pong received)');
       // Remove from device connections map before terminating
       if (ws.deviceId && deviceConnections.get(ws.deviceId) === ws) {
         deviceConnections.delete(ws.deviceId);
@@ -102,7 +104,7 @@ const heartbeatInterval = setInterval(() => {
     ws.isAlive = false;
     ws.ping();
   });
-}, 30000); // Check every 30 seconds
+}, 60000); // Check every 60 seconds (was 30s, increased for stability)
 
 // Clean up on server shutdown
 wss.on('close', () => {
@@ -879,7 +881,7 @@ app.get('/api/settings', async (req, res) => {
 
 app.put('/api/settings', authMiddleware, async (req, res) => {
   try {
-    const { grid_rows, grid_cols } = req.body;
+    const { grid_rows, grid_cols, aspect_ratio_width, aspect_ratio_height } = req.body;
 
     if (!grid_rows || !grid_cols) {
       return res.status(400).json({ error: 'grid_rows and grid_cols required' });
@@ -887,23 +889,68 @@ app.put('/api/settings', authMiddleware, async (req, res) => {
 
     const rows = parseInt(grid_rows);
     const cols = parseInt(grid_cols);
+    const aspectWidth = aspect_ratio_width ? parseFloat(aspect_ratio_width) : null;
+    const aspectHeight = aspect_ratio_height ? parseFloat(aspect_ratio_height) : null;
 
     if (rows < 1 || rows > 20 || cols < 1 || cols > 20) {
       return res.status(400).json({ error: 'Rows and columns must be between 1 and 20' });
     }
 
-    db.run('UPDATE settings SET value = ? WHERE key = ?', [rows, 'grid_rows']);
-    db.run('UPDATE settings SET value = ? WHERE key = ?', [cols, 'grid_cols'], (err) => {
-      if (err) {
+    if (aspectWidth !== null && (aspectWidth < 1 || aspectWidth > 50)) {
+      return res.status(400).json({ error: 'Aspect ratio width must be between 1 and 50' });
+    }
+
+    if (aspectHeight !== null && (aspectHeight < 1 || aspectHeight > 50)) {
+      return res.status(400).json({ error: 'Aspect ratio height must be between 1 and 50' });
+    }
+
+    const updates = [];
+    const responseData = { grid_rows: rows, grid_cols: cols };
+
+    updates.push(new Promise((resolve, reject) => {
+      db.run('UPDATE settings SET value = ? WHERE key = ?', [rows, 'grid_rows'], (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    }));
+
+    updates.push(new Promise((resolve, reject) => {
+      db.run('UPDATE settings SET value = ? WHERE key = ?', [cols, 'grid_cols'], (err) => {
+        if (err) reject(err);
+        else resolve();
+      });
+    }));
+
+    if (aspectWidth !== null) {
+      updates.push(new Promise((resolve, reject) => {
+        db.run('UPDATE settings SET value = ? WHERE key = ?', [aspectWidth, 'aspect_ratio_width'], (err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      }));
+      responseData.aspect_ratio_width = aspectWidth;
+    }
+
+    if (aspectHeight !== null) {
+      updates.push(new Promise((resolve, reject) => {
+        db.run('UPDATE settings SET value = ? WHERE key = ?', [aspectHeight, 'aspect_ratio_height'], (err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      }));
+      responseData.aspect_ratio_height = aspectHeight;
+    }
+
+    Promise.all(updates)
+      .then(() => {
+        // Broadcast update to all clients
+        broadcastUpdate('settings_updated', responseData);
+        res.json(responseData);
+      })
+      .catch((err) => {
         console.error('Database error:', err);
-        return res.status(500).json({ error: 'Database error' });
-      }
-
-      // Broadcast update to all clients
-      broadcastUpdate('settings_updated', { grid_rows: rows, grid_cols: cols });
-
-      res.json({ grid_rows: rows, grid_cols: cols });
-    });
+        res.status(500).json({ error: 'Database error' });
+      });
   } catch (error) {
     console.error('Error updating settings:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -974,9 +1021,20 @@ app.put('/api/ocr-regions/:field_name', authMiddleware, async (req, res) => {
   }
 });
 
-// Health check
+// Health check with database connectivity test
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok' });
+  // Quick database check
+  db.get('SELECT 1', [], (err) => {
+    if (err) {
+      console.error('Health check failed - database error:', err);
+      return res.status(503).json({ status: 'error', error: 'database unavailable' });
+    }
+    res.json({
+      status: 'ok',
+      timestamp: Date.now(),
+      connections: deviceConnections.size
+    });
+  });
 });
 
 // Serve React app for all other routes

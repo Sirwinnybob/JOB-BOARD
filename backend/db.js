@@ -122,6 +122,12 @@ db.serialize(() => {
     VALUES ('grid_rows', '6'), ('grid_cols', '4')
   `);
 
+  // Add aspect ratio settings (landscape with header space)
+  db.run(`
+    INSERT OR IGNORE INTO settings (key, value)
+    VALUES ('aspect_ratio_width', '11'), ('aspect_ratio_height', '10')
+  `);
+
   // Labels table
   db.run(`
     CREATE TABLE IF NOT EXISTS labels (

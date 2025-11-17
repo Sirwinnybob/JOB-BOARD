@@ -18,7 +18,7 @@ function AdminPage({ onLogout }) {
   const [workingPdfs, setWorkingPdfs] = useState([]);
   const [workingPendingPdfs, setWorkingPendingPdfs] = useState([]);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [settings, setSettings] = useState({ grid_rows: 6, grid_cols: 4 });
+  const [settings, setSettings] = useState({ grid_rows: 6, grid_cols: 4, aspect_ratio_width: 11, aspect_ratio_height: 10 });
   const [editMode, setEditMode] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
   const [uploadTargetPosition, setUploadTargetPosition] = useState(null);
@@ -58,6 +58,8 @@ function AdminPage({ onLogout }) {
       setSettings({
         grid_rows: parseInt(settingsRes.data.grid_rows),
         grid_cols: parseInt(settingsRes.data.grid_cols),
+        aspect_ratio_width: parseFloat(settingsRes.data.aspect_ratio_width || 11),
+        aspect_ratio_height: parseFloat(settingsRes.data.aspect_ratio_height || 10),
       });
     } catch (error) {
       console.error('Error loading data:', error);
@@ -653,6 +655,8 @@ function AdminPage({ onLogout }) {
               pdfs={editMode ? workingPdfs : pdfs}
               rows={settings.grid_rows}
               cols={settings.grid_cols}
+              aspectWidth={settings.aspect_ratio_width}
+              aspectHeight={settings.aspect_ratio_height}
               editMode={editMode}
               onReorder={handleReorder}
               onDelete={handleDelete}

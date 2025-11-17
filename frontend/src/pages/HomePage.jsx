@@ -9,13 +9,12 @@ import { useDarkMode } from '../contexts/DarkModeContext';
 function HomePage() {
   const { darkMode, toggleDarkMode } = useDarkMode();
   const [pdfs, setPdfs] = useState([]);
-  const [settings, setSettings] = useState({ grid_rows: 4, grid_cols: 6 });
+  const [settings, setSettings] = useState({ grid_rows: 6, grid_cols: 4 });
   const [selectedPdf, setSelectedPdf] = useState(null);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState(() => {
-    // Get saved view preference from localStorage
     const saved = localStorage.getItem('viewMode');
-    return saved || 'grid'; // default to grid
+    return saved || 'grid';
   });
   const navigate = useNavigate();
 
@@ -66,18 +65,16 @@ function HomePage() {
   useWebSocket(handleWebSocketMessage, true);
 
   const handlePdfClick = (pdf) => {
-    setSelectedPdf(pdf);
-  };
+    // Switch to slideshow view and focus on clicked PDF
+    const displayPdfs = pdfs.filter(p => p && !p.is_placeholder);
+    const clickedIndex = displayPdfs.findIndex(p => p.id === pdf.id);
 
-  const handleCloseModal = () => {
-    setSelectedPdf(null);
-  };
+    setViewMode('slideshow');
+    localStorage.setItem('viewMode', 'slideshow');
 
-  const handleNavigate = (newIndex) => {
-    // Include all PDFs including placeholders in navigation
-    const displayPdfs = pdfs.filter(pdf => pdf);
-    if (newIndex >= 0 && newIndex < displayPdfs.length) {
-      setSelectedPdf(displayPdfs[newIndex]);
+    // Store the index to scroll to it after view changes
+    if (clickedIndex >= 0) {
+      setSelectedPdf(pdf);
     }
   };
 
@@ -85,6 +82,7 @@ function HomePage() {
     const newMode = viewMode === 'grid' ? 'slideshow' : 'grid';
     setViewMode(newMode);
     localStorage.setItem('viewMode', newMode);
+    setSelectedPdf(null); // Clear selection when toggling
   };
 
   if (loading) {
@@ -153,7 +151,7 @@ function HomePage() {
         ) : viewMode === 'slideshow' ? (
           <SlideShowView
             pdfs={pdfs}
-            onPdfClick={handlePdfClick}
+            initialIndex={selectedPdf ? pdfs.filter(p => p && !p.is_placeholder).findIndex(p => p.id === selectedPdf.id) : 0}
           />
         ) : (
           <PDFGrid
@@ -164,15 +162,6 @@ function HomePage() {
           />
         )}
       </main>
-
-      {/* Fullscreen SlideShow View */}
-      {selectedPdf && (
-        <SlideShowView
-          pdfs={pdfs}
-          initialIndex={pdfs.filter(pdf => pdf && !pdf.is_placeholder).findIndex(p => p.id === selectedPdf.id)}
-          onClose={handleCloseModal}
-        />
-      )}
     </div>
   );
 }

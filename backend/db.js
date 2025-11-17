@@ -119,7 +119,7 @@ db.serialize(() => {
   // Insert default settings if they don't exist
   db.run(`
     INSERT OR IGNORE INTO settings (key, value)
-    VALUES ('grid_rows', '4'), ('grid_cols', '6')
+    VALUES ('grid_rows', '6'), ('grid_cols', '4')
   `);
 
   // Labels table

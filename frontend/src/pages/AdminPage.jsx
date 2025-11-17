@@ -18,7 +18,7 @@ function AdminPage({ onLogout }) {
   const [workingPdfs, setWorkingPdfs] = useState([]);
   const [workingPendingPdfs, setWorkingPendingPdfs] = useState([]);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [settings, setSettings] = useState({ grid_rows: 4, grid_cols: 6 });
+  const [settings, setSettings] = useState({ grid_rows: 6, grid_cols: 4 });
   const [editMode, setEditMode] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
   const [uploadTargetPosition, setUploadTargetPosition] = useState(null);
@@ -589,19 +589,21 @@ function AdminPage({ onLogout }) {
                 {editMode ? (hasUnsavedChanges ? 'Save Changes' : 'Done Editing') : 'Edit Mode'}
               </button>
               {editMode && (
-                <button
-                  onClick={handleUploadToPending}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors"
-                >
-                  + Upload to Pending
-                </button>
+                <>
+                  <button
+                    onClick={handleUploadToPending}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors"
+                  >
+                    + Upload to Pending
+                  </button>
+                  <button
+                    onClick={() => setShowSettings(true)}
+                    className="px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors"
+                  >
+                    Settings
+                  </button>
+                </>
               )}
-              <button
-                onClick={() => setShowSettings(true)}
-                className="px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors"
-              >
-                Settings
-              </button>
               <button
                 onClick={() => setShowLabelManagement(true)}
                 className="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors"

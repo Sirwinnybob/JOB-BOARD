@@ -34,7 +34,8 @@ function DraggableGridItem({ id, pdf, index, editMode, onDelete, onLabelClick, o
     return (
       <div
         ref={setDropRef}
-        className={`aspect-[4/3] ${isOver ? 'ring-2 ring-blue-500' : ''}`}
+        className={`flex flex-col ${isOver ? 'ring-2 ring-blue-500' : ''}`}
+        style={{ aspectRatio: '8.5 / 11' }}
       >
         <div
           ref={setDragRef}
@@ -72,9 +73,10 @@ function DraggableGridItem({ id, pdf, index, editMode, onDelete, onLabelClick, o
   return (
     <div
       ref={setDropRef}
-      className={`aspect-[4/3] bg-gray-200 dark:bg-gray-700 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center relative group transition-colors ${
+      className={`bg-gray-200 dark:bg-gray-700 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center relative group transition-colors ${
         isOver ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-900/20' : ''
       }`}
+      style={{ aspectRatio: '8.5 / 11' }}
     >
       {editMode ? (
         showSlotMenu === index ? (

@@ -1070,7 +1070,6 @@ app.post('/api/ocr-test-image', authMiddleware, ocrTestUpload.single('image'), a
 
     // Convert PDF to PNG using pdftocairo (same DPI as job board: 200dpi)
     const outputBase = path.join(OCR_TEST_DIR, 'test-image');
-    const { execAsync } = require('./utils/helpers');
 
     // Use same DPI as job board thumbnails (200dpi) for consistency
     const command = `pdftocairo -png -f 1 -l 1 -singlefile -r 200 "${pdfPath}" "${outputBase}"`;

@@ -73,7 +73,8 @@ function AdminPage({ onLogout }) {
   // WebSocket connection for live updates
   const handleWebSocketMessage = useCallback((message) => {
     console.log('Admin received update:', message.type);
-    // Don't reload data during edit mode to preserve working copies
+    // Note: Using editMode directly inside the callback without dependency
+    // This ensures we always check the latest editMode value without recreating the callback
     if (editMode) {
       console.log('Skipping reload during edit mode');
       return;
@@ -97,7 +98,7 @@ function AdminPage({ onLogout }) {
     if (relevantTypes.includes(message.type)) {
       loadData();
     }
-  }, [loadData, editMode]);
+  }, []);
 
   useWebSocket(handleWebSocketMessage, true);
 

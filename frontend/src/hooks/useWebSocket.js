@@ -10,6 +10,12 @@ function useWebSocket(onMessage, enabled = true) {
   const wsRef = useRef(null);
   const reconnectTimeoutRef = useRef(null);
   const reconnectAttemptsRef = useRef(0);
+  const onMessageRef = useRef(onMessage);
+
+  // Keep the ref up to date with the latest callback
+  useEffect(() => {
+    onMessageRef.current = onMessage;
+  }, [onMessage]);
 
   const connect = useCallback(() => {
     if (!enabled) return;
@@ -38,8 +44,8 @@ function useWebSocket(onMessage, enabled = true) {
         try {
           const data = JSON.parse(event.data);
           console.log('📨 WebSocket message received:', data.type);
-          if (onMessage) {
-            onMessage(data);
+          if (onMessageRef.current) {
+            onMessageRef.current(data);
           }
         } catch (error) {
           console.error('❌ Error parsing WebSocket message:', error);
@@ -105,7 +111,7 @@ function useWebSocket(onMessage, enabled = true) {
       console.error('❌ Error creating WebSocket connection:', error);
       console.error('   URL attempted:', `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}`);
     }
-  }, [enabled, onMessage]);
+  }, [enabled]);
 
   useEffect(() => {
     if (enabled) {

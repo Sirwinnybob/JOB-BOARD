@@ -60,7 +60,7 @@ function HomePage() {
     if (relevantTypes.includes(message.type)) {
       loadData();
     }
-  }, [loadData]);
+  }, []);
 
   useWebSocket(handleWebSocketMessage, true);
 

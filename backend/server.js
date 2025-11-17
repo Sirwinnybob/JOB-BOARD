@@ -1128,8 +1128,8 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// Serve React app for all other routes
-app.get('*', (req, res) => {
+// Serve React app for all other routes (Express 5 compatible)
+app.get('/(.*)', (req, res) => {
   res.sendFile(path.join(frontendPath, 'index.html'));
 });
 

@@ -160,13 +160,23 @@ db.serialize(() => {
     )
   `);
 
-  // Add expires_at column to labels table (migration)
+  // Add expires_at column to labels table (migration) - DEPRECATED, now using pdf_labels.expires_at
   db.run(`
     ALTER TABLE labels ADD COLUMN expires_at DATETIME
   `, (err) => {
     // Ignore error if column already exists
     if (err && !err.message.includes('duplicate column name')) {
       console.error('Error adding expires_at column:', err);
+    }
+  });
+
+  // Add expires_at column to pdf_labels table (per-job label expiration)
+  db.run(`
+    ALTER TABLE pdf_labels ADD COLUMN expires_at DATETIME
+  `, (err) => {
+    // Ignore error if column already exists
+    if (err && !err.message.includes('duplicate column name')) {
+      console.error('Error adding expires_at column to pdf_labels:', err);
     }
   });
 

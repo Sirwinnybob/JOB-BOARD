@@ -360,10 +360,10 @@ app.get('/api/pdfs', async (req, res) => {
 
       rows.forEach(pdf => {
         db.all(
-          `SELECT l.* FROM labels l
+          `SELECT l.*, pl.expires_at as label_expires_at FROM labels l
            INNER JOIN pdf_labels pl ON l.id = pl.label_id
            WHERE pl.pdf_id = ?
-           AND (l.expires_at IS NULL OR l.expires_at > datetime('now'))`,
+           AND (pl.expires_at IS NULL OR pl.expires_at > datetime('now'))`,
           [pdf.id],
           (err, labels) => {
             if (err) {
@@ -851,15 +851,15 @@ app.get('/api/labels', async (req, res) => {
 
 app.post('/api/labels', authMiddleware, async (req, res) => {
   try {
-    const { name, color, expiresAt } = req.body;
+    const { name, color } = req.body;
 
     if (!name || !color) {
       return res.status(400).json({ error: 'Name and color required' });
     }
 
     db.run(
-      'INSERT INTO labels (name, color, expires_at) VALUES (?, ?, ?)',
-      [name.toUpperCase(), color, expiresAt || null],
+      'INSERT INTO labels (name, color) VALUES (?, ?)',
+      [name.toUpperCase(), color],
       function (err) {
         if (err) {
           if (err.message.includes('UNIQUE')) {
@@ -873,15 +873,13 @@ app.post('/api/labels', authMiddleware, async (req, res) => {
         broadcastUpdate('label_created', {
           id: this.lastID,
           name: name.toUpperCase(),
-          color,
-          expires_at: expiresAt || null
+          color
         });
 
         res.json({
           id: this.lastID,
           name: name.toUpperCase(),
-          color,
-          expires_at: expiresAt || null
+          color
         });
       }
     );
@@ -894,15 +892,15 @@ app.post('/api/labels', authMiddleware, async (req, res) => {
 app.put('/api/labels/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, color, expiresAt } = req.body;
+    const { name, color } = req.body;
 
     if (!name || !color) {
       return res.status(400).json({ error: 'Name and color required' });
     }
 
     db.run(
-      'UPDATE labels SET name = ?, color = ?, expires_at = ? WHERE id = ?',
-      [name.toUpperCase(), color, expiresAt || null, id],
+      'UPDATE labels SET name = ?, color = ? WHERE id = ?',
+      [name.toUpperCase(), color, id],
       function (err) {
         if (err) {
           if (err.message.includes('UNIQUE')) {
@@ -920,15 +918,13 @@ app.put('/api/labels/:id', authMiddleware, async (req, res) => {
         broadcastUpdate('label_updated', {
           id: parseInt(id),
           name: name.toUpperCase(),
-          color,
-          expires_at: expiresAt || null
+          color
         });
 
         res.json({
           id: parseInt(id),
           name: name.toUpperCase(),
-          color,
-          expires_at: expiresAt || null
+          color
         });
       }
     );
@@ -963,10 +959,10 @@ app.delete('/api/labels/:id', authMiddleware, async (req, res) => {
 app.put('/api/pdfs/:id/labels', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
-    const { labelIds } = req.body; // Array of label IDs
+    const { labels } = req.body; // Array of {labelId, expiresAt} objects
 
-    if (!Array.isArray(labelIds)) {
-      return res.status(400).json({ error: 'labelIds must be an array' });
+    if (!Array.isArray(labels)) {
+      return res.status(400).json({ error: 'labels must be an array' });
     }
 
     // First, remove all existing labels for this PDF
@@ -976,17 +972,17 @@ app.put('/api/pdfs/:id/labels', authMiddleware, async (req, res) => {
         return res.status(500).json({ error: 'Database error' });
       }
 
-      // Then, add the new labels
-      if (labelIds.length === 0) {
+      // Then, add the new labels with expiration
+      if (labels.length === 0) {
         // Broadcast update to all clients
-        broadcastUpdate('pdf_labels_updated', { pdfId: id, labelIds: [] });
+        broadcastUpdate('pdf_labels_updated', { pdfId: id, labels: [] });
         return res.json({ success: true });
       }
 
-      const stmt = db.prepare('INSERT INTO pdf_labels (pdf_id, label_id) VALUES (?, ?)');
+      const stmt = db.prepare('INSERT INTO pdf_labels (pdf_id, label_id, expires_at) VALUES (?, ?, ?)');
 
-      labelIds.forEach(labelId => {
-        stmt.run(id, labelId);
+      labels.forEach(label => {
+        stmt.run(id, label.labelId, label.expiresAt || null);
       });
 
       stmt.finalize((err) => {
@@ -996,7 +992,7 @@ app.put('/api/pdfs/:id/labels', authMiddleware, async (req, res) => {
         }
 
         // Broadcast update to all clients
-        broadcastUpdate('pdf_labels_updated', { pdfId: id, labelIds });
+        broadcastUpdate('pdf_labels_updated', { pdfId: id, labels });
 
         res.json({ success: true });
       });

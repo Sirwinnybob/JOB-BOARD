@@ -44,7 +44,7 @@ export const pdfAPI = {
   },
   delete: (id) => api.delete(`/pdfs/${id}`),
   reorder: (pdfs) => api.put('/pdfs/reorder', { pdfs }),
-  updateLabels: (id, labelIds) => api.put(`/pdfs/${id}/labels`, { labelIds }),
+  updateLabels: (id, labels) => api.put(`/pdfs/${id}/labels`, { labels }),
   updateMetadata: (id, metadata) => api.put(`/pdfs/${id}/metadata`, metadata),
   createPlaceholder: (position) => api.post('/pdfs/placeholder', { position }),
   updateStatus: (id, is_pending) => api.put(`/pdfs/${id}/status`, { is_pending }),
@@ -52,8 +52,8 @@ export const pdfAPI = {
 
 export const labelAPI = {
   getAll: () => api.get('/labels'),
-  create: (name, color, expiresAt) => api.post('/labels', { name, color, expiresAt }),
-  update: (id, name, color, expiresAt) => api.put(`/labels/${id}`, { name, color, expiresAt }),
+  create: (name, color) => api.post('/labels', { name, color }),
+  update: (id, name, color) => api.put(`/labels/${id}`, { name, color }),
   delete: (id) => api.delete(`/labels/${id}`),
 };
 

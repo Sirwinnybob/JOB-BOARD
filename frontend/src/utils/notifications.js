@@ -37,6 +37,7 @@ export function areNotificationsEnabled() {
  * @param {string} options.body - Notification body text
  * @param {string} options.tag - Notification tag (for grouping)
  * @param {boolean} options.requireInteraction - Whether notification requires user interaction
+ * @param {number} options.jobId - Job ID to highlight when notification is clicked
  */
 export async function showNotification(title, options = {}) {
   if (!areNotificationsEnabled()) {
@@ -56,7 +57,8 @@ export async function showNotification(title, options = {}) {
           title,
           body: options.body || '',
           tag: options.tag || 'job-board-notification',
-          requireInteraction: options.requireInteraction || false
+          requireInteraction: options.requireInteraction || false,
+          jobId: options.jobId || null
         });
       }
     } catch (error) {
@@ -67,12 +69,14 @@ export async function showNotification(title, options = {}) {
 
 /**
  * Show notification for new job
+ * @param {number} jobId - Job ID to highlight when notification is clicked
  */
-export function showNewJobNotification() {
+export function showNewJobNotification(jobId = null) {
   showNotification('Job Board Update', {
     body: 'NEW JOB',
     tag: 'new-job',
-    requireInteraction: false
+    requireInteraction: false,
+    jobId
   });
 }
 

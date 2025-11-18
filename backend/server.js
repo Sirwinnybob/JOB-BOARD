@@ -174,7 +174,7 @@ async function sendPushNotifications(type, data) {
       let tag = 'job-board-notification';
       let requireInteraction = false;
 
-      if (type === 'pdf_uploaded' || type === 'job_activated') {
+      if ((type === 'pdf_uploaded' && data.is_pending === 0) || type === 'job_activated') {
         title = 'Job Board Update';
         body = 'NEW JOB';
         tag = 'new-job';

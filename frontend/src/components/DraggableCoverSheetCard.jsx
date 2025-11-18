@@ -11,6 +11,7 @@ function DraggableCoverSheetCard({
   isDragging,
   onMetadataUpdate,
   colorTransitionDelay,
+  isHighlighted = false,
 }) {
   const [editing, setEditing] = useState(null);
   const [editValue, setEditValue] = useState('');
@@ -222,7 +223,7 @@ function DraggableCoverSheetCard({
       <div
         className={`flex-1 relative bg-white dark:bg-gray-800 rounded-b-lg shadow-md overflow-hidden ${!isTransitioning ? 'transition-all' : ''} min-h-0 ${
           editMode ? 'cursor-move border-2 animate-border-pulse' : 'cursor-default border border-gray-200 dark:border-gray-700'
-        } ${isDragging ? 'opacity-50' : ''}`}
+        } ${isDragging ? 'opacity-50' : ''} ${isHighlighted ? 'notification-glow' : ''}`}
         style={getColorTransitionStyle(['background-color', 'border-color'])}
       >
       {/* Cross-fade between light and dark images */}

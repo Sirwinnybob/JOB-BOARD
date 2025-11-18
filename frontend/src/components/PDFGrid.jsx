@@ -1,7 +1,7 @@
 import React from 'react';
 import DraggableCoverSheetCard from './DraggableCoverSheetCard';
 
-function PDFGrid({ pdfs, rows, cols, aspectWidth = 11, aspectHeight = 10, onPdfClick, isTransitioning }) {
+function PDFGrid({ pdfs, rows, cols, aspectWidth = 11, aspectHeight = 10, onPdfClick, isTransitioning, highlightedJobId }) {
   const totalSlots = rows * cols;
 
   // Responsive columns: 1 on mobile, 2 on small tablets, full cols on larger screens
@@ -74,6 +74,7 @@ function PDFGrid({ pdfs, rows, cols, aspectWidth = 11, aspectHeight = 10, onPdfC
                   editMode={false}
                   isDragging={false}
                   colorTransitionDelay={colorTransitionDelay}
+                  isHighlighted={highlightedJobId === pdf.id}
                 />
               </div>
             )}

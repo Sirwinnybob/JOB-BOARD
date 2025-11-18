@@ -22,9 +22,16 @@ body {
   mix-blend-mode: normal;
 }
 
-/* Expanding to dark mode - uses circle-expand */
+/* Expanding to dark mode - animate the NEW dark theme expanding */
 ::view-transition-new(root) {
-  animation-name: var(--transition-name, circle-expand);
+  animation-name: var(--transition-name-new, none);
+  animation-duration: 0.8s;
+  animation-timing-function: cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+/* Retracting to light mode - animate the OLD dark theme retracting */
+::view-transition-old(root) {
+  animation-name: var(--transition-name-old, none);
   animation-duration: 0.8s;
   animation-timing-function: cubic-bezier(0.4, 0.0, 0.2, 1);
 }

@@ -77,3 +77,68 @@ self.addEventListener('fetch', (event) => {
       })
   );
 });
+
+// Handle notification clicks
+self.addEventListener('notificationclick', (event) => {
+  console.log('[SW] Notification clicked:', event.notification.tag);
+  event.notification.close();
+
+  // Open or focus the app window
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      // If a window is already open, focus it
+      for (const client of clientList) {
+        if (client.url.includes(self.registration.scope) && 'focus' in client) {
+          return client.focus();
+        }
+      }
+      // Otherwise, open a new window
+      if (clients.openWindow) {
+        return clients.openWindow('/');
+      }
+    })
+  );
+});
+
+// Handle push notifications (for future web push implementation)
+self.addEventListener('push', (event) => {
+  console.log('[SW] Push notification received:', event);
+
+  if (event.data) {
+    const data = event.data.json();
+    const options = {
+      body: data.body || 'Job Board Update',
+      icon: '/icon-192.png',
+      badge: '/favicon-96x96.png',
+      tag: data.tag || 'job-board-notification',
+      requireInteraction: false,
+      vibrate: [200, 100, 200],
+      data: data.data || {}
+    };
+
+    event.waitUntil(
+      self.registration.showNotification(data.title || 'Job Board', options)
+    );
+  }
+});
+
+// Handle messages from the main app (for WebSocket-triggered notifications)
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
+    const { title, body, tag, requireInteraction } = event.data;
+
+    const options = {
+      body: body || 'Job Board Update',
+      icon: '/icon-192.png',
+      badge: '/favicon-96x96.png',
+      tag: tag || 'job-board-notification',
+      requireInteraction: requireInteraction || false,
+      vibrate: [200, 100, 200],
+      timestamp: Date.now()
+    };
+
+    event.waitUntil(
+      self.registration.showNotification(title || 'Job Board', options)
+    );
+  }
+});

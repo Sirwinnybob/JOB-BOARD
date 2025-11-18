@@ -98,15 +98,6 @@ body {
   }
 }
 
-@utility animate-theme-bg {
-  /* Removed - using overlay approach instead */
-}
-
-/* Delay color transitions to sync with animation midpoint */
-@utility animate-theme-header {
-  /* Removed - using overlay approach instead */
-}
-
 /* Each item delays its color change based on when it reaches minimum opacity - will be overridden by inline style for proper stagger */
 @utility animate-theme-item {
   animation: theme-fade 0.6s ease-in-out backwards;

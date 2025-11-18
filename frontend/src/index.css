@@ -15,6 +15,26 @@ body {
   box-sizing: border-box;
 }
 
+/* View Transitions API - Circular Reveal */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
+}
+
+::view-transition-new(root) {
+  animation: reveal 0.8s cubic-bezier(0.4, 0.0, 0.2, 1);
+}
+
+@keyframes reveal {
+  from {
+    clip-path: circle(0px at var(--theme-toggle-x, 50%) var(--theme-toggle-y, 50%));
+  }
+  to {
+    clip-path: circle(var(--theme-toggle-radius, 100vmax) at var(--theme-toggle-x, 50%) var(--theme-toggle-y, 50%));
+  }
+}
+
 /* Custom animation for border pulse */
 @keyframes border-pulse {
   0%, 100% {
@@ -85,36 +105,6 @@ body {
     opacity: 0.6;
   }
   100% {
-    opacity: 1;
-  }
-}
-
-@keyframes circular-reveal {
-  0% {
-    clip-path: circle(0px at var(--theme-toggle-x) var(--theme-toggle-y));
-    -webkit-clip-path: circle(0px at var(--theme-toggle-x) var(--theme-toggle-y));
-    transform: translate3d(0, 0, 0);
-    opacity: 1;
-  }
-  100% {
-    clip-path: circle(var(--theme-toggle-radius) at var(--theme-toggle-x) var(--theme-toggle-y));
-    -webkit-clip-path: circle(var(--theme-toggle-radius) at var(--theme-toggle-x) var(--theme-toggle-y));
-    transform: translate3d(0, 0, 0);
-    opacity: 1;
-  }
-}
-
-@keyframes circular-retract {
-  0% {
-    clip-path: circle(var(--theme-toggle-radius) at var(--theme-toggle-x) var(--theme-toggle-y));
-    -webkit-clip-path: circle(var(--theme-toggle-radius) at var(--theme-toggle-x) var(--theme-toggle-y));
-    transform: translate3d(0, 0, 0);
-    opacity: 1;
-  }
-  100% {
-    clip-path: circle(0px at var(--theme-toggle-x) var(--theme-toggle-y));
-    -webkit-clip-path: circle(0px at var(--theme-toggle-x) var(--theme-toggle-y));
-    transform: translate3d(0, 0, 0);
     opacity: 1;
   }
 }

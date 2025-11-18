@@ -11,9 +11,28 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
   const [animationTransform, setAnimationTransform] = useState(null);
   const [showCloseButton, setShowCloseButton] = useState(false);
   const [referenceImageDimensions, setReferenceImageDimensions] = useState(null);
+  const [isMobilePortrait, setIsMobilePortrait] = useState(false);
 
   // pdfs are already filtered (no nulls/undefined) from parent component
   const displayPdfs = pdfs;
+
+  // Detect mobile portrait mode
+  useEffect(() => {
+    const checkOrientation = () => {
+      const isPortrait = window.innerHeight > window.innerWidth;
+      const isMobile = window.innerWidth < 768; // Tailwind's md breakpoint
+      setIsMobilePortrait(isMobile && isPortrait);
+    };
+
+    checkOrientation();
+    window.addEventListener('resize', checkOrientation);
+    window.addEventListener('orientationchange', checkOrientation);
+
+    return () => {
+      window.removeEventListener('resize', checkOrientation);
+      window.removeEventListener('orientationchange', checkOrientation);
+    };
+  }, []);
 
   // Get reference image dimensions from latest (most recent) non-placeholder PDF
   useEffect(() => {
@@ -236,13 +255,17 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
 
     const container = scrollContainerRef.current;
     if (container && initialIndex >= 0 && initialIndex < displayPdfs.length) {
-      // Each slide is w-[60%] of container, with 20% left spacer
-      const slideWidth = container.offsetWidth * 0.6;
-      const leftSpacer = container.offsetWidth * 0.2;
+      // Mobile portrait: 100% width, no spacers. Landscape/desktop: 60% width with 20% spacers
+      const slideWidthPercent = isMobilePortrait ? 1.0 : 0.6;
+      const leftSpacerPercent = isMobilePortrait ? 0 : 0.2;
+
+      const slideWidth = container.offsetWidth * slideWidthPercent;
+      const leftSpacer = container.offsetWidth * leftSpacerPercent;
       const scrollPosition = leftSpacer + (initialIndex * slideWidth);
+      console.log('  - isMobilePortrait:', isMobilePortrait);
       console.log('  - container.offsetWidth:', container.offsetWidth);
-      console.log('  - slideWidth (60%):', slideWidth);
-      console.log('  - leftSpacer (20%):', leftSpacer);
+      console.log('  - slideWidth:', slideWidth);
+      console.log('  - leftSpacer:', leftSpacer);
       console.log('  - Calculated scroll position:', scrollPosition);
       container.scrollLeft = scrollPosition;
       console.log('  - Actual scrollLeft after setting:', container.scrollLeft);
@@ -250,7 +273,7 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
       // Set currentIndex immediately to match initialIndex
       setCurrentIndex(initialIndex);
     }
-  }, []);
+  }, [isMobilePortrait]);
 
   // Show close button after delay, only if entered via click
   useEffect(() => {
@@ -391,8 +414,8 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
             msOverflowStyle: 'none',
           }}
         >
-        {/* Left spacer - allows first slide to center */}
-        <div className="flex-shrink-0 w-[20%] h-full snap-start"></div>
+        {/* Left spacer - allows first slide to center (hidden in mobile portrait) */}
+        {!isMobilePortrait && <div className="flex-shrink-0 w-[20%] h-full snap-start"></div>}
 
         {displayPdfs.map((pdf, index) => {
           // Determine which image to show based on dark mode
@@ -403,11 +426,45 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
           return (
             <div
               key={pdf.id}
-              className="flex-shrink-0 w-[60%] h-full snap-center flex items-center justify-center p-4"
+              className={`flex-shrink-0 ${isMobilePortrait ? 'w-full' : 'w-[60%]'} h-full snap-center flex items-center justify-center p-4`}
             >
               <div
                 className="relative h-full max-w-6xl w-full mx-auto flex items-center justify-center"
               >
+                {/* Job Info Header */}
+                <div
+                  className="absolute top-0 left-0 right-0 z-20 bg-white dark:bg-gray-800 rounded-t-lg shadow-md border border-gray-300 dark:border-gray-600 px-3 py-2 flex justify-between items-center text-xs sm:text-sm transition-colors"
+                  style={{
+                    backgroundColor: pdf.construction_method
+                      ? pdf.construction_method === 'Face Frame'
+                        ? 'rgb(150, 179, 82)'
+                        : pdf.construction_method === 'Frameless'
+                        ? 'rgb(237, 146, 35)'
+                        : 'rgb(0, 133, 138)'
+                      : undefined
+                  }}
+                >
+                  <div className="flex items-center gap-1">
+                    <span className={`font-semibold hidden sm:inline ${pdf.construction_method ? 'text-white' : 'text-gray-600 dark:text-gray-400'}`}>
+                      Job#:
+                    </span>
+                    <span className={`font-bold ${pdf.construction_method ? 'text-white' : 'text-gray-900 dark:text-white'}`}>
+                      {pdf.job_number || '—'}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className={`font-semibold hidden sm:inline ${pdf.construction_method ? 'text-white' : 'text-gray-600 dark:text-gray-400'}`}>
+                      Type:
+                    </span>
+                    <span className={`font-bold ${pdf.construction_method ? 'text-white' : 'text-gray-900 dark:text-white'}`}>
+                      {isMobilePortrait
+                        ? (pdf.construction_method === 'Face Frame' ? 'FF' : pdf.construction_method === 'Frameless' ? 'FL' : pdf.construction_method || '—')
+                        : (pdf.construction_method || '—')
+                      }
+                    </span>
+                  </div>
+                </div>
+
                 {pdf.is_placeholder ? (
                   <div
                     className="max-w-full max-h-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-lg shadow-md border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center p-4 sm:p-6 md:p-8 transition-colors"
@@ -417,7 +474,7 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
                         : `${aspectWidth} / ${aspectHeight}`
                     }}
                   >
-                    <p className="text-gray-600 dark:text-gray-400 text-3xl sm:text-4xl md:text-5xl lg:text-6xl xl:text-7xl font-bold text-center break-words leading-tight transition-colors">
+                    <p className="text-gray-600 dark:text-gray-400 font-bold text-center break-words leading-tight transition-colors" style={{ fontSize: 'clamp(2rem, 8vw, 7rem)' }}>
                       {pdf.placeholder_text || 'PLACEHOLDER'}
                     </p>
                   </div>

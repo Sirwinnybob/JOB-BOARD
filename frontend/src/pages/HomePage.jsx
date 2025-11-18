@@ -1161,7 +1161,7 @@ function HomePage() {
           <div className="flex justify-between items-center">
             <h1 className={`text-lg sm:text-2xl font-bold text-gray-900 dark:text-white ${!isTransitioning ? 'transition-colors' : ''}`}>
               <span className="hidden sm:inline">Kustom Kraft Cabinets - Job Board</span>
-              <span className="sm:hidden">KK Cabinets</span>
+              <span className="sm:hidden">KKC - Job Board</span>
             </h1>
             <div className="flex items-center space-x-2 sm:space-x-4">
             {!editMode && (

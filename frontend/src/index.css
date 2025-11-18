@@ -15,23 +15,35 @@ body {
   box-sizing: border-box;
 }
 
-/* View Transitions API - Circular Reveal */
+/* View Transitions API - Circular Reveal with Direction */
 ::view-transition-old(root),
 ::view-transition-new(root) {
   animation: none;
   mix-blend-mode: normal;
 }
 
+/* Expanding to dark mode - uses circle-expand */
 ::view-transition-new(root) {
-  animation: reveal 0.8s cubic-bezier(0.4, 0.0, 0.2, 1);
+  animation-name: var(--transition-name, circle-expand);
+  animation-duration: 0.8s;
+  animation-timing-function: cubic-bezier(0.4, 0.0, 0.2, 1);
 }
 
-@keyframes reveal {
+@keyframes circle-expand {
   from {
     clip-path: circle(0px at var(--theme-toggle-x, 50%) var(--theme-toggle-y, 50%));
   }
   to {
     clip-path: circle(var(--theme-toggle-radius, 100vmax) at var(--theme-toggle-x, 50%) var(--theme-toggle-y, 50%));
+  }
+}
+
+@keyframes circle-retract {
+  from {
+    clip-path: circle(var(--theme-toggle-radius, 100vmax) at var(--theme-toggle-x, 50%) var(--theme-toggle-y, 50%));
+  }
+  to {
+    clip-path: circle(0px at var(--theme-toggle-x, 50%) var(--theme-toggle-y, 50%));
   }
 }
 

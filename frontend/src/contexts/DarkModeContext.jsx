@@ -80,6 +80,12 @@ export function DarkModeProvider({ children }) {
       document.documentElement.style.setProperty('--theme-toggle-radius', `${maxRadius}px`);
     }
 
+    // Set animation direction: expand for dark, retract for light
+    document.documentElement.style.setProperty(
+      '--transition-name',
+      newDarkMode ? 'circle-expand' : 'circle-retract'
+    );
+
     // Check if View Transitions API is supported
     if (!document.startViewTransition) {
       // Fallback: instant change without animation
@@ -111,10 +117,12 @@ export function DarkModeProvider({ children }) {
       }
     });
 
-    // Reset transition state when animation completes
-    transition.finished.finally(() => {
+    // Keep isTransitioning true until ALL grid animations complete
+    // Grid items: last item (24) at 23*0.15s + 0.6s animation = ~4.05s
+    // Using 5s to be safe for larger grids
+    transitionTimeoutRef.current = setTimeout(() => {
       setIsTransitioning(false);
-    });
+    }, 5000);
   };
 
   // Cleanup timeouts on unmount

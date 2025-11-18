@@ -476,8 +476,15 @@ function HomePage() {
     setShowConflictWarning(false);
     // Discard local changes and reload fresh data
     await loadData();
-    setWorkingPdfs([...pdfs]);
-    setWorkingPendingPdfs([...pendingPdfs]);
+    // Update working copies using setState callback to get fresh values after loadData
+    setPdfs(prev => {
+      setWorkingPdfs([...prev]);
+      return prev;
+    });
+    setPendingPdfs(prev => {
+      setWorkingPendingPdfs([...prev]);
+      return prev;
+    });
     setHasUnsavedChanges(false);
     setExternalChanges(false);
   };

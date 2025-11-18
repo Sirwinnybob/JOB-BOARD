@@ -989,33 +989,35 @@ function HomePage() {
                 {editMode ? 'Save' : 'Edit'}
               </button>
               {editMode && (
-                <button
-                  onClick={() => setShowSettings(true)}
-                  className={`px-3 sm:px-4 py-1.5 sm:py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 ${!isTransitioning ? 'transition-colors' : ''} text-sm whitespace-nowrap`}
-                >
-                  Settings
-                </button>
+                <>
+                  <button
+                    onClick={() => setShowSettings(true)}
+                    className={`px-3 sm:px-4 py-1.5 sm:py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 ${!isTransitioning ? 'transition-colors' : ''} text-sm whitespace-nowrap`}
+                  >
+                    Settings
+                  </button>
+                  <button
+                    onClick={() => setShowLabelManagement(true)}
+                    className={`px-3 sm:px-4 py-1.5 sm:py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 ${!isTransitioning ? 'transition-colors' : ''} text-sm whitespace-nowrap`}
+                  >
+                    <span className="hidden sm:inline">Manage Labels</span>
+                    <span className="sm:hidden">Labels</span>
+                  </button>
+                  <button
+                    onClick={() => navigate('/admin/ocr-settings')}
+                    className={`px-3 sm:px-4 py-1.5 sm:py-2 bg-teal-600 text-white rounded-lg font-medium hover:bg-teal-700 ${!isTransitioning ? 'transition-colors' : ''} text-sm whitespace-nowrap`}
+                  >
+                    <span className="hidden sm:inline">OCR Settings</span>
+                    <span className="sm:hidden">OCR</span>
+                  </button>
+                </>
               )}
-              <button
-                onClick={() => setShowLabelManagement(true)}
-                className={`px-3 sm:px-4 py-1.5 sm:py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 ${!isTransitioning ? 'transition-colors' : ''} text-sm whitespace-nowrap`}
-              >
-                <span className="hidden sm:inline">Manage Labels</span>
-                <span className="sm:hidden">Labels</span>
-              </button>
               <button
                 onClick={() => setShowAlertModal(true)}
                 className={`px-3 sm:px-4 py-1.5 sm:py-2 bg-orange-600 text-white rounded-lg font-medium hover:bg-orange-700 ${!isTransitioning ? 'transition-colors' : ''} text-sm whitespace-nowrap`}
               >
                 <span className="hidden sm:inline">Send Alert</span>
                 <span className="sm:hidden">Alert</span>
-              </button>
-              <button
-                onClick={() => navigate('/admin/ocr-settings')}
-                className={`px-3 sm:px-4 py-1.5 sm:py-2 bg-teal-600 text-white rounded-lg font-medium hover:bg-teal-700 ${!isTransitioning ? 'transition-colors' : ''} text-sm whitespace-nowrap`}
-              >
-                <span className="hidden sm:inline">OCR Settings</span>
-                <span className="sm:hidden">OCR</span>
               </button>
             </div>
           </div>

@@ -1092,10 +1092,15 @@ function HomePage() {
       {/* Circular reveal overlay for background/header - Grid items render on top with their own animation */}
       {isTransitioning && (
         <div
-          className="fixed inset-0 z-0"
+          className="fixed inset-0 z-0 overflow-hidden"
           style={{
             perspective: '1000px',
-            isolation: 'isolate'
+            perspectiveOrigin: 'center center',
+            WebkitPerspective: '1000px',
+            isolation: 'isolate',
+            pointerEvents: 'none',
+            transformStyle: 'preserve-3d',
+            WebkitTransformStyle: 'preserve-3d'
           }}
         >
           {/* Light theme background - always stays visible underneath */}
@@ -1106,8 +1111,9 @@ function HomePage() {
               backfaceVisibility: 'hidden',
               WebkitBackfaceVisibility: 'hidden',
               isolation: 'isolate',
-              contain: 'layout paint style',
-              filter: 'blur(0)' // Force GPU layer
+              contain: 'strict',
+              willChange: 'auto',
+              WebkitFontSmoothing: 'antialiased'
             }}
           />
           {/* Dark theme overlay - expands for dark mode, retracts for light mode */}
@@ -1115,15 +1121,16 @@ function HomePage() {
             className="absolute inset-0 bg-gradient-to-br from-gray-900 to-gray-800"
             style={{
               animation: targetDarkMode
-                ? 'circular-reveal 0.8s ease-in-out forwards'
-                : 'circular-retract 0.8s ease-in-out forwards',
-              willChange: 'clip-path, transform',
+                ? 'circular-reveal 0.8s cubic-bezier(0.4, 0.0, 0.2, 1) forwards'
+                : 'circular-retract 0.8s cubic-bezier(0.4, 0.0, 0.2, 1) forwards',
+              willChange: 'clip-path',
               transform: 'translate3d(0, 0, 0)',
               backfaceVisibility: 'hidden',
               WebkitBackfaceVisibility: 'hidden',
               isolation: 'isolate',
-              contain: 'layout paint style',
-              filter: 'blur(0)' // Force GPU layer
+              contain: 'strict',
+              WebkitFontSmoothing: 'antialiased',
+              imageRendering: 'optimizeSpeed'
             }}
           />
         </div>
@@ -1162,7 +1169,13 @@ function HomePage() {
 
       {/* Header - During transition, render twice with circular reveal */}
       {isTransitioning ? (
-        <div className="relative z-10">
+        <div
+          className="relative z-10 overflow-hidden"
+          style={{
+            pointerEvents: 'none',
+            isolation: 'isolate'
+          }}
+        >
           {/* Light header - always visible underneath */}
           <header
             className="bg-white shadow-sm"
@@ -1246,15 +1259,16 @@ function HomePage() {
             className="absolute top-0 left-0 right-0 bg-gray-800 shadow-sm"
             style={{
               animation: targetDarkMode
-                ? 'circular-reveal 0.8s ease-in-out forwards'
-                : 'circular-retract 0.8s ease-in-out forwards',
-              willChange: 'clip-path, transform',
+                ? 'circular-reveal 0.8s cubic-bezier(0.4, 0.0, 0.2, 1) forwards'
+                : 'circular-retract 0.8s cubic-bezier(0.4, 0.0, 0.2, 1) forwards',
+              willChange: 'clip-path',
               transform: 'translate3d(0, 0, 0)',
               backfaceVisibility: 'hidden',
               WebkitBackfaceVisibility: 'hidden',
               isolation: 'isolate',
-              contain: 'layout paint style',
-              filter: 'blur(0)'
+              contain: 'strict',
+              WebkitFontSmoothing: 'antialiased',
+              pointerEvents: 'none'
             }}
           >
             <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4">

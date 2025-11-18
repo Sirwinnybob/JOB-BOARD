@@ -1,7 +1,7 @@
 import React from 'react';
 import DraggableGridItem from './DraggableGridItem';
 
-function AdminGrid({ pdfs, rows, cols, aspectWidth, aspectHeight, editMode, onReorder, onDelete, onLabelClick, onMetadataUpdate, onSlotMenuOpen, showSlotMenu, onSlotMenuClose, onAddPlaceholder, onUploadToSlot, onMoveToPending, onEditPlaceholder }) {
+function AdminGrid({ pdfs, rows, cols, aspectWidth, aspectHeight, editMode, onReorder, onDelete, onLabelClick, onMetadataUpdate, onSlotMenuOpen, showSlotMenu, onSlotMenuClose, onAddPlaceholder, onUploadToSlot, onMoveToPending, onEditPlaceholder, isTransitioning }) {
   const totalSlots = rows * cols;
 
   // Responsive columns: Cap at 4 for better mobile experience
@@ -18,6 +18,7 @@ function AdminGrid({ pdfs, rows, cols, aspectWidth, aspectHeight, editMode, onRe
     >
       {Array.from({ length: totalSlots }).map((_, index) => {
         const pdf = pdfs[index];
+        const animationDelay = isTransitioning ? `${0.4 + index * 0.1}s` : '0s';
 
         return (
           <DraggableGridItem
@@ -38,6 +39,8 @@ function AdminGrid({ pdfs, rows, cols, aspectWidth, aspectHeight, editMode, onRe
             onAddPlaceholder={onAddPlaceholder}
             onUploadToSlot={onUploadToSlot}
             onEditPlaceholder={onEditPlaceholder}
+            isTransitioning={isTransitioning}
+            animationDelay={animationDelay}
           />
         );
       })}

@@ -68,6 +68,36 @@ cd backend && npm start
 
 You should see: `✅ Web Push configured with VAPID keys`
 
+## Subscribing Devices
+
+**IMPORTANT**: Each device (computer, tablet, phone) needs its own push subscription!
+
+### **Option A: Subscription Manager (Easiest)**
+
+1. Open `manage-notifications.html` in your browser on each device
+2. Click "Subscribe to Notifications"
+3. Grant notification permission when prompted
+4. Click "Test Notification" to verify it works
+
+**Perfect for subscribing tablets and phones without developer tools!**
+
+### **Option B: Automatic (When Deployed)**
+
+When the PWA is deployed with the latest code:
+
+1. Admin logs in and enters Edit mode
+2. System automatically requests notification permission
+3. If granted, automatically subscribes to push notifications
+
+### **Option C: Manual Console**
+
+For developers or advanced users:
+
+```javascript
+const { subscribeToPushNotifications } = await import('./src/utils/notifications.js');
+await subscribeToPushNotifications();
+```
+
 ## User Flow
 
 ### For Admins

@@ -15,6 +15,7 @@ import useWebSocket from '../hooks/useWebSocket';
 import { useDarkMode } from '../contexts/DarkModeContext';
 import {
   requestNotificationPermission,
+  subscribeToPushNotifications,
   showNewJobNotification,
   showJobsMovedNotification,
   showCustomAlertNotification,
@@ -362,10 +363,17 @@ function HomePage() {
       setHasUnsavedChanges(false);
       setEditMode(true);
 
-      // Request notification permission for admins
-      requestNotificationPermission().catch(err => {
-        console.error('Error requesting notification permission:', err);
-      });
+      // Request notification permission for admins and subscribe to push
+      requestNotificationPermission()
+        .then(async (permission) => {
+          if (permission === 'granted') {
+            // Subscribe to push notifications for background delivery
+            await subscribeToPushNotifications();
+          }
+        })
+        .catch(err => {
+          console.error('Error requesting notification permission:', err);
+        });
     }
   };
 

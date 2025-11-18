@@ -181,9 +181,11 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
     const handleScroll = () => {
       setIsScrolling(true);
       const scrollLeft = container.scrollLeft;
-      // Each slide is w-[60%] of container, with 20% left spacer
-      const slideWidth = container.offsetWidth * 0.6;
-      const leftSpacer = container.offsetWidth * 0.2;
+      // Mobile portrait: 100% width, no spacers. Landscape/desktop: 60% width with 20% spacers
+      const slideWidthPercent = isMobilePortrait ? 1.0 : 0.6;
+      const leftSpacerPercent = isMobilePortrait ? 0 : 0.2;
+      const slideWidth = container.offsetWidth * slideWidthPercent;
+      const leftSpacer = container.offsetWidth * leftSpacerPercent;
       const index = Math.round((scrollLeft - leftSpacer) / slideWidth);
       setCurrentIndex(index);
 
@@ -197,7 +199,7 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
 
     container.addEventListener('scroll', handleScroll);
     return () => container.removeEventListener('scroll', handleScroll);
-  }, []);
+  }, [isMobilePortrait]);
 
   // Report current index to parent
   useEffect(() => {
@@ -209,9 +211,11 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
   const scrollToIndex = (index, immediate = false) => {
     const container = scrollContainerRef.current;
     if (container) {
-      // Each slide is w-[60%] of container, with 20% left spacer
-      const slideWidth = container.offsetWidth * 0.6;
-      const leftSpacer = container.offsetWidth * 0.2;
+      // Mobile portrait: 100% width, no spacers. Landscape/desktop: 60% width with 20% spacers
+      const slideWidthPercent = isMobilePortrait ? 1.0 : 0.6;
+      const leftSpacerPercent = isMobilePortrait ? 0 : 0.2;
+      const slideWidth = container.offsetWidth * slideWidthPercent;
+      const leftSpacer = container.offsetWidth * leftSpacerPercent;
       container.scrollTo({
         left: leftSpacer + (index * slideWidth),
         behavior: immediate ? 'auto' : 'smooth'

@@ -10,6 +10,7 @@ import SettingsModal from '../components/SettingsModal';
 import LabelModal from '../components/LabelModal';
 import LabelManagementModal from '../components/LabelManagementModal';
 import PlaceholderEditModal from '../components/PlaceholderEditModal';
+import ConflictWarningModal from '../components/ConflictWarningModal';
 import PendingSection from '../components/PendingSection';
 import useWebSocket from '../hooks/useWebSocket';
 import { useDarkMode } from '../contexts/DarkModeContext';
@@ -49,6 +50,8 @@ function HomePage() {
   const [originRect, setOriginRect] = useState(null);
   const [currentSlideshowIndex, setCurrentSlideshowIndex] = useState(0);
   const [pullToRefresh, setPullToRefresh] = useState({ pulling: false, distance: 0, refreshing: false });
+  const [externalChanges, setExternalChanges] = useState(false);
+  const [showConflictWarning, setShowConflictWarning] = useState(false);
   const navigate = useNavigate();
 
   // Configure drag sensors
@@ -127,12 +130,7 @@ function HomePage() {
       return;
     }
 
-    // Skip other reloads during edit mode
-    if (editMode) {
-      console.log('Skipping reload during edit mode');
-      return;
-    }
-
+    // During edit mode, mark that external changes occurred but still apply them
     const relevantTypes = [
       'pdf_uploaded',
       'pdf_deleted',
@@ -156,7 +154,30 @@ function HomePage() {
         setOriginRect(null);
       }
 
-      loadData();
+      if (editMode) {
+        // Mark that external changes occurred from another admin
+        console.log('External changes detected from another admin during edit mode');
+        setExternalChanges(true);
+
+        // Apply updates to working copies for real-time collaboration
+        loadData().then(() => {
+          // After loading fresh data, update working copies if they exist
+          setPdfs(prev => {
+            if (prev.length > 0) {
+              setWorkingPdfs([...prev]);
+            }
+            return prev;
+          });
+          setPendingPdfs(prev => {
+            if (prev.length > 0) {
+              setWorkingPendingPdfs([...prev]);
+            }
+            return prev;
+          });
+        });
+      } else {
+        loadData();
+      }
     }
   }, [editMode, loadData, viewMode]);
 
@@ -259,6 +280,7 @@ function HomePage() {
     // Discard changes and exit edit mode
     setEditMode(false);
     setHasUnsavedChanges(false);
+    setExternalChanges(false);
     setWorkingPdfs([]);
     setWorkingPendingPdfs([]);
   };
@@ -267,6 +289,12 @@ function HomePage() {
     if (editMode) {
       // Exiting edit mode - save if there are changes
       if (hasUnsavedChanges) {
+        // Check if external changes occurred from another admin
+        if (externalChanges) {
+          setShowConflictWarning(true);
+          return;
+        }
+
         try {
           const allPdfs = [];
 
@@ -348,13 +376,110 @@ function HomePage() {
       }
       setEditMode(false);
       setHasUnsavedChanges(false);
+      setExternalChanges(false);
     } else {
       // Entering edit mode - create working copies
       setWorkingPdfs([...pdfs]);
       setWorkingPendingPdfs([...pendingPdfs]);
       setHasUnsavedChanges(false);
+      setExternalChanges(false);
       setEditMode(true);
     }
+  };
+
+  const handleForceSave = async () => {
+    setShowConflictWarning(false);
+    // Proceed with save despite external changes
+    try {
+      const allPdfs = [];
+
+      // Board PDFs - ensure they're marked as not pending
+      workingPdfs.forEach((pdf, index) => {
+        if (pdf) {
+          allPdfs.push({
+            id: pdf.id,
+            position: index + 1,
+            is_pending: 0
+          });
+        }
+      });
+
+      // Pending PDFs - ensure they're marked as pending
+      workingPendingPdfs.forEach((pdf, index) => {
+        if (pdf) {
+          allPdfs.push({
+            id: pdf.id,
+            position: allPdfs.length + index + 1,
+            is_pending: 1
+          });
+        }
+      });
+
+      // Save positions
+      await pdfAPI.reorder(allPdfs.map(p => ({ id: p.id, position: p.position })));
+
+      // Update status for all PDFs that changed
+      const statusUpdates = [];
+
+      allPdfs.forEach(pdfUpdate => {
+        const originalPdf = [...pdfs, ...pendingPdfs].find(p => p && p.id === pdfUpdate.id);
+        if (originalPdf && originalPdf.is_pending !== pdfUpdate.is_pending) {
+          statusUpdates.push(pdfAPI.updateStatus(pdfUpdate.id, pdfUpdate.is_pending));
+        }
+      });
+
+      if (statusUpdates.length > 0) {
+        await Promise.all(statusUpdates);
+      }
+
+      // Update metadata for all PDFs that changed
+      const metadataUpdates = [];
+      const workingAllPdfs = [...workingPdfs, ...workingPendingPdfs];
+
+      workingAllPdfs.forEach(workingPdf => {
+        if (!workingPdf) return;
+
+        const originalPdf = [...pdfs, ...pendingPdfs].find(p => p && p.id === workingPdf.id);
+        if (originalPdf) {
+          const metadataChanged =
+            originalPdf.job_number !== workingPdf.job_number ||
+            originalPdf.construction_method !== workingPdf.construction_method ||
+            originalPdf.placeholder_text !== workingPdf.placeholder_text;
+
+          if (metadataChanged) {
+            metadataUpdates.push(
+              pdfAPI.updateMetadata(workingPdf.id, {
+                job_number: workingPdf.job_number,
+                construction_method: workingPdf.construction_method,
+                placeholder_text: workingPdf.placeholder_text
+              })
+            );
+          }
+        }
+      });
+
+      if (metadataUpdates.length > 0) {
+        await Promise.all(metadataUpdates);
+      }
+
+      await loadData();
+      setEditMode(false);
+      setHasUnsavedChanges(false);
+      setExternalChanges(false);
+    } catch (error) {
+      console.error('Error saving changes:', error);
+      alert('Failed to save changes. Please try again.');
+    }
+  };
+
+  const handleRefresh = async () => {
+    setShowConflictWarning(false);
+    // Discard local changes and reload fresh data
+    await loadData();
+    setWorkingPdfs([...pdfs]);
+    setWorkingPendingPdfs([...pendingPdfs]);
+    setHasUnsavedChanges(false);
+    setExternalChanges(false);
   };
 
   const handleDelete = async (id) => {
@@ -1049,13 +1174,33 @@ function HomePage() {
             onDragCancel={handleDragCancel}
           >
             {editMode && (
-              <div className="mb-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3 sm:p-4 transition-colors">
-                <p className="text-blue-800 dark:text-blue-200 text-xs sm:text-sm transition-colors">
-                  <span className="hidden sm:inline">Drag and drop PDFs to reorder them. Click the tag icon to manage labels. Click the X to delete. Click the + button on empty slots to add placeholders.</span>
-                  <span className="sm:hidden">Drag to reorder • Tag icon for labels • X to delete • + for placeholders</span>
-                  {hasUnsavedChanges && <strong className="block sm:inline sm:ml-2 mt-1 sm:mt-0">Changes will be saved when you click "Save".</strong>}
-                </p>
-              </div>
+              <>
+                <div className="mb-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3 sm:p-4 transition-colors">
+                  <p className="text-blue-800 dark:text-blue-200 text-xs sm:text-sm transition-colors">
+                    <span className="hidden sm:inline">Drag and drop PDFs to reorder them. Click the tag icon to manage labels. Click the X to delete. Click the + button on empty slots to add placeholders.</span>
+                    <span className="sm:hidden">Drag to reorder • Tag icon for labels • X to delete • + for placeholders</span>
+                    {hasUnsavedChanges && <strong className="block sm:inline sm:ml-2 mt-1 sm:mt-0">Changes will be saved when you click "Save".</strong>}
+                  </p>
+                </div>
+
+                {externalChanges && (
+                  <div className="mb-4 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-400 dark:border-yellow-600 rounded-lg p-3 sm:p-4 transition-colors flex items-start gap-3">
+                    <div className="flex-shrink-0">
+                      <svg className="w-5 h-5 text-yellow-600 dark:text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-yellow-800 dark:text-yellow-200 text-xs sm:text-sm font-medium transition-colors">
+                        External Changes Detected
+                      </p>
+                      <p className="text-yellow-700 dark:text-yellow-300 text-xs mt-1 transition-colors">
+                        Another admin has made changes. Your working copy has been updated with their changes. Review before saving to avoid conflicts.
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
 
             {/* Pending Section - Only visible to admins */}
@@ -1171,6 +1316,14 @@ function HomePage() {
                 setSelectedPlaceholder(null);
               }}
               onSave={handleSavePlaceholder}
+            />
+          )}
+
+          {showConflictWarning && (
+            <ConflictWarningModal
+              onRefresh={handleRefresh}
+              onForceSave={handleForceSave}
+              onCancel={() => setShowConflictWarning(false)}
             />
           )}
         </>

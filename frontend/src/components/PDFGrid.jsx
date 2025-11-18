@@ -21,8 +21,10 @@ function PDFGrid({ pdfs, rows, cols, aspectWidth = 11, aspectHeight = 10, onPdfC
         // Start grid items after background/header finish (at 0.8s)
         // Each item starts 150ms after the previous for visible cascade
         const animationDelay = isTransitioning ? `${0.8 + index * 0.15}s` : '0s';
-        // Color changes at each item's opacity midpoint (animationStart + 300ms)
-        const colorTransitionDelay = isTransitioning ? `${0.8 + index * 0.15 + 0.3}s` : '0s';
+        // Color changes at each item's opacity midpoint
+        // Delay is relative to when DOM class changes (t=400ms), not from t=0!
+        // Midpoint: 0.8s + index*0.15s + 0.3s, minus 0.4s for DOM class timing
+        const colorTransitionDelay = isTransitioning ? `${0.8 + index * 0.15 + 0.3 - 0.4}s` : '0s';
 
         return (
           <div

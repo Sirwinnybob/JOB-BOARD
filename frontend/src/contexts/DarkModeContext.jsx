@@ -77,9 +77,10 @@ export function DarkModeProvider({ children }) {
     }, 400); // 0.4s = 50% of 0.8s background animation
 
     // Reset transition state after all animations complete
+    // Longest animation: last grid item at ~200ms + (24 * 10ms) + 400ms = ~840ms
     setTimeout(() => {
       setIsTransitioning(false);
-    }, 2500); // Allow enough time for all cascading animations
+    }, 1000); // Allow enough time for all cascading animations
   };
 
   return (

@@ -31,13 +31,13 @@ body {
   animation: border-pulse 2s ease-in-out infinite;
 }
 
-/* Hide scrollbar for slideshow view */
+/* Hide scrollbar for slideshow view - supports IE/Edge, Firefox, and WebKit browsers */
 @utility scrollbar-hide {
-  -ms-overflow-style: none;  /* IE and Edge */
-  scrollbar-width: none;  /* Firefox */
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 
   &::-webkit-scrollbar {
-    display: none;  /* Chrome, Safari and Opera */
+    display: none;
   }
 }
 
@@ -69,22 +69,21 @@ body {
   }
 }
 
+/* Delay color transitions to sync with animation midpoint */
 @utility animate-theme-bg {
   animation: theme-fade-invert 0.8s ease-in-out;
-  /* Delay color transitions to sync with animation midpoint */
   transition: background-color 0.1s ease 0.4s, color 0.1s ease 0.4s !important;
 }
 
+/* Delay color transitions to sync with animation midpoint */
 @utility animate-theme-header {
   animation: theme-fade-invert 0.6s ease-in-out 0.15s backwards;
-  /* Delay color transitions to sync with animation midpoint */
   transition: background-color 0.1s ease 0.45s, color 0.1s ease 0.45s, border-color 0.1s ease 0.45s !important;
 }
 
+/* Each item delays its color change based on when it reaches minimum opacity - will be overridden by inline style for proper stagger */
 @utility animate-theme-item {
   animation: theme-fade 0.6s ease-in-out backwards;
-  /* Each item delays its color change based on when it reaches minimum opacity */
-  /* Will be overridden by inline style for proper stagger */
   transition: background-color 0.1s ease, color 0.1s ease, border-color 0.1s ease !important;
 }
 

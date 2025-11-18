@@ -9,6 +9,7 @@ import UploadModal from '../components/UploadModal';
 import SettingsModal from '../components/SettingsModal';
 import LabelModal from '../components/LabelModal';
 import LabelManagementModal from '../components/LabelManagementModal';
+import PlaceholderEditModal from '../components/PlaceholderEditModal';
 import PendingSection from '../components/PendingSection';
 import useWebSocket from '../hooks/useWebSocket';
 import { useDarkMode } from '../contexts/DarkModeContext';
@@ -30,6 +31,8 @@ function HomePage() {
   const [showLabelModal, setShowLabelModal] = useState(false);
   const [showLabelManagement, setShowLabelManagement] = useState(false);
   const [selectedPdfForLabels, setSelectedPdfForLabels] = useState(null);
+  const [showPlaceholderEdit, setShowPlaceholderEdit] = useState(false);
+  const [selectedPlaceholder, setSelectedPlaceholder] = useState(null);
   const [showSlotMenu, setShowSlotMenu] = useState(null);
   const [selectedPdf, setSelectedPdf] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -488,12 +491,18 @@ function HomePage() {
     }
   };
 
-  const handleEditPlaceholder = async (placeholder) => {
-    const newText = prompt('Enter placeholder text:', placeholder.placeholder_text || 'PLACEHOLDER');
-    if (newText === null) return; // User cancelled
+  const handleEditPlaceholder = (placeholder) => {
+    setSelectedPlaceholder(placeholder);
+    setShowPlaceholderEdit(true);
+  };
+
+  const handleSavePlaceholder = async (newText) => {
+    if (!selectedPlaceholder) return;
 
     try {
-      await pdfAPI.updateMetadata(placeholder.id, { placeholder_text: newText });
+      await pdfAPI.updateMetadata(selectedPlaceholder.id, { placeholder_text: newText });
+      setShowPlaceholderEdit(false);
+      setSelectedPlaceholder(null);
       await loadData(); // Reload to show the updated text
     } catch (error) {
       console.error('Error updating placeholder text:', error);
@@ -943,6 +952,7 @@ function HomePage() {
                 <button
                   onClick={handleLogout}
                   className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors px-2 py-1 sm:px-0 sm:py-0"
+                  title="Logout from admin account"
                 >
                   Logout
                 </button>
@@ -950,6 +960,7 @@ function HomePage() {
                 <button
                   onClick={() => navigate('/login')}
                   className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors px-2 py-1 sm:px-0 sm:py-0"
+                  title="Login to admin panel"
                 >
                   Admin
                 </button>
@@ -971,6 +982,7 @@ function HomePage() {
                     ? 'bg-blue-600 text-white hover:bg-blue-700'
                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
                 }`}
+                title={editMode ? (hasUnsavedChanges ? 'Save changes and exit edit mode' : 'Exit edit mode') : 'Enter edit mode to reorder and manage jobs'}
               >
                 {editMode ? (hasUnsavedChanges ? 'Save' : 'Done') : 'Edit'}
               </button>
@@ -978,6 +990,7 @@ function HomePage() {
                 <button
                   onClick={() => setShowSettings(true)}
                   className="px-3 sm:px-4 py-1.5 sm:py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors text-sm whitespace-nowrap"
+                  title="Configure grid size and aspect ratio"
                 >
                   Settings
                 </button>
@@ -985,6 +998,7 @@ function HomePage() {
               <button
                 onClick={() => setShowLabelManagement(true)}
                 className="px-3 sm:px-4 py-1.5 sm:py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors text-sm whitespace-nowrap"
+                title="Create, edit, and delete job labels"
               >
                 <span className="hidden sm:inline">Manage Labels</span>
                 <span className="sm:hidden">Labels</span>
@@ -992,6 +1006,7 @@ function HomePage() {
               <button
                 onClick={() => navigate('/admin/ocr-settings')}
                 className="px-3 sm:px-4 py-1.5 sm:py-2 bg-teal-600 text-white rounded-lg font-medium hover:bg-teal-700 transition-colors text-sm whitespace-nowrap"
+                title="Configure OCR extraction settings for job numbers and types"
               >
                 <span className="hidden sm:inline">OCR Settings</span>
                 <span className="sm:hidden">OCR</span>
@@ -1123,6 +1138,17 @@ function HomePage() {
             <LabelManagementModal
               onClose={() => setShowLabelManagement(false)}
               onUpdate={loadData}
+            />
+          )}
+
+          {showPlaceholderEdit && selectedPlaceholder && (
+            <PlaceholderEditModal
+              placeholder={selectedPlaceholder}
+              onClose={() => {
+                setShowPlaceholderEdit(false);
+                setSelectedPlaceholder(null);
+              }}
+              onSave={handleSavePlaceholder}
             />
           )}
         </>

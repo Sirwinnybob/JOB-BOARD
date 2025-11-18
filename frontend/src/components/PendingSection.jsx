@@ -5,7 +5,7 @@ import { useDarkMode } from '../contexts/DarkModeContext';
 function DraggablePendingItem({ pdf, index, onMovePdfToBoard, onDelete, editMode, onMetadataUpdate }) {
   const [editing, setEditing] = useState(null);
   const [editValue, setEditValue] = useState('');
-  const { darkMode } = useDarkMode();
+  const { darkMode, isTransitioning } = useDarkMode();
 
   const {
     attributes,
@@ -90,7 +90,7 @@ function DraggablePendingItem({ pdf, index, onMovePdfToBoard, onDelete, editMode
     >
       {/* Job Info Header */}
       <div
-        className="border-b border-yellow-300 dark:border-yellow-600 px-2 py-1 flex justify-between items-center text-xs transition-colors shadow-sm z-10 flex-shrink-0"
+        className={`border-b border-yellow-300 dark:border-yellow-600 px-2 py-1 flex justify-between items-center text-xs ${!isTransitioning ? 'transition-colors' : ''} shadow-sm z-10 flex-shrink-0`}
         style={getHeaderStyle()}
       >
         <div className="min-w-0">
@@ -174,13 +174,24 @@ function DraggablePendingItem({ pdf, index, onMovePdfToBoard, onDelete, editMode
       </div>
 
       {/* Thumbnail */}
-      <div className="flex-1 aspect-[4/3] bg-gray-100 dark:bg-gray-700 flex items-center justify-center transition-colors min-h-0">
+      <div className={`flex-1 aspect-[4/3] bg-gray-100 dark:bg-gray-700 flex items-center justify-center ${!isTransitioning ? 'transition-colors' : ''} min-h-0`}>
         {pdf.thumbnail ? (
-          <img
-            src={`/thumbnails/${pdf.thumbnail}`}
-            alt={pdf.original_name}
-            className="w-full h-full object-cover dark:invert transition-all"
-          />
+          <div className="relative w-full h-full">
+            {/* Light mode image */}
+            <img
+              src={pdf.images_base ? `/thumbnails/${pdf.images_base}-1.png` : `/thumbnails/${pdf.thumbnail}`}
+              alt={pdf.original_name}
+              className="absolute inset-0 w-full h-full object-cover transition-opacity duration-200"
+              style={{ opacity: darkMode ? 0 : 1 }}
+            />
+            {/* Dark mode image */}
+            <img
+              src={pdf.dark_mode_images_base ? `/thumbnails/${pdf.dark_mode_images_base}-1.png` : (pdf.images_base ? `/thumbnails/${pdf.images_base}-1.png` : `/thumbnails/${pdf.thumbnail}`)}
+              alt={pdf.original_name}
+              className="absolute inset-0 w-full h-full object-cover transition-opacity duration-200"
+              style={{ opacity: darkMode ? 1 : 0 }}
+            />
+          </div>
         ) : (
           <div className="text-gray-400 text-center p-4">
             <svg
@@ -203,13 +214,13 @@ function DraggablePendingItem({ pdf, index, onMovePdfToBoard, onDelete, editMode
 
       {/* Actions - Only in edit mode */}
       {editMode && onMovePdfToBoard && onDelete && (
-        <div className="p-2 bg-white dark:bg-gray-800 border-t border-yellow-200 dark:border-yellow-700 flex gap-2 transition-colors">
+        <div className={`p-2 bg-white dark:bg-gray-800 border-t border-yellow-200 dark:border-yellow-700 flex gap-2 ${!isTransitioning ? 'transition-colors' : ''}`}>
           <button
             onClick={(e) => {
               e.stopPropagation();
               onMovePdfToBoard(pdf.id);
             }}
-            className="flex-1 px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 transition-colors"
+            className={`flex-1 px-2 py-1 bg-green-600 text-white text-xs rounded hover:bg-green-700 ${!isTransitioning ? 'transition-colors' : ''}`}
             title="Add to Board"
           >
             Add to Board
@@ -219,7 +230,7 @@ function DraggablePendingItem({ pdf, index, onMovePdfToBoard, onDelete, editMode
               e.stopPropagation();
               onDelete(pdf.id);
             }}
-            className="px-2 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition-colors"
+            className={`px-2 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 ${!isTransitioning ? 'transition-colors' : ''}`}
             title="Delete"
           >
             Delete
@@ -229,7 +240,7 @@ function DraggablePendingItem({ pdf, index, onMovePdfToBoard, onDelete, editMode
 
       {/* Drag indicator - Only in edit mode */}
       {editMode && !isDragging && (
-        <div className="absolute top-2 left-2 bg-yellow-600 dark:bg-yellow-500 text-white rounded-full w-6 h-6 flex items-center justify-center shadow-lg text-xs transition-colors">
+        <div className={`absolute top-2 left-2 bg-yellow-600 dark:bg-yellow-500 text-white rounded-full w-6 h-6 flex items-center justify-center shadow-lg text-xs ${!isTransitioning ? 'transition-colors' : ''}`}>
           ⋮⋮
         </div>
       )}
@@ -238,30 +249,31 @@ function DraggablePendingItem({ pdf, index, onMovePdfToBoard, onDelete, editMode
 }
 
 function PendingSection({ pdfs, onMovePdfToBoard, onMoveAllPdfsToBoard, onDelete, onUploadToPending, editMode, onMetadataUpdate }) {
+  const { isTransitioning } = useDarkMode();
   const { setNodeRef, isOver } = useDroppable({
     id: 'pending-container',
   });
 
   if (pdfs.length === 0) {
     return (
-      <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6 mb-6 transition-colors">
+      <div className={`bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6 mb-6 ${!isTransitioning ? 'transition-colors' : ''}`}>
         <div className="flex justify-between items-center mb-2">
-          <h2 className="text-lg font-semibold text-yellow-900 dark:text-yellow-100 transition-colors">
-            📥 PENDING PDFs
+          <h2 className={`text-lg font-semibold text-yellow-900 dark:text-yellow-100 ${!isTransitioning ? 'transition-colors' : ''}`}>
+            📥 PENDING Jobs
           </h2>
           {editMode && (
             <button
               onClick={onUploadToPending}
-              className="px-3 py-1 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors font-medium"
+              className={`px-3 py-1 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 ${!isTransitioning ? 'transition-colors' : ''} font-medium`}
             >
               + Upload to Pending
             </button>
           )}
         </div>
-        <p className="text-sm text-yellow-700 dark:text-yellow-300 transition-colors">
+        <p className={`text-sm text-yellow-700 dark:text-yellow-300 ${!isTransitioning ? 'transition-colors' : ''}`}>
           {editMode
-            ? 'No pending PDFs. Upload PDFs to pending using the button above.'
-            : 'No pending PDFs. Enter edit mode to upload PDFs.'
+            ? 'No pending Jobs. Upload Jobs to pending using the button above.'
+            : 'No pending Jobs. Enter edit mode to upload Jobs.'
           }
         </p>
       </div>
@@ -269,23 +281,23 @@ function PendingSection({ pdfs, onMovePdfToBoard, onMoveAllPdfsToBoard, onDelete
   }
 
   return (
-    <div className="bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6 mb-6 transition-colors">
+    <div className={`bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6 mb-6 ${!isTransitioning ? 'transition-colors' : ''}`}>
       <div className="flex justify-between items-center mb-4">
         <div>
-          <h2 className="text-lg font-semibold text-yellow-900 dark:text-yellow-100 transition-colors">
-            📥 PENDING PDFs ({pdfs.length})
+          <h2 className={`text-lg font-semibold text-yellow-900 dark:text-yellow-100 ${!isTransitioning ? 'transition-colors' : ''}`}>
+            📥 PENDING Jobs ({pdfs.length})
           </h2>
-          <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1 transition-colors">
+          <p className={`text-sm text-yellow-700 dark:text-yellow-300 mt-1 ${!isTransitioning ? 'transition-colors' : ''}`}>
             {editMode
-              ? 'These PDFs are uploaded but not yet visible on the board. Drag them to the board or click "Add to Board".'
-              : 'These PDFs are uploaded but not yet visible on the board. Click to view. Enter edit mode to add them to the board.'
+              ? 'These Jobs are uploaded but not yet visible on the board. Drag them to the board or click "Add to Board".'
+              : 'These Jobs are uploaded but not yet visible on the board. Click to view. Enter edit mode to add them to the board.'
             }
           </p>
         </div>
         {editMode && (
           <button
             onClick={onUploadToPending}
-            className="px-3 py-1 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors font-medium whitespace-nowrap"
+            className={`px-3 py-1 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 ${!isTransitioning ? 'transition-colors' : ''} font-medium whitespace-nowrap`}
           >
             + Upload to Pending
           </button>
@@ -316,7 +328,7 @@ function PendingSection({ pdfs, onMovePdfToBoard, onMoveAllPdfsToBoard, onDelete
         <div className="mt-4 pt-4 border-t border-yellow-300">
           <button
             onClick={onMoveAllPdfsToBoard}
-            className="px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 transition-colors font-medium"
+            className={`px-4 py-2 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700 ${!isTransitioning ? 'transition-colors' : ''} font-medium`}
           >
             Add All to Board ({pdfs.length})
           </button>

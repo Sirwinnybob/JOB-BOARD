@@ -12,12 +12,26 @@ const path = require('path');
 const fs = require('fs').promises;
 const { exec } = require('child_process');
 const { promisify } = require('util');
+const webpush = require('web-push');
 const db = require('./db');
 const authMiddleware = require('./middleware/auth');
 const { generateThumbnail, generatePdfImages, generateDarkModeImages } = require('./utils/thumbnail');
 const { extractMetadata } = require('./utils/textExtraction');
 
 const execAsync = promisify(exec);
+
+// Configure Web Push with VAPID keys
+if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY && process.env.VAPID_SUBJECT) {
+  webpush.setVapidDetails(
+    process.env.VAPID_SUBJECT,
+    process.env.VAPID_PUBLIC_KEY,
+    process.env.VAPID_PRIVATE_KEY
+  );
+  console.log('✅ Web Push configured with VAPID keys');
+} else {
+  console.warn('⚠️  Web Push not configured: Missing VAPID keys in .env');
+  console.warn('   Run: node generate-vapid-keys.js to generate keys');
+}
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -126,25 +140,113 @@ wss.on('close', () => {
   clearInterval(heartbeatInterval);
 });
 
-// Optimized broadcast function to send updates to all connected clients
-function broadcastUpdate(type, data = {}) {
+// Optimized broadcast function to send updates to all connected clients via WebSocket and Push
+async function broadcastUpdate(type, data = {}) {
   const message = JSON.stringify({ type, data, timestamp: Date.now() });
-  let successCount = 0;
-  let failCount = 0;
+  let wsSuccessCount = 0;
+  let wsFailCount = 0;
 
+  // Send via WebSocket to active connections
   wss.clients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
       try {
         client.send(message);
-        successCount++;
+        wsSuccessCount++;
       } catch (error) {
         console.error('Error sending to WebSocket client:', error);
-        failCount++;
+        wsFailCount++;
       }
     }
   });
 
-  console.log(`Broadcast: ${type} (sent to ${successCount} clients, ${failCount} failed)`);
+  console.log(`Broadcast: ${type} (WS: ${wsSuccessCount} sent, ${wsFailCount} failed)`);
+
+  // Send Push notifications for important events
+  const pushNotificationTypes = ['pdf_uploaded', 'job_activated', 'pdfs_reordered', 'custom_alert'];
+  if (pushNotificationTypes.includes(type)) {
+    sendPushNotifications(type, data).catch(err => {
+      console.error('Error sending push notifications:', err.message);
+    });
+  }
+}
+
+// Send push notifications to all subscribed clients
+async function sendPushNotifications(type, data) {
+  return new Promise((resolve, reject) => {
+    db.all('SELECT * FROM push_subscriptions', [], async (err, subscriptions) => {
+      if (err) {
+        console.error('Error fetching push subscriptions:', err);
+        return reject(err);
+      }
+
+      if (subscriptions.length === 0) {
+        return resolve();
+      }
+
+      // Determine notification content based on type
+      let title = 'Job Board Update';
+      let body = 'New update available';
+      let tag = 'job-board-notification';
+      let requireInteraction = false;
+
+      if ((type === 'pdf_uploaded' && data.is_pending === 0) || type === 'job_activated') {
+        title = 'Job Board Update';
+        body = 'NEW JOB';
+        tag = 'new-job';
+      } else if (type === 'pdfs_reordered') {
+        title = 'Job Board Update';
+        body = 'JOB(S) MOVED';
+        tag = 'jobs-moved';
+      } else if (type === 'custom_alert') {
+        title = 'Admin Alert';
+        body = data.message || 'Important announcement';
+        tag = 'admin-alert';
+        requireInteraction = true;
+      }
+
+      const payload = JSON.stringify({
+        title,
+        body,
+        tag,
+        requireInteraction,
+        icon: '/icon-192.png',
+        badge: '/favicon-96x96.png',
+        timestamp: Date.now()
+      });
+
+      const results = await Promise.allSettled(
+        subscriptions.map(async (sub) => {
+          const pushSubscription = {
+            endpoint: sub.endpoint,
+            keys: {
+              p256dh: sub.keys_p256dh,
+              auth: sub.keys_auth
+            }
+          };
+
+          try {
+            await webpush.sendNotification(pushSubscription, payload);
+            // Update last_used_at
+            db.run('UPDATE push_subscriptions SET last_used_at = CURRENT_TIMESTAMP WHERE id = ?', [sub.id]);
+            return { success: true };
+          } catch (error) {
+            // If subscription is invalid (410 Gone), remove it
+            if (error.statusCode === 410 || error.statusCode === 404) {
+              console.log(`Removing invalid push subscription: ${sub.endpoint.substring(0, 50)}...`);
+              db.run('DELETE FROM push_subscriptions WHERE id = ?', [sub.id]);
+            }
+            return { success: false, error: error.message };
+          }
+        })
+      );
+
+      const successful = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
+      const failed = results.length - successful;
+
+      console.log(`Push notifications: ${successful} sent, ${failed} failed`);
+      resolve();
+    });
+  });
 }
 
 // Middleware
@@ -273,9 +375,10 @@ app.get('/api/pdfs', async (req, res) => {
 
       rows.forEach(pdf => {
         db.all(
-          `SELECT l.* FROM labels l
+          `SELECT l.*, pl.expires_at as label_expires_at FROM labels l
            INNER JOIN pdf_labels pl ON l.id = pl.label_id
-           WHERE pl.pdf_id = ?`,
+           WHERE pl.pdf_id = ?
+           AND (pl.expires_at IS NULL OR pl.expires_at > datetime('now'))`,
           [pdf.id],
           (err, labels) => {
             if (err) {
@@ -626,25 +729,45 @@ app.put('/api/pdfs/:id/status', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'is_pending is required' });
     }
 
-    db.run(
-      'UPDATE pdfs SET is_pending = ? WHERE id = ?',
-      [is_pending ? 1 : 0, id],
-      function (err) {
-        if (err) {
-          console.error('Database error:', err);
-          return res.status(500).json({ error: 'Database error' });
-        }
-
-        if (this.changes === 0) {
-          return res.status(404).json({ error: 'PDF not found' });
-        }
-
-        // Broadcast update to all clients
-        broadcastUpdate('pdf_status_updated', { id, is_pending: is_pending ? 1 : 0 });
-
-        res.json({ success: true, id, is_pending: is_pending ? 1 : 0 });
+    // First, get the current status to check if we're activating a pending job
+    db.get('SELECT is_pending FROM pdfs WHERE id = ?', [id], (err, row) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Database error' });
       }
-    );
+
+      if (!row) {
+        return res.status(404).json({ error: 'PDF not found' });
+      }
+
+      const oldIsPending = row.is_pending;
+      const newIsPending = is_pending ? 1 : 0;
+
+      db.run(
+        'UPDATE pdfs SET is_pending = ? WHERE id = ?',
+        [newIsPending, id],
+        function (err) {
+          if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({ error: 'Database error' });
+          }
+
+          if (this.changes === 0) {
+            return res.status(404).json({ error: 'PDF not found' });
+          }
+
+          // If moving from pending to active, send job_activated event
+          if (oldIsPending === 1 && newIsPending === 0) {
+            broadcastUpdate('job_activated', { id, is_pending: newIsPending });
+          } else {
+            // Otherwise, send regular status update
+            broadcastUpdate('pdf_status_updated', { id, is_pending: newIsPending });
+          }
+
+          res.json({ success: true, id, is_pending: newIsPending });
+        }
+      );
+    });
   } catch (error) {
     console.error('Error updating PDF status:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -851,10 +974,10 @@ app.delete('/api/labels/:id', authMiddleware, async (req, res) => {
 app.put('/api/pdfs/:id/labels', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
-    const { labelIds } = req.body; // Array of label IDs
+    const { labels } = req.body; // Array of {labelId, expiresAt} objects
 
-    if (!Array.isArray(labelIds)) {
-      return res.status(400).json({ error: 'labelIds must be an array' });
+    if (!Array.isArray(labels)) {
+      return res.status(400).json({ error: 'labels must be an array' });
     }
 
     // First, remove all existing labels for this PDF
@@ -864,17 +987,17 @@ app.put('/api/pdfs/:id/labels', authMiddleware, async (req, res) => {
         return res.status(500).json({ error: 'Database error' });
       }
 
-      // Then, add the new labels
-      if (labelIds.length === 0) {
+      // Then, add the new labels with expiration
+      if (labels.length === 0) {
         // Broadcast update to all clients
-        broadcastUpdate('pdf_labels_updated', { pdfId: id, labelIds: [] });
+        broadcastUpdate('pdf_labels_updated', { pdfId: id, labels: [] });
         return res.json({ success: true });
       }
 
-      const stmt = db.prepare('INSERT INTO pdf_labels (pdf_id, label_id) VALUES (?, ?)');
+      const stmt = db.prepare('INSERT INTO pdf_labels (pdf_id, label_id, expires_at) VALUES (?, ?, ?)');
 
-      labelIds.forEach(labelId => {
-        stmt.run(id, labelId);
+      labels.forEach(label => {
+        stmt.run(id, label.labelId, label.expiresAt || null);
       });
 
       stmt.finalize((err) => {
@@ -884,13 +1007,108 @@ app.put('/api/pdfs/:id/labels', authMiddleware, async (req, res) => {
         }
 
         // Broadcast update to all clients
-        broadcastUpdate('pdf_labels_updated', { pdfId: id, labelIds });
+        broadcastUpdate('pdf_labels_updated', { pdfId: id, labels });
 
         res.json({ success: true });
       });
     });
   } catch (error) {
     console.error('Error updating PDF labels:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Custom Alert Route - Send notification to all connected clients
+app.post('/api/alerts/broadcast', authMiddleware, async (req, res) => {
+  try {
+    const { message } = req.body;
+
+    if (!message || typeof message !== 'string' || message.trim().length === 0) {
+      return res.status(400).json({ error: 'Message is required' });
+    }
+
+    if (message.length > 500) {
+      return res.status(400).json({ error: 'Message must be 500 characters or less' });
+    }
+
+    // Broadcast custom alert to all connected clients
+    broadcastUpdate('custom_alert', { message: message.trim() });
+
+    res.json({ success: true, message: 'Alert sent to all connected clients' });
+  } catch (error) {
+    console.error('Error broadcasting alert:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Push Subscription Routes
+
+// Get VAPID public key
+app.get('/api/push/vapid-public-key', (req, res) => {
+  if (!process.env.VAPID_PUBLIC_KEY) {
+    return res.status(503).json({ error: 'Push notifications not configured' });
+  }
+  res.json({ publicKey: process.env.VAPID_PUBLIC_KEY });
+});
+
+// Subscribe to push notifications
+app.post('/api/push/subscribe', async (req, res) => {
+  try {
+    const { subscription } = req.body;
+
+    if (!subscription || !subscription.endpoint || !subscription.keys) {
+      return res.status(400).json({ error: 'Invalid subscription data' });
+    }
+
+    const { endpoint, keys } = subscription;
+    const userAgent = req.headers['user-agent'] || 'Unknown';
+
+    // Insert or update subscription
+    db.run(
+      `INSERT INTO push_subscriptions (endpoint, keys_p256dh, keys_auth, user_agent)
+       VALUES (?, ?, ?, ?)
+       ON CONFLICT(endpoint) DO UPDATE SET
+         keys_p256dh = excluded.keys_p256dh,
+         keys_auth = excluded.keys_auth,
+         user_agent = excluded.user_agent,
+         last_used_at = CURRENT_TIMESTAMP`,
+      [endpoint, keys.p256dh, keys.auth, userAgent],
+      (err) => {
+        if (err) {
+          console.error('Error saving push subscription:', err);
+          return res.status(500).json({ error: 'Failed to save subscription' });
+        }
+
+        console.log('✅ Push subscription saved:', endpoint.substring(0, 50) + '...');
+        res.json({ success: true });
+      }
+    );
+  } catch (error) {
+    console.error('Error handling push subscription:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Unsubscribe from push notifications
+app.post('/api/push/unsubscribe', async (req, res) => {
+  try {
+    const { endpoint } = req.body;
+
+    if (!endpoint) {
+      return res.status(400).json({ error: 'Endpoint is required' });
+    }
+
+    db.run('DELETE FROM push_subscriptions WHERE endpoint = ?', [endpoint], (err) => {
+      if (err) {
+        console.error('Error removing push subscription:', err);
+        return res.status(500).json({ error: 'Failed to remove subscription' });
+      }
+
+      console.log('🗑️  Push subscription removed:', endpoint.substring(0, 50) + '...');
+      res.json({ success: true });
+    });
+  } catch (error) {
+    console.error('Error handling push unsubscribe:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

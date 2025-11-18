@@ -3,7 +3,19 @@ import { useDraggable, useDroppable } from '@dnd-kit/core';
 import DraggableCoverSheetCard from './DraggableCoverSheetCard';
 import PlaceholderCard from './PlaceholderCard';
 
-function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10, editMode, onDelete, onLabelClick, onMoveToPending, onMetadataUpdate, onSlotMenuOpen, showSlotMenu, onSlotMenuClose, onAddPlaceholder, onUploadToSlot, onEditPlaceholder, isTransitioning, animationDelay, colorDelay }) {
+function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10, editMode, onDelete, onLabelClick, onMoveToPending, onMetadataUpdate, onSlotMenuOpen, showSlotMenu, onSlotMenuClose, onAddPlaceholder, onUploadToSlot, onEditPlaceholder, isTransitioning, animationDelay }) {
+  // Log animation timing for first few items
+  React.useEffect(() => {
+    if (isTransitioning && index < 3) {
+      console.log(`[DraggableGridItem] Item ${index}:`, {
+        isTransitioning,
+        animationDelay,
+        hasPdf: !!pdf,
+        isPlaceholder: pdf?.is_placeholder
+      });
+    }
+  }, [isTransitioning, index, animationDelay, pdf?.is_placeholder]);
+
   // Make this slot droppable
   const { setNodeRef: setDropRef, isOver } = useDroppable({
     id: id,
@@ -31,6 +43,10 @@ function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10
   } : undefined;
 
   if (pdf) {
+    // Calculate when this item's color should change (at opacity midpoint)
+    // Delay is relative to when DOM class changes (t=400ms), not from t=0!
+    const colorTransitionDelay = isTransitioning ? `${0.8 + index * 0.15 + 0.3 - 0.4}s` : '0s';
+
     return (
       <div
         ref={setDropRef}
@@ -38,9 +54,6 @@ function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10
         style={{
           aspectRatio: `${aspectWidth} / ${aspectHeight}`,
           animationDelay: animationDelay,
-          ...(isTransitioning && colorDelay && {
-            transition: `background-color 0.1s ease ${colorDelay}, color 0.1s ease ${colorDelay}, border-color 0.1s ease ${colorDelay}`
-          })
         }}
       >
         <div
@@ -58,6 +71,7 @@ function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10
               onDelete={onDelete}
               onEdit={onEditPlaceholder}
               isDragging={isDragging}
+              colorTransitionDelay={colorTransitionDelay}
             />
           ) : (
             <DraggableCoverSheetCard
@@ -69,6 +83,7 @@ function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10
               onMoveToPending={onMoveToPending}
               onMetadataUpdate={onMetadataUpdate}
               isDragging={isDragging}
+              colorTransitionDelay={colorTransitionDelay}
             />
           )}
         </div>
@@ -77,26 +92,31 @@ function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10
   }
 
   // Empty slot
+  // Calculate when this item's color should change (at opacity midpoint)
+  // Delay is relative to when DOM class changes (t=400ms), not from t=0!
+  const colorTransitionDelay = isTransitioning ? `${0.8 + index * 0.15 + 0.3 - 0.4}s` : '0s';
+
   return (
     <div
       ref={setDropRef}
-      className={`bg-gray-200 dark:bg-gray-700 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center relative group transition-colors ${
+      className={`bg-gray-200 dark:bg-gray-700 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center relative group ${!isTransitioning ? 'transition-colors' : ''} ${
         isOver ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-900/20' : ''
       } ${isTransitioning ? 'animate-theme-item' : ''}`}
       style={{
         aspectRatio: `${aspectWidth} / ${aspectHeight}`,
         animationDelay: animationDelay,
-        ...(isTransitioning && colorDelay && {
-          transition: `background-color 0.1s ease ${colorDelay}, color 0.1s ease ${colorDelay}, border-color 0.1s ease ${colorDelay}`
+        // Delay color changes to match this item's opacity midpoint
+        ...(isTransitioning && {
+          transition: `background-color 0.1s ease ${colorTransitionDelay}, color 0.1s ease ${colorTransitionDelay}, border-color 0.1s ease ${colorTransitionDelay}`
         })
       }}
     >
       {editMode ? (
         showSlotMenu === index ? (
-          <div className="absolute inset-0 bg-white dark:bg-gray-800 rounded-lg shadow-lg z-20 flex flex-col items-stretch justify-center p-4 gap-2 transition-colors">
+          <div className={`absolute inset-0 bg-white dark:bg-gray-800 rounded-lg shadow-lg z-20 flex flex-col items-stretch justify-center p-4 gap-2 ${!isTransitioning ? 'transition-colors' : ''}`}>
             <button
               onClick={() => onAddPlaceholder && onAddPlaceholder(index)}
-              className="flex items-center justify-center gap-2 p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+              className={`flex items-center justify-center gap-2 p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 ${!isTransitioning ? 'transition-colors' : ''}`}
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -105,7 +125,7 @@ function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10
             </button>
             <button
               onClick={() => onUploadToSlot && onUploadToSlot(index)}
-              className="flex items-center justify-center gap-2 p-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              className={`flex items-center justify-center gap-2 p-3 bg-green-600 text-white rounded-lg hover:bg-green-700 ${!isTransitioning ? 'transition-colors' : ''}`}
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
@@ -114,7 +134,7 @@ function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10
             </button>
             <button
               onClick={onSlotMenuClose}
-              className="p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 transition-colors text-sm"
+              className={`p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 ${!isTransitioning ? 'transition-colors' : ''} text-sm`}
             >
               Cancel
             </button>
@@ -122,10 +142,10 @@ function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10
         ) : (
           <button
             onClick={() => onSlotMenuOpen && onSlotMenuOpen(index)}
-            className="flex flex-col items-center justify-center gap-2 p-4 hover:bg-gray-300 dark:hover:bg-gray-600 transition-colors w-full h-full rounded-lg"
+            className={`flex flex-col items-center justify-center gap-2 p-4 hover:bg-gray-300 dark:hover:bg-gray-600 ${!isTransitioning ? 'transition-colors' : ''} w-full h-full rounded-lg`}
           >
             <svg
-              className="w-8 h-8 text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors"
+              className={`w-8 h-8 text-gray-400 dark:text-gray-500 group-hover:text-gray-600 dark:group-hover:text-gray-300 ${!isTransitioning ? 'transition-colors' : ''}`}
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -137,7 +157,7 @@ function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10
                 d="M12 4v16m8-8H4"
               />
             </svg>
-            <span className="text-gray-400 dark:text-gray-500 text-sm group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors">
+            <span className={`text-gray-400 dark:text-gray-500 text-sm group-hover:text-gray-600 dark:group-hover:text-gray-300 ${!isTransitioning ? 'transition-colors' : ''}`}>
               Add Item
             </span>
           </button>

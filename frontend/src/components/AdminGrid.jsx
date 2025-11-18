@@ -11,6 +11,8 @@ function AdminGrid({ pdfs, rows, cols, aspectWidth, aspectHeight, editMode, onRe
     gridTemplateColumns: `repeat(${responsiveCols}, minmax(0, 1fr))`,
   };
 
+  console.log('[AdminGrid] Render with isTransitioning:', isTransitioning);
+
   return (
     <div
       className="grid gap-2 sm:gap-4 w-full"
@@ -18,11 +20,16 @@ function AdminGrid({ pdfs, rows, cols, aspectWidth, aspectHeight, editMode, onRe
     >
       {Array.from({ length: totalSlots }).map((_, index) => {
         const pdf = pdfs[index];
-        // Create visible cascade: each item starts 80ms after the previous
-        // This gives time for proper rendering and creates smooth wave effect
-        const animationDelay = isTransitioning ? `${0.3 + index * 0.08}s` : '0s';
-        // Color should switch when opacity is lowest: animationStart + (duration/2)
-        const colorDelay = isTransitioning ? `${0.3 + index * 0.08 + 0.3}s` : '0s';
+        // Start grid items after background/header finish (at 0.8s)
+        // Each item starts 150ms after the previous for visible cascade
+        const animationDelay = isTransitioning ? `${0.8 + index * 0.15}s` : '0s';
+
+        if (isTransitioning && index < 3) {
+          console.log(`[AdminGrid] Item ${index}:`, {
+            animationDelay,
+            hasPdf: !!pdf
+          });
+        }
 
         return (
           <DraggableGridItem
@@ -45,7 +52,6 @@ function AdminGrid({ pdfs, rows, cols, aspectWidth, aspectHeight, editMode, onRe
             onEditPlaceholder={onEditPlaceholder}
             isTransitioning={isTransitioning}
             animationDelay={animationDelay}
-            colorDelay={colorDelay}
           />
         );
       })}

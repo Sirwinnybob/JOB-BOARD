@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VAPID Key Generator</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      padding: 30px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #333;
+      margin-bottom: 10px;
+    }
+    .subtitle {
+      color: #666;
+      margin-bottom: 30px;
+    }
+    button {
+      background: #007bff;
+      color: white;
+      border: none;
+      padding: 12px 24px;
+      font-size: 16px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    button:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .output {
+      margin-top: 20px;
+      padding: 20px;
+      background: #f8f9fa;
+      border-radius: 4px;
+      border: 1px solid #dee2e6;
+      font-family: 'Courier New', monospace;
+      font-size: 14px;
+      white-space: pre-wrap;
+      word-break: break-all;
+      display: none;
+    }
+    .output.show {
+      display: block;
+    }
+    .copy-btn {
+      margin-top: 10px;
+      background: #28a745;
+    }
+    .copy-btn:hover {
+      background: #218838;
+    }
+    .warning {
+      background: #fff3cd;
+      border: 1px solid #ffc107;
+      padding: 15px;
+      border-radius: 4px;
+      margin: 20px 0;
+      color: #856404;
+    }
+    .info {
+      background: #d1ecf1;
+      border: 1px solid #bee5eb;
+      padding: 15px;
+      border-radius: 4px;
+      margin: 20px 0;
+      color: #0c5460;
+    }
+    .success {
+      background: #d4edda;
+      border: 1px solid #c3e6cb;
+      padding: 10px;
+      border-radius: 4px;
+      margin-top: 10px;
+      color: #155724;
+      display: none;
+    }
+    .success.show {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🔐 VAPID Key Generator</h1>
+    <p class="subtitle">Generate VAPID keys for Web Push notifications (Client-side only, no data sent to server)</p>
+
+    <div class="info">
+      <strong>ℹ️ About VAPID Keys:</strong>
+      <ul>
+        <li>VAPID keys are used to identify your application to push services</li>
+        <li>Generated entirely in your browser - no data is sent anywhere</li>
+        <li>You only need to generate these once</li>
+        <li>Keep your private key secret (add .env to .gitignore)</li>
+      </ul>
+    </div>
+
+    <div class="warning">
+      <strong>⚠️ Security Note:</strong> This tool generates keys entirely in your browser using the Web Crypto API. No keys are transmitted over the internet. However, for production use, consider generating keys on your own machine using the Node.js method in the README.
+    </div>
+
+    <button id="generateBtn" onclick="generateKeys()">Generate VAPID Keys</button>
+
+    <div id="output" class="output"></div>
+    <div id="success" class="success">✅ Copied to clipboard!</div>
+    <button id="copyBtn" class="copy-btn" onclick="copyToClipboard()" style="display: none;">📋 Copy to Clipboard</button>
+  </div>
+
+  <script>
+    async function generateKeys() {
+      const btn = document.getElementById('generateBtn');
+      const output = document.getElementById('output');
+      const copyBtn = document.getElementById('copyBtn');
+
+      btn.disabled = true;
+      btn.textContent = 'Generating...';
+
+      try {
+        // Generate ECDSA P-256 key pair
+        const keyPair = await crypto.subtle.generateKey(
+          {
+            name: 'ECDSA',
+            namedCurve: 'P-256'
+          },
+          true,
+          ['sign', 'verify']
+        );
+
+        // Export public key
+        const publicKeyBuffer = await crypto.subtle.exportKey('spki', keyPair.publicKey);
+        const publicKeyBase64 = btoa(String.fromCharCode(...new Uint8Array(publicKeyBuffer)))
+          .replace(/\+/g, '-')
+          .replace(/\//g, '_')
+          .replace(/=/g, '');
+
+        // Export private key
+        const privateKeyBuffer = await crypto.subtle.exportKey('pkcs8', keyPair.privateKey);
+        const privateKeyBase64 = btoa(String.fromCharCode(...new Uint8Array(privateKeyBuffer)))
+          .replace(/\+/g, '-')
+          .replace(/\//g, '_')
+          .replace(/=/g, '');
+
+        // Display results
+        const result = `=== VAPID Keys Generated ===
+
+Add these to your .env file in Dockge:
+
+VAPID_PUBLIC_KEY=${publicKeyBase64}
+VAPID_PRIVATE_KEY=${privateKeyBase64}
+VAPID_SUBJECT=mailto:your-email@example.com
+
+Replace your-email@example.com with your actual email address.
+Then restart your backend container.`;
+
+        output.textContent = result;
+        output.classList.add('show');
+        copyBtn.style.display = 'inline-block';
+
+        btn.textContent = 'Generate New Keys';
+        btn.disabled = false;
+      } catch (error) {
+        output.textContent = 'Error generating keys: ' + error.message;
+        output.classList.add('show');
+        btn.textContent = 'Try Again';
+        btn.disabled = false;
+      }
+    }
+
+    function copyToClipboard() {
+      const output = document.getElementById('output');
+      const success = document.getElementById('success');
+
+      // Create temporary textarea
+      const textarea = document.createElement('textarea');
+      textarea.value = output.textContent;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      document.body.appendChild(textarea);
+
+      // Select and copy
+      textarea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textarea);
+
+      // Show success message
+      success.classList.add('show');
+      setTimeout(() => {
+        success.classList.remove('show');
+      }, 2000);
+    }
+  </script>
+</body>
+</html>

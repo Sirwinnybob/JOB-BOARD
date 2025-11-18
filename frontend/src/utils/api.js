@@ -44,7 +44,7 @@ export const pdfAPI = {
   },
   delete: (id) => api.delete(`/pdfs/${id}`),
   reorder: (pdfs) => api.put('/pdfs/reorder', { pdfs }),
-  updateLabels: (id, labelIds) => api.put(`/pdfs/${id}/labels`, { labelIds }),
+  updateLabels: (id, labels) => api.put(`/pdfs/${id}/labels`, { labels }),
   updateMetadata: (id, metadata) => api.put(`/pdfs/${id}/metadata`, metadata),
   createPlaceholder: (position) => api.post('/pdfs/placeholder', { position }),
   updateStatus: (id, is_pending) => api.put(`/pdfs/${id}/status`, { is_pending }),
@@ -110,6 +110,10 @@ export const ocrAPI = {
     const response = await api.delete('/ocr-test-image');
     return response.data;
   },
+};
+
+export const alertAPI = {
+  broadcast: (message) => api.post('/alerts/broadcast', { message }),
 };
 
 export default api;

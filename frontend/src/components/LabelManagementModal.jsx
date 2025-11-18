@@ -44,7 +44,10 @@ function LabelManagementModal({ onClose, onUpdate }) {
 
   const handleEdit = (label) => {
     setEditingId(label.id);
-    setEditForm({ name: label.name, color: label.color });
+    setEditForm({
+      name: label.name,
+      color: label.color
+    });
   };
 
   const handleUpdate = async (id) => {
@@ -129,22 +132,23 @@ function LabelManagementModal({ onClose, onUpdate }) {
                     className="flex items-center gap-3 p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-700/50"
                   >
                     {editingId === label.id ? (
-                      <>
+                      <div className="flex-1 flex flex-col gap-3">
                         <input
                           type="text"
                           value={editForm.name}
                           onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                          className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                          className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                           placeholder="Label name"
                         />
                         <div className="flex items-center gap-2">
+                          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Color:</label>
                           <input
                             type="color"
                             value={editForm.color}
                             onChange={(e) => setEditForm({ ...editForm, color: e.target.value })}
                             className="w-12 h-10 border border-gray-300 dark:border-gray-600 rounded cursor-pointer"
                           />
-                          <div className="flex gap-1 flex-wrap max-w-[200px]">
+                          <div className="flex gap-1 flex-wrap">
                             {predefinedColors.map(color => (
                               <button
                                 key={color}
@@ -156,19 +160,21 @@ function LabelManagementModal({ onClose, onUpdate }) {
                             ))}
                           </div>
                         </div>
-                        <button
-                          onClick={() => handleUpdate(label.id)}
-                          className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                        >
-                          Save
-                        </button>
-                        <button
-                          onClick={() => setEditingId(null)}
-                          className="px-3 py-2 bg-gray-300 dark:bg-gray-600 text-gray-900 dark:text-white rounded-lg hover:bg-gray-400 dark:hover:bg-gray-500"
-                        >
-                          Cancel
-                        </button>
-                      </>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleUpdate(label.id)}
+                            className="flex-1 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                          >
+                            Save
+                          </button>
+                          <button
+                            onClick={() => setEditingId(null)}
+                            className="flex-1 px-3 py-2 bg-gray-300 dark:bg-gray-600 text-gray-900 dark:text-white rounded-lg hover:bg-gray-400 dark:hover:bg-gray-500"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
                     ) : (
                       <>
                         <div

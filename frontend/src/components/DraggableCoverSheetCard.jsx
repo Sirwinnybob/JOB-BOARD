@@ -10,16 +10,54 @@ function DraggableCoverSheetCard({
   onMoveToPending,
   isDragging,
   onMetadataUpdate,
+  colorTransitionDelay,
+  isHighlighted = false,
 }) {
   const [editing, setEditing] = useState(null);
   const [editValue, setEditValue] = useState('');
-  const { darkMode } = useDarkMode();
+  const { darkMode, isTransitioning } = useDarkMode();
 
-  // Determine which image to use based on dark mode
-  const imageBaseName = darkMode && pdf.dark_mode_images_base
-    ? pdf.dark_mode_images_base
-    : pdf.images_base;
-  const imageSrc = imageBaseName ? `/thumbnails/${imageBaseName}-1.png` : `/thumbnails/${pdf.thumbnail}`;
+  // Delayed dark mode for this specific card (updates at item's color transition time)
+  const [delayedDarkMode, setDelayedDarkMode] = useState(darkMode);
+
+  // Update delayedDarkMode with per-item timing during transitions
+  React.useEffect(() => {
+    if (isTransitioning && colorTransitionDelay) {
+      // Parse the delay value (e.g., "0.7s" -> 700ms)
+      const delayMs = parseFloat(colorTransitionDelay) * 1000;
+      const timeout = setTimeout(() => {
+        setDelayedDarkMode(darkMode);
+      }, delayMs);
+      return () => clearTimeout(timeout);
+    } else {
+      // When not transitioning, update immediately
+      setDelayedDarkMode(darkMode);
+    }
+  }, [darkMode, isTransitioning, colorTransitionDelay]);
+
+  // Log when isTransitioning changes
+  React.useEffect(() => {
+    if (isTransitioning && index < 3) {
+      console.log(`[DraggableCoverSheetCard] Card ${index} (${pdf?.job_number || 'unknown'}):`, {
+        isTransitioning,
+        darkMode,
+        delayedDarkMode,
+        colorTransitionDelay,
+        willDisableTransitions: !isTransitioning
+      });
+    }
+  }, [isTransitioning, index, pdf?.job_number, darkMode, delayedDarkMode, colorTransitionDelay]);
+
+  // Determine which image to use based on DELAYED dark mode
+  const lightImageBase = pdf.images_base;
+  const darkImageBase = pdf.dark_mode_images_base;
+
+  // Generate both image sources for cross-fade
+  const lightImageSrc = lightImageBase ? `/thumbnails/${lightImageBase}-1.png` : `/thumbnails/${pdf.thumbnail}`;
+  const darkImageSrc = darkImageBase ? `/thumbnails/${darkImageBase}-1.png` : lightImageSrc;
+
+  // For backward compatibility with single image
+  const imageSrc = delayedDarkMode && darkImageBase ? darkImageSrc : lightImageSrc;
 
   const handleStartEdit = (field, currentValue) => {
     setEditing(field);
@@ -50,31 +88,51 @@ function DraggableCoverSheetCard({
 
   // Determine header background color based on construction method
   const getHeaderStyle = () => {
+    const baseStyle = {};
+
     if (!pdf.construction_method) {
-      return darkMode
-        ? { backgroundColor: 'rgb(55, 65, 81)' } // dark:bg-gray-700
-        : { backgroundColor: 'white' };
+      baseStyle.backgroundColor = darkMode
+        ? 'rgb(55, 65, 81)' // dark:bg-gray-700
+        : 'white';
+    } else {
+      const colorMap = {
+        'Face Frame': 'rgb(150, 179, 82)',
+        'Frameless': 'rgb(237, 146, 35)',
+        'Both': 'rgb(0, 133, 138)'
+      };
+      baseStyle.backgroundColor = colorMap[pdf.construction_method] || 'white';
     }
 
-    const colorMap = {
-      'Face Frame': 'rgb(150, 179, 82)',
-      'Frameless': 'rgb(237, 146, 35)',
-      'Both': 'rgb(0, 133, 138)'
-    };
+    // Add color transition delay during theme transitions
+    if (isTransitioning && colorTransitionDelay) {
+      baseStyle.transition = `background-color 0.1s ease ${colorTransitionDelay}, border-color 0.1s ease ${colorTransitionDelay}`;
+    }
 
-    return { backgroundColor: colorMap[pdf.construction_method] || 'white' };
+    return baseStyle;
+  };
+
+  // Helper to get transition style for colored elements
+  const getColorTransitionStyle = (properties = ['color']) => {
+    if (!isTransitioning || !colorTransitionDelay) return {};
+    const transitions = properties.map(prop => `${prop} 0.1s ease ${colorTransitionDelay}`);
+    return { transition: transitions.join(', ') };
   };
 
   return (
     <div className="relative w-full h-full flex flex-col">
       {/* Job Info Section - At top of slot */}
       <div
-        className="border border-gray-300 dark:border-gray-600 rounded-t px-2 py-1 flex justify-between items-center text-xs transition-colors shadow-sm z-10 flex-shrink-0"
+        className={`border border-gray-300 dark:border-gray-600 rounded-t px-2 py-1 flex justify-between items-center text-xs ${!isTransitioning ? 'transition-colors' : ''} shadow-sm z-10 flex-shrink-0`}
         style={getHeaderStyle()}
       >
         <div className="min-w-0">
           <div className="flex items-center gap-1">
-            <span className={`hidden sm:inline ${pdf.construction_method ? 'text-white' : 'text-gray-600 dark:text-gray-400'}`}>Job#:</span>
+            <span
+              className={`font-semibold ${pdf.construction_method ? 'text-white' : 'text-gray-600 dark:text-gray-400'}`}
+              style={getColorTransitionStyle(['color'])}
+            >
+              Job#:
+            </span>
             {editMode && editing === 'job_number' ? (
               <input
                 type="text"
@@ -86,6 +144,7 @@ function DraggableCoverSheetCard({
                 }}
                 onBlur={() => handleSaveEdit('job_number')}
                 className="flex-1 px-1 py-0.5 border border-blue-500 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-xs focus:outline-none"
+                style={getColorTransitionStyle(['background-color', 'color', 'border-color'])}
                 autoFocus
                 onClick={(e) => e.stopPropagation()}
               />
@@ -102,6 +161,7 @@ function DraggableCoverSheetCard({
                 } ${
                   editMode ? 'cursor-pointer hover:bg-black/10' : 'cursor-default'
                 }`}
+                style={getColorTransitionStyle(['color'])}
                 title={editMode ? (pdf.job_number || 'Click to add job number') : pdf.job_number}
               >
                 {pdf.job_number || '—'}
@@ -111,7 +171,12 @@ function DraggableCoverSheetCard({
         </div>
         <div className="min-w-0">
           <div className="flex items-center gap-1">
-            <span className={`hidden sm:inline ${pdf.construction_method ? 'text-white' : 'text-gray-600 dark:text-gray-400'}`}>Type:</span>
+            <span
+              className={`font-semibold ${pdf.construction_method ? 'text-white' : 'text-gray-600 dark:text-gray-400'}`}
+              style={getColorTransitionStyle(['color'])}
+            >
+              Type:
+            </span>
             {editMode && editing === 'construction_method' ? (
               <select
                 value={editValue}
@@ -122,6 +187,7 @@ function DraggableCoverSheetCard({
                   if (e.key === 'Escape') handleCancelEdit();
                 }}
                 className="flex-1 px-1 py-0.5 border border-blue-500 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-xs focus:outline-none"
+                style={getColorTransitionStyle(['background-color', 'color', 'border-color'])}
                 autoFocus
                 onClick={(e) => e.stopPropagation()}
               >
@@ -143,6 +209,7 @@ function DraggableCoverSheetCard({
                 } ${
                   editMode ? 'cursor-pointer hover:bg-black/10' : 'cursor-default'
                 }`}
+                style={getColorTransitionStyle(['color'])}
                 title={editMode ? (pdf.construction_method || 'Click to select type') : pdf.construction_method}
               >
                 {pdf.construction_method || '—'}
@@ -154,16 +221,40 @@ function DraggableCoverSheetCard({
 
       {/* Cover Sheet Card */}
       <div
-        className={`flex-1 relative bg-white dark:bg-gray-800 rounded-b-lg shadow-md overflow-hidden transition-all min-h-0 ${
+        className={`flex-1 relative bg-white dark:bg-gray-800 rounded-b-lg shadow-md overflow-hidden ${!isTransitioning ? 'transition-all' : ''} min-h-0 ${
           editMode ? 'cursor-move border-2 animate-border-pulse' : 'cursor-default border border-gray-200 dark:border-gray-700'
-        } ${isDragging ? 'opacity-50' : ''}`}
+        } ${isDragging ? 'opacity-50' : ''} ${isHighlighted ? 'notification-glow' : ''}`}
+        style={getColorTransitionStyle(['background-color', 'border-color'])}
       >
-      <img
-        src={imageSrc}
-        alt={pdf.original_name}
-        className="w-full h-full object-cover transition-all"
-        draggable={false}
-      />
+      {/* Cross-fade between light and dark images */}
+      {darkImageBase && darkImageBase !== lightImageBase ? (
+        <>
+          {/* Light mode image */}
+          <img
+            src={lightImageSrc}
+            alt={pdf.original_name}
+            className="absolute inset-0 w-full h-full object-cover transition-opacity duration-200"
+            style={{ opacity: delayedDarkMode ? 0 : 1 }}
+            draggable={false}
+          />
+          {/* Dark mode image */}
+          <img
+            src={darkImageSrc}
+            alt={pdf.original_name}
+            className="absolute inset-0 w-full h-full object-cover transition-opacity duration-200"
+            style={{ opacity: delayedDarkMode ? 1 : 0 }}
+            draggable={false}
+          />
+        </>
+      ) : (
+        /* Single image (no dark mode variant) */
+        <img
+          src={imageSrc}
+          alt={pdf.original_name}
+          className={`w-full h-full object-cover ${!isTransitioning ? 'transition-all' : ''}`}
+          draggable={false}
+        />
+      )}
 
       {/* Labels */}
       {pdf.labels && pdf.labels.length > 0 && (
@@ -187,7 +278,7 @@ function DraggableCoverSheetCard({
             e.stopPropagation();
             onLabelClick(pdf);
           }}
-          className="absolute bottom-2 right-2 bg-purple-600 hover:bg-purple-700 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg transition-colors z-10"
+          className={`absolute bottom-2 right-2 bg-purple-600 hover:bg-purple-700 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg ${!isTransitioning ? 'transition-colors' : ''} z-10`}
           aria-label="Manage Labels"
           title="Manage Labels"
         >
@@ -214,7 +305,7 @@ function DraggableCoverSheetCard({
           {onMoveToPending && (
             <button
               onClick={() => onMoveToPending(pdf.id)}
-              className="absolute top-2 right-12 bg-yellow-600 hover:bg-yellow-700 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg transition-colors z-10"
+              className={`absolute top-2 right-12 bg-yellow-600 hover:bg-yellow-700 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg ${!isTransitioning ? 'transition-colors' : ''} z-10`}
               aria-label="Move to Pending"
               title="Move to Pending"
             >
@@ -228,7 +319,7 @@ function DraggableCoverSheetCard({
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={2}
-                  d="M19 9l-7 7-7-7"
+                  d="M5 15l7-7 7 7"
                 />
               </svg>
             </button>
@@ -236,7 +327,7 @@ function DraggableCoverSheetCard({
           {/* Delete button */}
           <button
             onClick={() => onDelete(pdf.id)}
-            className="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg transition-colors z-10"
+            className={`absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg ${!isTransitioning ? 'transition-colors' : ''} z-10`}
             aria-label="Delete"
           >
             <svg

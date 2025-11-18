@@ -31,7 +31,27 @@ body {
   animation: border-pulse 2s ease-in-out infinite;
 }
 
-/* Hide scrollbar for slideshow view - supports IE/Edge, Firefox, and WebKit browsers */
+/* Notification glow animation */
+@keyframes notification-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px 5px rgba(59, 130, 246, 0.6),
+                0 0 40px 10px rgba(59, 130, 246, 0.3),
+                0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 30px 8px rgba(59, 130, 246, 0.8),
+                0 0 60px 15px rgba(59, 130, 246, 0.4),
+                0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+}
+
+@utility notification-glow {
+  animation: notification-glow 2s ease-in-out infinite;
+  border-color: rgb(59, 130, 246) !important;
+  border-width: 2px !important;
+}
+
+/* Hide scrollbar for slideshow view */
 @utility scrollbar-hide {
   -ms-overflow-style: none;
   scrollbar-width: none;
@@ -48,8 +68,8 @@ body {
     filter: brightness(1) contrast(1);
   }
   50% {
-    opacity: 0.3;
-    filter: brightness(0.8) contrast(1.2);
+    opacity: 0.7;
+    filter: brightness(0.95) contrast(1.05);
   }
   100% {
     opacity: 1;
@@ -62,37 +82,33 @@ body {
     opacity: 1;
   }
   50% {
-    opacity: 0.2;
+    opacity: 0.6;
   }
   100% {
     opacity: 1;
   }
 }
 
-/* Delay color transitions to sync with animation midpoint */
-@utility animate-theme-bg {
-  animation: theme-fade-invert 0.8s ease-in-out;
-  transition: background-color 0.1s ease 0.4s, color 0.1s ease 0.4s !important;
-}
-
-/* Delay color transitions to sync with animation midpoint */
-@utility animate-theme-header {
-  animation: theme-fade-invert 0.6s ease-in-out 0.15s backwards;
-  transition: background-color 0.1s ease 0.45s, color 0.1s ease 0.45s, border-color 0.1s ease 0.45s !important;
-}
-
-/* Each item delays its color change based on when it reaches minimum opacity - will be overridden by inline style for proper stagger */
-@utility animate-theme-item {
-  animation: theme-fade 0.6s ease-in-out backwards;
-  transition: background-color 0.1s ease, color 0.1s ease, border-color 0.1s ease !important;
-}
-
-/* Circular reveal animation for theme switching */
 @keyframes circular-reveal {
   0% {
     clip-path: circle(20px at var(--theme-toggle-x) var(--theme-toggle-y));
   }
   100% {
-    clip-path: circle(150% at var(--theme-toggle-x) var(--theme-toggle-y));
+    clip-path: circle(var(--theme-toggle-radius) at var(--theme-toggle-x) var(--theme-toggle-y));
   }
+}
+
+@utility animate-theme-bg {
+  /* Removed - using overlay approach instead */
+}
+
+/* Delay color transitions to sync with animation midpoint */
+@utility animate-theme-header {
+  /* Removed - using overlay approach instead */
+}
+
+/* Each item delays its color change based on when it reaches minimum opacity - will be overridden by inline style for proper stagger */
+@utility animate-theme-item {
+  animation: theme-fade 0.6s ease-in-out backwards;
+  /* Colors change instantly when dark class is added - per-item animation delays set via inline styles */
 }

@@ -19,6 +19,7 @@
     "multer": "^2.0.2",
     "sqlite3": "^5.1.7",
     "utf-8-validate": "^6.0.5",
+    "web-push": "^3.6.7",
     "ws": "^8.18.3"
   },
   "devDependencies": {

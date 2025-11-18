@@ -1,7 +1,9 @@
 import React from 'react';
 import DraggableCoverSheetCard from './DraggableCoverSheetCard';
+import PublicPlaceholder from './PublicPlaceholder';
+import EmptySlot from './EmptySlot';
 
-function PDFGrid({ pdfs, rows, cols, aspectWidth = 11, aspectHeight = 10, onPdfClick, isTransitioning }) {
+function PDFGrid({ pdfs, rows, cols, aspectWidth = 11, aspectHeight = 10, onPdfClick, isTransitioning, highlightedJobId }) {
   const totalSlots = rows * cols;
 
   // Responsive columns: 1 on mobile, 2 on small tablets, full cols on larger screens
@@ -18,42 +20,35 @@ function PDFGrid({ pdfs, rows, cols, aspectWidth = 11, aspectHeight = 10, onPdfC
     >
       {Array.from({ length: totalSlots }).map((_, index) => {
         const pdf = pdfs[index];
-        // Create visible cascade: each item starts 80ms after the previous
-        // This gives time for proper rendering and creates smooth wave effect
-        const animationDelay = isTransitioning ? `${0.3 + index * 0.08}s` : '0s';
-        // Color should switch when opacity is lowest: animationStart + (duration/2)
-        const colorDelay = isTransitioning ? `${0.3 + index * 0.08 + 0.3}s` : '0s';
+        // Start grid items after background/header finish (at 0.8s)
+        // Each item starts 150ms after the previous for visible cascade
+        const animationDelay = isTransitioning ? `${0.8 + index * 0.15}s` : '0s';
+        // Color changes at each item's opacity midpoint
+        // Delay is relative to when DOM class changes (t=400ms), not from t=0!
+        // Midpoint: 0.8s + index*0.15s + 0.3s, minus 0.4s for DOM class timing
+        const colorTransitionDelay = isTransitioning ? `${0.8 + index * 0.15 + 0.3 - 0.4}s` : '0s';
 
         return (
           <div
             key={pdf?.id || `empty-${index}`}
-            className={`flex flex-col transition-all duration-500 ease-in-out ${isTransitioning ? 'animate-theme-item' : ''}`}
+            className={`flex flex-col ${isTransitioning ? 'animate-theme-item' : 'transition-all duration-500 ease-in-out'}`}
             style={{
               aspectRatio: `${aspectWidth} / ${aspectHeight}`,
               animationDelay,
-              ...(isTransitioning && {
-                transition: `background-color 0.1s ease ${colorDelay}, color 0.1s ease ${colorDelay}, border-color 0.1s ease ${colorDelay}`
-              })
             }}
           >
             {!pdf ? (
-              <div className="w-full h-full bg-gray-200 dark:bg-gray-700 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 transition-colors" />
+              <EmptySlot colorTransitionDelay={colorTransitionDelay} />
             ) : pdf.is_placeholder ? (
-              <div
+              <PublicPlaceholder
+                placeholder={pdf}
+                colorTransitionDelay={colorTransitionDelay}
                 onClick={(e) => onPdfClick(pdf, e)}
-                className="relative w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-lg shadow-md border-2 border-dashed border-gray-300 dark:border-gray-600 overflow-hidden transition-all duration-500 cursor-pointer hover:opacity-90 transition-opacity"
-                data-pdf-id={pdf.id}
-              >
-                <div className="w-full h-full flex items-center justify-center p-2 sm:p-3 md:p-4">
-                  <p className="text-gray-600 dark:text-gray-400 text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-center break-words leading-tight transition-colors">
-                    {pdf.placeholder_text || 'PLACEHOLDER'}
-                  </p>
-                </div>
-              </div>
+              />
             ) : (
               <div
                 onClick={(e) => onPdfClick(pdf, e)}
-                className="w-full h-full cursor-pointer hover:opacity-90 transition-opacity"
+                className={`w-full h-full cursor-pointer hover:opacity-90 ${!isTransitioning ? 'transition-opacity' : ''}`}
                 data-pdf-id={pdf.id}
               >
                 <DraggableCoverSheetCard
@@ -61,6 +56,8 @@ function PDFGrid({ pdfs, rows, cols, aspectWidth = 11, aspectHeight = 10, onPdfC
                   index={index}
                   editMode={false}
                   isDragging={false}
+                  colorTransitionDelay={colorTransitionDelay}
+                  isHighlighted={highlightedJobId === pdf.id}
                 />
               </div>
             )}

@@ -22,13 +22,10 @@ export function DarkModeProvider({ children }) {
   });
 
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const [showCircularReveal, setShowCircularReveal] = useState(false);
   const [targetDarkMode, setTargetDarkMode] = useState(darkMode);
-  const [previousDarkMode, setPreviousDarkMode] = useState(darkMode);
   const [buttonPosition, setButtonPosition] = useState({ x: 0, y: 0 });
   const transitionTimeoutRef = useRef(null);
   const classChangeTimeoutRef = useRef(null);
-  const circularRevealTimeoutRef = useRef(null);
 
   // Listen for system preference changes
   useEffect(() => {
@@ -45,33 +42,44 @@ export function DarkModeProvider({ children }) {
     return () => mediaQuery.removeEventListener('change', handleChange);
   }, []);
 
-  // Save preference to localStorage (but don't update document class here)
+  // Save preference to localStorage and update document class
+  // BUT: Only apply DOM class change immediately if NOT transitioning
   useEffect(() => {
     localStorage.setItem('darkMode', darkMode.toString());
-  }, [darkMode]);
 
-  // Initialize document class on mount (only once)
-  useEffect(() => {
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
+    // If we're transitioning, the DOM class change will be handled by toggleDarkMode
+    // Otherwise, apply immediately (e.g., on initial load)
+    if (!isTransitioning) {
+      console.log('[DarkModeContext] Applying DOM class immediately (not transitioning)', { darkMode });
+      if (darkMode) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
     }
-  }, []);
+  }, [darkMode, isTransitioning]);
 
   const toggleDarkMode = (event) => {
+    console.log('[DarkModeContext] ========== TOGGLE START ==========');
+    console.log('[DarkModeContext] Current darkMode:', darkMode);
     const newDarkMode = !darkMode;
+    console.log('[DarkModeContext] New darkMode will be:', newDarkMode);
 
-    // Capture button position from the click event
+    // Capture button position from click event
     if (event) {
-      const rect = event.currentTarget.getBoundingClientRect();
-      const x = rect.left + rect.width / 2;
-      const y = rect.top + rect.height / 2;
+      const x = event.clientX;
+      const y = event.clientY;
       setButtonPosition({ x, y });
 
       // Set CSS custom properties for circular reveal animation
       document.documentElement.style.setProperty('--theme-toggle-x', `${x}px`);
       document.documentElement.style.setProperty('--theme-toggle-y', `${y}px`);
+
+      // Calculate the maximum distance from click point to corner of viewport
+      const maxX = Math.max(x, window.innerWidth - x);
+      const maxY = Math.max(y, window.innerHeight - y);
+      const maxRadius = Math.sqrt(maxX * maxX + maxY * maxY);
+      document.documentElement.style.setProperty('--theme-toggle-radius', `${maxRadius}px`);
     }
 
     // Clear any existing timeouts
@@ -81,44 +89,35 @@ export function DarkModeProvider({ children }) {
     if (classChangeTimeoutRef.current) {
       clearTimeout(classChangeTimeoutRef.current);
     }
-    if (circularRevealTimeoutRef.current) {
-      clearTimeout(circularRevealTimeoutRef.current);
+
+    // Set transitioning flag FIRST and capture target theme
+    setIsTransitioning(true);
+    setTargetDarkMode(newDarkMode); // Capture the target theme for overlay
+    console.log('[DarkModeContext] t=0ms: isTransitioning set to true');
+    console.log('[DarkModeContext] t=0ms: targetDarkMode set to', newDarkMode);
+    console.log('[DarkModeContext] t=0ms: darkMode state will update at t=400ms (NOT now!)');
+
+    // Apply theme change immediately for circular reveal
+    console.log('[DarkModeContext] t=0ms: Applying theme change immediately');
+
+    // Update React state AND DOM together at the same time
+    setDarkMode(newDarkMode);
+    console.log('[DarkModeContext] t=0ms: darkMode React state updated to', newDarkMode);
+
+    if (newDarkMode) {
+      document.documentElement.classList.add('dark');
+      console.log('[DarkModeContext] t=0ms: Added "dark" class to DOM');
+    } else {
+      document.documentElement.classList.remove('dark');
+      console.log('[DarkModeContext] t=0ms: Removed "dark" class from DOM');
     }
 
-    // Set transitioning flags and capture old/target themes
-    setIsTransitioning(true);
-    setShowCircularReveal(true);
-    setPreviousDarkMode(darkMode); // Capture old theme for overlay background
-    setTargetDarkMode(newDarkMode); // Capture new theme for overlay expanding circle
-    console.log('[DarkModeContext] t=0ms: isTransitioning set to true');
-    console.log('[DarkModeContext] t=0ms: showCircularReveal set to true');
-    console.log('[DarkModeContext] t=0ms: previousDarkMode set to', darkMode, '(old theme)');
-    console.log('[DarkModeContext] t=0ms: targetDarkMode set to', newDarkMode, '(new theme)');
-
-    // Update React state immediately (for grid cascade to start at t=0ms)
-    setDarkMode(newDarkMode);
-    console.log('[DarkModeContext] t=0ms: darkMode React state updated to', newDarkMode, '(triggers grid cascade)');
-
-    // At t=800ms: Hide circular reveal and apply DOM class change
-    classChangeTimeoutRef.current = setTimeout(() => {
-      console.log('[DarkModeContext] t=800ms: Circular reveal animation complete');
-
-      setShowCircularReveal(false);
-      console.log('[DarkModeContext] t=800ms: showCircularReveal set to false');
-
-      if (newDarkMode) {
-        document.documentElement.classList.add('dark');
-        console.log('[DarkModeContext] t=800ms: Added "dark" class to DOM');
-      } else {
-        document.documentElement.classList.remove('dark');
-        console.log('[DarkModeContext] t=800ms: Removed "dark" class from DOM');
-      }
-    }, 800);
-
-    // At t=5000ms: Reset transitioning state (after grid cascade completes)
+    // Reset transition state after all animations complete
+    // Longest: last item (24) at 0.8s + (23*0.15s) + 0.6s duration = ~4.85s
     transitionTimeoutRef.current = setTimeout(() => {
+      console.log('[DarkModeContext] t=5000ms: Animation complete, resetting isTransitioning');
       setIsTransitioning(false);
-      console.log('[DarkModeContext] t=5000ms: isTransitioning set to false');
+      console.log('[DarkModeContext] ========== TOGGLE END ==========');
     }, 5000);
   };
 
@@ -131,14 +130,11 @@ export function DarkModeProvider({ children }) {
       if (classChangeTimeoutRef.current) {
         clearTimeout(classChangeTimeoutRef.current);
       }
-      if (circularRevealTimeoutRef.current) {
-        clearTimeout(circularRevealTimeoutRef.current);
-      }
     };
   }, []);
 
   return (
-    <DarkModeContext.Provider value={{ darkMode, toggleDarkMode, isTransitioning, showCircularReveal, targetDarkMode, previousDarkMode }}>
+    <DarkModeContext.Provider value={{ darkMode, toggleDarkMode, isTransitioning, targetDarkMode }}>
       {children}
     </DarkModeContext.Provider>
   );

@@ -10,12 +10,20 @@ import SettingsModal from '../components/SettingsModal';
 import LabelModal from '../components/LabelModal';
 import LabelManagementModal from '../components/LabelManagementModal';
 import PlaceholderEditModal from '../components/PlaceholderEditModal';
+import AlertModal from '../components/AlertModal';
 import PendingSection from '../components/PendingSection';
 import useWebSocket from '../hooks/useWebSocket';
 import { useDarkMode } from '../contexts/DarkModeContext';
+import {
+  requestNotificationPermission,
+  subscribeToPushNotifications,
+  showNewJobNotification,
+  showJobsMovedNotification,
+  showCustomAlertNotification,
+} from '../utils/notifications';
 
 function HomePage() {
-  const { darkMode, toggleDarkMode, isTransitioning, showCircularReveal, targetDarkMode, previousDarkMode } = useDarkMode();
+  const { darkMode, toggleDarkMode, isTransitioning, targetDarkMode } = useDarkMode();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [pdfs, setPdfs] = useState([]);
   const [pendingPdfs, setPendingPdfs] = useState([]);
@@ -30,6 +38,7 @@ function HomePage() {
   const [showSettings, setShowSettings] = useState(false);
   const [showLabelModal, setShowLabelModal] = useState(false);
   const [showLabelManagement, setShowLabelManagement] = useState(false);
+  const [showAlertModal, setShowAlertModal] = useState(false);
   const [selectedPdfForLabels, setSelectedPdfForLabels] = useState(null);
   const [showPlaceholderEdit, setShowPlaceholderEdit] = useState(false);
   const [selectedPlaceholder, setSelectedPlaceholder] = useState(null);
@@ -53,6 +62,7 @@ function HomePage() {
   const [sessionId] = useState(() => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
   const lastActivityRef = useRef(Date.now());
   const inactivityTimerRef = useRef(null);
+  const [highlightedJobId, setHighlightedJobId] = useState(null);
   const navigate = useNavigate();
 
   // Configure drag sensors
@@ -106,6 +116,62 @@ function HomePage() {
     loadData();
   }, [loadData]);
 
+  // Check URL parameter for highlightJob on mount
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const highlightJobId = urlParams.get('highlightJob');
+    if (highlightJobId) {
+      // Wait for PDFs to load, then highlight
+      const waitForPdfs = setInterval(() => {
+        if (pdfs.length > 0) {
+          clearInterval(waitForPdfs);
+          setHighlightedJobId(parseInt(highlightJobId));
+          // Clean up URL
+          window.history.replaceState({}, '', '/');
+        }
+      }, 100);
+      // Clear interval after 5 seconds if PDFs don't load
+      setTimeout(() => clearInterval(waitForPdfs), 5000);
+    }
+  }, [pdfs]);
+
+  // Listen for service worker messages to highlight jobs
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return;
+
+    const handleMessage = (event) => {
+      if (event.data && event.data.type === 'HIGHLIGHT_JOB') {
+        console.log('[HomePage] Received highlight job message:', event.data.jobId);
+        setHighlightedJobId(event.data.jobId);
+      }
+    };
+
+    navigator.serviceWorker.addEventListener('message', handleMessage);
+    return () => {
+      navigator.serviceWorker.removeEventListener('message', handleMessage);
+    };
+  }, []);
+
+  // Scroll to and clear highlight after delay
+  useEffect(() => {
+    if (highlightedJobId && pdfs.length > 0) {
+      // Scroll to the job card
+      setTimeout(() => {
+        const jobElement = document.querySelector(`[data-pdf-id="${highlightedJobId}"]`);
+        if (jobElement) {
+          jobElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 300);
+
+      // Clear highlight after 5 seconds
+      const timeout = setTimeout(() => {
+        setHighlightedJobId(null);
+      }, 5000);
+
+      return () => clearTimeout(timeout);
+    }
+  }, [highlightedJobId, pdfs]);
+
   // WebSocket connection for live updates
   const handleWebSocketMessage = useCallback((message) => {
     console.log('Received update:', message.type);
@@ -122,6 +188,19 @@ function HomePage() {
       setEditLock(null);
       console.log('[Edit Lock] Released');
       return;
+    }
+
+    // Handle notifications (trigger browser notifications for updates)
+    if (message.type === 'pdf_uploaded' && message.data?.is_pending === 0) {
+      // Only notify for jobs uploaded directly to the board (not pending)
+      showNewJobNotification(message.data?.id);
+    } else if (message.type === 'job_activated') {
+      // Notify when a job is moved from pending to active board
+      showNewJobNotification(message.data?.id);
+    } else if (message.type === 'pdfs_reordered') {
+      showJobsMovedNotification();
+    } else if (message.type === 'custom_alert') {
+      showCustomAlertNotification(message.data?.message || 'Admin Alert');
     }
 
     // Handle metadata updates even during edit mode (OCR results)
@@ -152,12 +231,14 @@ function HomePage() {
       'pdfs_reordered',
       'pdf_labels_updated',
       'pdf_status_updated',
+      'job_activated',
       'pdf_metadata_updated',
       'pdf_dark_mode_ready',
       'label_created',
       'label_updated',
       'label_deleted',
-      'settings_updated'
+      'settings_updated',
+      'custom_alert'
     ];
 
     if (relevantTypes.includes(message.type)) {
@@ -445,6 +526,18 @@ function HomePage() {
           handleCancelEdit();
         }
       }, 30000); // Check every 30 seconds
+
+      // Request notification permission for admins and subscribe to push
+      requestNotificationPermission()
+        .then(async (permission) => {
+          if (permission === 'granted') {
+            // Subscribe to push notifications for background delivery
+            await subscribeToPushNotifications();
+          }
+        })
+        .catch(err => {
+          console.error('Error requesting notification permission:', err);
+        });
     }
   };
 
@@ -546,29 +639,8 @@ function HomePage() {
     const pdfId = selectedPdfForLabels?.id;
     setSelectedPdfForLabels(null);
 
-    if (editMode && pdfId) {
-      try {
-        const allPdfsRes = await pdfAPI.getAll(true);
-        const allPdfs = allPdfsRes.data;
-        const updatedPdf = allPdfs.find(p => p && p.id === pdfId);
-
-        if (updatedPdf) {
-          if (updatedPdf.is_pending) {
-            setWorkingPendingPdfs(prevWorking =>
-              prevWorking.map(pdf => (pdf && pdf.id === pdfId) ? { ...pdf, labels: updatedPdf.labels } : pdf)
-            );
-          } else {
-            setWorkingPdfs(prevWorking =>
-              prevWorking.map(pdf => (pdf && pdf.id === pdfId) ? { ...pdf, labels: updatedPdf.labels } : pdf)
-            );
-          }
-        }
-      } catch (error) {
-        console.error('Error updating labels in working copy:', error);
-      }
-    } else {
-      await loadData();
-    }
+    // Always refresh data after label changes to ensure consistency
+    await loadData();
   };
 
   const handleMetadataUpdate = async (pdfId, metadata) => {
@@ -959,8 +1031,8 @@ function HomePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center transition-colors">
-        <div className="text-xl text-gray-600 dark:text-gray-400 transition-colors">Loading...</div>
+      <div className={`min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center ${!isTransitioning ? 'transition-colors' : ''}`}>
+        <div className={`text-xl text-gray-600 dark:text-gray-400 ${!isTransitioning ? 'transition-colors' : ''}`}>Loading...</div>
       </div>
     );
   }
@@ -968,6 +1040,13 @@ function HomePage() {
   const gridContent = () => {
     // Only animate in grid view, not in slideshow
     const shouldAnimate = isTransitioning && viewMode === 'grid';
+
+    console.log('[HomePage] gridContent render:', {
+      isTransitioning,
+      viewMode,
+      shouldAnimate,
+      editMode
+    });
 
     if (isAuthenticated && editMode) {
       return (
@@ -1003,18 +1082,18 @@ function HomePage() {
         aspectHeight={settings.aspect_ratio_height}
         onPdfClick={handlePdfClick}
         isTransitioning={shouldAnimate}
+        highlightedJobId={highlightedJobId}
       />
     );
   };
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800 transition-colors ${isTransitioning && viewMode === 'grid' ? 'animate-theme-bg' : ''}`}>
+    <div className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800 relative">
       {/* Circular reveal overlay for background/header - Grid items render on top with their own animation */}
-      {showCircularReveal && (
+      {isTransitioning && (
         <>
           {/* Old theme background - stays visible */}
-          <div className={`fixed inset-0 z-0 ${previousDarkMode ? 'bg-gradient-to-br from-gray-900 to-gray-800' : 'bg-gradient-to-br from-gray-100 to-gray-200'}`} />
-
+          <div className={`fixed inset-0 z-0 ${!targetDarkMode ? 'bg-gradient-to-br from-gray-900 to-gray-800' : 'bg-gradient-to-br from-gray-100 to-gray-200'}`} />
           {/* New theme overlay - expands in circle */}
           <div
             className={`fixed inset-0 z-[1] ${targetDarkMode ? 'bg-gradient-to-br from-gray-900 to-gray-800' : 'bg-gradient-to-br from-gray-100 to-gray-200'}`}
@@ -1025,7 +1104,6 @@ function HomePage() {
           />
         </>
       )}
-
       {/* Pull-to-Refresh Indicator */}
       {(pullToRefresh.pulling || pullToRefresh.refreshing) && (
         <div
@@ -1057,10 +1135,10 @@ function HomePage() {
       )}
 
       {/* Header */}
-      <header className={`relative z-10 bg-white dark:bg-gray-800 shadow-sm transition-colors ${isTransitioning && viewMode === 'grid' ? 'animate-theme-header' : ''}`}>
+      <header className="bg-white dark:bg-gray-800 shadow-sm relative z-10">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4">
           <div className="flex justify-between items-center">
-            <h1 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white transition-colors">
+            <h1 className={`text-lg sm:text-2xl font-bold text-gray-900 dark:text-white ${!isTransitioning ? 'transition-colors' : ''}`}>
               <span className="hidden sm:inline">Kustom Kraft Cabinets - Job Board</span>
               <span className="sm:hidden">KK Cabinets</span>
             </h1>
@@ -1068,7 +1146,7 @@ function HomePage() {
             {!editMode && (
               <button
                 onClick={toggleViewMode}
-                className="p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+                className={`p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white ${!isTransitioning ? 'transition-colors' : ''} rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700`}
                 title={viewMode === 'grid' ? 'Slideshow View' : 'Grid View'}
               >
                 {viewMode === 'grid' ? (
@@ -1084,7 +1162,7 @@ function HomePage() {
             )}
             <button
               onClick={(e) => toggleDarkMode(e)}
-              className="p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+              className={`p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white ${!isTransitioning ? 'transition-colors' : ''} rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700`}
               title={darkMode ? 'Light Mode' : 'Dark Mode'}
             >
               {darkMode ? (
@@ -1097,10 +1175,19 @@ function HomePage() {
                 </svg>
               )}
             </button>
+            <a
+              href="/manage-notifications.html"
+              className={`p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white ${!isTransitioning ? 'transition-colors' : ''} rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700`}
+              title="Manage Notifications"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+            </a>
               {isAuthenticated ? (
                 <button
                   onClick={handleLogout}
-                  className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors px-2 py-1 sm:px-0 sm:py-0"
+                  className={`text-xs sm:text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white ${!isTransitioning ? 'transition-colors' : ''} px-2 py-1 sm:px-0 sm:py-0`}
                   title="Logout from admin account"
                 >
                   Logout
@@ -1108,7 +1195,7 @@ function HomePage() {
               ) : (
                 <button
                   onClick={() => navigate('/login')}
-                  className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors px-2 py-1 sm:px-0 sm:py-0"
+                  className={`text-xs sm:text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white ${!isTransitioning ? 'transition-colors' : ''} px-2 py-1 sm:px-0 sm:py-0`}
                   title="Login to admin panel"
                 >
                   Admin
@@ -1121,35 +1208,52 @@ function HomePage() {
 
       {/* Admin Toolbar - Only visible when authenticated */}
       {isAuthenticated && (
-        <div className="relative z-10 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 transition-colors overflow-x-auto">
+        <div className={`bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 ${!isTransitioning ? 'transition-colors' : ''} overflow-x-auto relative z-10`}>
           <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2 sm:py-3">
             <div className="flex flex-nowrap sm:flex-wrap gap-2 sm:gap-3 min-w-max sm:min-w-0">
               <button
                 onClick={handleToggleEditMode}
-                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-medium transition-colors text-sm whitespace-nowrap ${
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-medium ${!isTransitioning ? 'transition-colors' : ''} text-sm whitespace-nowrap ${
                   editMode
                     ? 'bg-blue-600 text-white hover:bg-blue-700'
                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
                 }`}
                 title={editMode ? (hasUnsavedChanges ? 'Save changes and exit edit mode' : 'Exit edit mode') : 'Enter edit mode to reorder and manage jobs'}
               >
-                {editMode ? (hasUnsavedChanges ? 'Save' : 'Done') : 'Edit'}
+                {editMode ? 'Save' : 'Edit'}
               </button>
               {editMode && (
                 <>
                   <button
                     onClick={handleCancelEdit}
-                    className="px-3 sm:px-4 py-1.5 sm:py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors text-sm whitespace-nowrap"
+                    className={`px-3 sm:px-4 py-1.5 sm:py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 ${!isTransitioning ? 'transition-colors' : ''} text-sm whitespace-nowrap`}
                     title="Discard all changes and exit edit mode"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={() => setShowSettings(true)}
-                    className="px-3 sm:px-4 py-1.5 sm:py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors text-sm whitespace-nowrap"
+                    className={`px-3 sm:px-4 py-1.5 sm:py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 ${!isTransitioning ? 'transition-colors' : ''} text-sm whitespace-nowrap`}
                     title="Configure grid size and aspect ratio"
                   >
-                    Settings
+                    <span className="hidden sm:inline">Grid Settings</span>
+                    <span className="sm:hidden">Grid</span>
+                  </button>
+                  <button
+                    onClick={() => setShowLabelManagement(true)}
+                    className={`px-3 sm:px-4 py-1.5 sm:py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 ${!isTransitioning ? 'transition-colors' : ''} text-sm whitespace-nowrap`}
+                    title="Create, edit, and delete job labels"
+                  >
+                    <span className="hidden sm:inline">Manage Labels</span>
+                    <span className="sm:hidden">Labels</span>
+                  </button>
+                  <button
+                    onClick={() => navigate('/admin/ocr-settings')}
+                    className={`px-3 sm:px-4 py-1.5 sm:py-2 bg-teal-600 text-white rounded-lg font-medium hover:bg-teal-700 ${!isTransitioning ? 'transition-colors' : ''} text-sm whitespace-nowrap`}
+                    title="Configure OCR extraction settings for job numbers and types"
+                  >
+                    <span className="hidden sm:inline">OCR Settings</span>
+                    <span className="sm:hidden">OCR</span>
                   </button>
                 </>
               )}
@@ -1157,7 +1261,7 @@ function HomePage() {
                 <button
                   onClick={handleUploadToPending}
                   disabled={editLock !== null}
-                  className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-medium transition-colors text-sm whitespace-nowrap ${
+                  className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-medium ${!isTransitioning ? 'transition-colors' : ''} text-sm whitespace-nowrap ${
                     editLock !== null
                       ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
                       : 'bg-green-600 text-white hover:bg-green-700'
@@ -1169,20 +1273,11 @@ function HomePage() {
                 </button>
               )}
               <button
-                onClick={() => setShowLabelManagement(true)}
-                className="px-3 sm:px-4 py-1.5 sm:py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors text-sm whitespace-nowrap"
-                title="Create, edit, and delete job labels"
+                onClick={() => setShowAlertModal(true)}
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 bg-orange-600 text-white rounded-lg font-medium hover:bg-orange-700 ${!isTransitioning ? 'transition-colors' : ''} text-sm whitespace-nowrap`}
               >
-                <span className="hidden sm:inline">Manage Labels</span>
-                <span className="sm:hidden">Labels</span>
-              </button>
-              <button
-                onClick={() => navigate('/admin/ocr-settings')}
-                className="px-3 sm:px-4 py-1.5 sm:py-2 bg-teal-600 text-white rounded-lg font-medium hover:bg-teal-700 transition-colors text-sm whitespace-nowrap"
-                title="Configure OCR extraction settings for job numbers and types"
-              >
-                <span className="hidden sm:inline">OCR Settings</span>
-                <span className="sm:hidden">OCR</span>
+                <span className="hidden sm:inline">Send Alert</span>
+                <span className="sm:hidden">Alert</span>
               </button>
             </div>
           </div>
@@ -1190,7 +1285,7 @@ function HomePage() {
       )}
 
       {/* Main Content */}
-      <main className={viewMode === 'grid' ? 'relative z-10 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8' : 'relative z-10 w-full'}>
+      <main className={viewMode === 'grid' ? 'max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 relative z-10' : 'w-full relative z-10'}>
         {isAuthenticated && editMode ? (
           <DndContext
             sensors={sensors}
@@ -1200,15 +1295,13 @@ function HomePage() {
             onDragCancel={handleDragCancel}
           >
             {editMode && (
-              <>
-                <div className="mb-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3 sm:p-4 transition-colors">
-                  <p className="text-blue-800 dark:text-blue-200 text-xs sm:text-sm transition-colors">
-                    <span className="hidden sm:inline">Drag and drop PDFs to reorder them. Click the tag icon to manage labels. Click the X to delete. Click the + button on empty slots to add placeholders.</span>
-                    <span className="sm:hidden">Drag to reorder • Tag icon for labels • X to delete • + for placeholders</span>
-                    {hasUnsavedChanges && <strong className="block sm:inline sm:ml-2 mt-1 sm:mt-0">Changes will be saved when you click "Save".</strong>}
-                  </p>
-                </div>
-              </>
+              <div className={`mb-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3 sm:p-4 ${!isTransitioning ? 'transition-colors' : ''}`}>
+                <p className={`text-blue-800 dark:text-blue-200 text-xs sm:text-sm ${!isTransitioning ? 'transition-colors' : ''}`}>
+                  <span className="hidden sm:inline">Drag and drop PDFs to reorder them. Click the tag icon to manage labels. Click the X to delete. Click the + button on empty slots to add placeholders.</span>
+                  <span className="sm:hidden">Drag to reorder • Tag icon for labels • X to delete • + for placeholders</span>
+                  {hasUnsavedChanges && <strong className="block sm:inline sm:ml-2 mt-1 sm:mt-0">Unsaved position changes.</strong>}
+                </p>
+              </div>
             )}
 
             {/* Pending Section - Only visible to admins */}
@@ -1240,7 +1333,7 @@ function HomePage() {
 
             {pdfs.length === 0 ? (
               <div className="text-center py-20">
-                <p className="text-xl text-gray-600 dark:text-gray-400 transition-colors">No job postings available</p>
+                <p className={`text-xl text-gray-600 dark:text-gray-400 ${!isTransitioning ? 'transition-colors' : ''}`}>No job postings available</p>
               </div>
             ) : (
               <>
@@ -1324,6 +1417,13 @@ function HomePage() {
                 setSelectedPlaceholder(null);
               }}
               onSave={handleSavePlaceholder}
+            />
+          )}
+
+          {showAlertModal && (
+            <AlertModal
+              isOpen={showAlertModal}
+              onClose={() => setShowAlertModal(false)}
             />
           )}
         </>

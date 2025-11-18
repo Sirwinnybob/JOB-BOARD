@@ -160,6 +160,26 @@ db.serialize(() => {
     )
   `);
 
+  // Add expires_at column to labels table (migration) - DEPRECATED, now using pdf_labels.expires_at
+  db.run(`
+    ALTER TABLE labels ADD COLUMN expires_at DATETIME
+  `, (err) => {
+    // Ignore error if column already exists
+    if (err && !err.message.includes('duplicate column name')) {
+      console.error('Error adding expires_at column:', err);
+    }
+  });
+
+  // Add expires_at column to pdf_labels table (per-job label expiration)
+  db.run(`
+    ALTER TABLE pdf_labels ADD COLUMN expires_at DATETIME
+  `, (err) => {
+    // Ignore error if column already exists
+    if (err && !err.message.includes('duplicate column name')) {
+      console.error('Error adding expires_at column to pdf_labels:', err);
+    }
+  });
+
   // Insert default labels if they don't exist
   db.run(`INSERT OR IGNORE INTO labels (name, color) VALUES ('NEW', '#10b981')`);
   db.run(`INSERT OR IGNORE INTO labels (name, color) VALUES ('MOVED', '#3b82f6')`);
@@ -188,10 +208,24 @@ db.serialize(() => {
   db.run(`INSERT OR IGNORE INTO ocr_regions (field_name, x, y, width, height, description)
           VALUES ('construction_method', 0, 0, 0, 0, 'Region where construction method is located')`);
 
+  // Push Subscriptions table for Web Push API
+  db.run(`
+    CREATE TABLE IF NOT EXISTS push_subscriptions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      endpoint TEXT UNIQUE NOT NULL,
+      keys_p256dh TEXT NOT NULL,
+      keys_auth TEXT NOT NULL,
+      user_agent TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      last_used_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+
   // Create indexes for better query performance with multiple concurrent reads
   db.run(`CREATE INDEX IF NOT EXISTS idx_pdfs_position ON pdfs(position)`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_pdf_labels_pdf_id ON pdf_labels(pdf_id)`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_pdf_labels_label_id ON pdf_labels(label_id)`);
+  db.run(`CREATE INDEX IF NOT EXISTS idx_push_subscriptions_endpoint ON push_subscriptions(endpoint)`);
 });
 
 console.log('Database initialized with optimizations for concurrent connections');

@@ -1093,14 +1093,25 @@ function HomePage() {
       {isTransitioning && (
         <>
           {/* Light theme background - always stays visible underneath */}
-          <div className="fixed inset-0 z-0 bg-gradient-to-br from-gray-100 to-gray-200" />
+          <div
+            className="fixed inset-0 z-0 bg-gradient-to-br from-gray-100 to-gray-200"
+            style={{
+              transform: 'translateZ(0)',
+              backfaceVisibility: 'hidden',
+              WebkitBackfaceVisibility: 'hidden'
+            }}
+          />
           {/* Dark theme overlay - expands for dark mode, retracts for light mode */}
           <div
             className="fixed inset-0 z-[1] bg-gradient-to-br from-gray-900 to-gray-800"
             style={{
               animation: targetDarkMode
                 ? 'circular-reveal 0.8s ease-in-out forwards'
-                : 'circular-retract 0.8s ease-in-out forwards'
+                : 'circular-retract 0.8s ease-in-out forwards',
+              willChange: 'clip-path',
+              transform: 'translateZ(0)',
+              backfaceVisibility: 'hidden',
+              WebkitBackfaceVisibility: 'hidden'
             }}
           />
         </>

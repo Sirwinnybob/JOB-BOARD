@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { pdfAPI, settingsAPI, authAPI } from '../utils/api';
@@ -10,7 +10,6 @@ import SettingsModal from '../components/SettingsModal';
 import LabelModal from '../components/LabelModal';
 import LabelManagementModal from '../components/LabelManagementModal';
 import PlaceholderEditModal from '../components/PlaceholderEditModal';
-import ConflictWarningModal from '../components/ConflictWarningModal';
 import PendingSection from '../components/PendingSection';
 import useWebSocket from '../hooks/useWebSocket';
 import { useDarkMode } from '../contexts/DarkModeContext';
@@ -50,8 +49,10 @@ function HomePage() {
   const [originRect, setOriginRect] = useState(null);
   const [currentSlideshowIndex, setCurrentSlideshowIndex] = useState(0);
   const [pullToRefresh, setPullToRefresh] = useState({ pulling: false, distance: 0, refreshing: false });
-  const [externalChanges, setExternalChanges] = useState(false);
-  const [showConflictWarning, setShowConflictWarning] = useState(false);
+  const [editLock, setEditLock] = useState(null); // { lockedBy: sessionId, lockedAt: timestamp }
+  const [sessionId] = useState(() => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+  const lastActivityRef = useRef(Date.now());
+  const inactivityTimerRef = useRef(null);
   const navigate = useNavigate();
 
   // Configure drag sensors
@@ -109,6 +110,20 @@ function HomePage() {
   const handleWebSocketMessage = useCallback((message) => {
     console.log('Received update:', message.type);
 
+    // Handle edit lock messages
+    if (message.type === 'edit_lock_acquired') {
+      const { sessionId: lockedBy, timestamp } = message.data;
+      setEditLock({ lockedBy, lockedAt: timestamp });
+      console.log('[Edit Lock] Acquired by session:', lockedBy);
+      return;
+    }
+
+    if (message.type === 'edit_lock_released') {
+      setEditLock(null);
+      console.log('[Edit Lock] Released');
+      return;
+    }
+
     // Handle metadata updates even during edit mode (OCR results)
     if (editMode && message.type === 'pdf_metadata_updated') {
       console.log('Updating metadata during edit mode:', message.data);
@@ -155,33 +170,24 @@ function HomePage() {
       }
 
       if (editMode) {
-        // Mark that external changes occurred from another admin
-        console.log('External changes detected from another admin during edit mode');
-        setExternalChanges(true);
-
-        // Apply updates to working copies for real-time collaboration
-        loadData().then(() => {
-          // After loading fresh data, update working copies if they exist
-          setPdfs(prev => {
-            if (prev.length > 0) {
-              setWorkingPdfs([...prev]);
-            }
-            return prev;
-          });
-          setPendingPdfs(prev => {
-            if (prev.length > 0) {
+        // During edit mode, only apply pending uploads from other admins
+        // Board changes are prevented by edit lock
+        if (message.type === 'pdf_uploaded' && message.data?.is_pending) {
+          console.log('Pending PDF uploaded while in edit mode - updating working copy');
+          loadData().then(() => {
+            setPendingPdfs(prev => {
               setWorkingPendingPdfs([...prev]);
-            }
-            return prev;
+              return prev;
+            });
           });
-        });
+        }
       } else {
         loadData();
       }
     }
   }, [editMode, loadData, viewMode]);
 
-  useWebSocket(handleWebSocketMessage, true);
+  const { send: sendWebSocketMessage } = useWebSocket(handleWebSocketMessage, true);
 
   // Pull-to-refresh functionality
   useEffect(() => {
@@ -266,9 +272,17 @@ function HomePage() {
     loadData();
   };
 
+  // Track activity to prevent inactivity timeout
+  const trackActivity = useCallback(() => {
+    if (editMode) {
+      lastActivityRef.current = Date.now();
+    }
+  }, [editMode]);
+
   const handleReorder = (newPdfs) => {
     setWorkingPdfs(newPdfs);
     setHasUnsavedChanges(true);
+    trackActivity();
   };
 
   const handleCancelEdit = () => {
@@ -277,10 +291,23 @@ function HomePage() {
         return;
       }
     }
+
+    // Release edit lock
+    sendWebSocketMessage({
+      type: 'edit_lock_released',
+      data: { sessionId }
+    });
+    console.log('[Edit Lock] Released lock (cancelled)');
+
+    // Clear inactivity timer
+    if (inactivityTimerRef.current) {
+      clearInterval(inactivityTimerRef.current);
+      inactivityTimerRef.current = null;
+    }
+
     // Discard changes and exit edit mode
     setEditMode(false);
     setHasUnsavedChanges(false);
-    setExternalChanges(false);
     setWorkingPdfs([]);
     setWorkingPendingPdfs([]);
   };
@@ -289,12 +316,6 @@ function HomePage() {
     if (editMode) {
       // Exiting edit mode - save if there are changes
       if (hasUnsavedChanges) {
-        // Check if external changes occurred from another admin
-        if (externalChanges) {
-          setShowConflictWarning(true);
-          return;
-        }
-
         try {
           const allPdfs = [];
 
@@ -374,119 +395,57 @@ function HomePage() {
           return;
         }
       }
+
+      // Release edit lock
+      sendWebSocketMessage({
+        type: 'edit_lock_released',
+        data: { sessionId }
+      });
+      console.log('[Edit Lock] Released lock');
+
+      // Clear inactivity timer
+      if (inactivityTimerRef.current) {
+        clearInterval(inactivityTimerRef.current);
+        inactivityTimerRef.current = null;
+      }
+
       setEditMode(false);
       setHasUnsavedChanges(false);
-      setExternalChanges(false);
     } else {
-      // Entering edit mode - create working copies
+      // Check if edit mode is locked by another admin
+      if (editLock && editLock.lockedBy !== sessionId) {
+        // Check if lock is stale (more than 6 minutes old)
+        const lockAge = Date.now() - editLock.lockedAt;
+        if (lockAge < 6 * 60 * 1000) { // 6 minutes
+          alert('Another admin is currently in edit mode. Please wait until they finish.');
+          return;
+        }
+        console.log('[Edit Lock] Stale lock detected, proceeding');
+      }
+
+      // Entering edit mode - acquire lock
+      sendWebSocketMessage({
+        type: 'edit_lock_acquired',
+        data: { sessionId, timestamp: Date.now() }
+      });
+      console.log('[Edit Lock] Acquired lock');
+
+      setEditMode(true);
       setWorkingPdfs([...pdfs]);
       setWorkingPendingPdfs([...pendingPdfs]);
       setHasUnsavedChanges(false);
-      setExternalChanges(false);
-      setEditMode(true);
+      lastActivityRef.current = Date.now();
+
+      // Start inactivity timer (check every 30 seconds)
+      inactivityTimerRef.current = setInterval(() => {
+        const inactiveTime = Date.now() - lastActivityRef.current;
+        if (inactiveTime >= 5 * 60 * 1000) { // 5 minutes
+          console.log('[Edit Lock] Inactivity timeout - auto-exiting edit mode');
+          alert('Edit mode automatically closed due to 5 minutes of inactivity.');
+          handleCancelEdit();
+        }
+      }, 30000); // Check every 30 seconds
     }
-  };
-
-  const handleForceSave = async () => {
-    setShowConflictWarning(false);
-    // Proceed with save despite external changes
-    try {
-      const allPdfs = [];
-
-      // Board PDFs - ensure they're marked as not pending
-      workingPdfs.forEach((pdf, index) => {
-        if (pdf) {
-          allPdfs.push({
-            id: pdf.id,
-            position: index + 1,
-            is_pending: 0
-          });
-        }
-      });
-
-      // Pending PDFs - ensure they're marked as pending
-      workingPendingPdfs.forEach((pdf, index) => {
-        if (pdf) {
-          allPdfs.push({
-            id: pdf.id,
-            position: allPdfs.length + index + 1,
-            is_pending: 1
-          });
-        }
-      });
-
-      // Save positions
-      await pdfAPI.reorder(allPdfs.map(p => ({ id: p.id, position: p.position })));
-
-      // Update status for all PDFs that changed
-      const statusUpdates = [];
-
-      allPdfs.forEach(pdfUpdate => {
-        const originalPdf = [...pdfs, ...pendingPdfs].find(p => p && p.id === pdfUpdate.id);
-        if (originalPdf && originalPdf.is_pending !== pdfUpdate.is_pending) {
-          statusUpdates.push(pdfAPI.updateStatus(pdfUpdate.id, pdfUpdate.is_pending));
-        }
-      });
-
-      if (statusUpdates.length > 0) {
-        await Promise.all(statusUpdates);
-      }
-
-      // Update metadata for all PDFs that changed
-      const metadataUpdates = [];
-      const workingAllPdfs = [...workingPdfs, ...workingPendingPdfs];
-
-      workingAllPdfs.forEach(workingPdf => {
-        if (!workingPdf) return;
-
-        const originalPdf = [...pdfs, ...pendingPdfs].find(p => p && p.id === workingPdf.id);
-        if (originalPdf) {
-          const metadataChanged =
-            originalPdf.job_number !== workingPdf.job_number ||
-            originalPdf.construction_method !== workingPdf.construction_method ||
-            originalPdf.placeholder_text !== workingPdf.placeholder_text;
-
-          if (metadataChanged) {
-            metadataUpdates.push(
-              pdfAPI.updateMetadata(workingPdf.id, {
-                job_number: workingPdf.job_number,
-                construction_method: workingPdf.construction_method,
-                placeholder_text: workingPdf.placeholder_text
-              })
-            );
-          }
-        }
-      });
-
-      if (metadataUpdates.length > 0) {
-        await Promise.all(metadataUpdates);
-      }
-
-      await loadData();
-      setEditMode(false);
-      setHasUnsavedChanges(false);
-      setExternalChanges(false);
-    } catch (error) {
-      console.error('Error saving changes:', error);
-      alert('Failed to save changes. Please try again.');
-    }
-  };
-
-  const handleRefresh = async () => {
-    setShowConflictWarning(false);
-    // Discard local changes and reload fresh data
-    await loadData();
-    // Update working copies using setState callback to get fresh values after loadData
-    setPdfs(prev => {
-      setWorkingPdfs([...prev]);
-      return prev;
-    });
-    setPendingPdfs(prev => {
-      setWorkingPendingPdfs([...prev]);
-      return prev;
-    });
-    setHasUnsavedChanges(false);
-    setExternalChanges(false);
   };
 
   const handleDelete = async (id) => {
@@ -511,6 +470,7 @@ function HomePage() {
         } else {
           // Board PDF deletes require clicking "Save" to update positions
           setHasUnsavedChanges(true);
+          trackActivity();
         }
       } else {
         setPdfs(pdfs.filter((pdf) => pdf && pdf.id !== id));
@@ -647,6 +607,7 @@ function HomePage() {
       } else {
         // Board PDF metadata updates require clicking "Save"
         setHasUnsavedChanges(true);
+        trackActivity();
       }
     }
   };
@@ -1192,6 +1153,21 @@ function HomePage() {
                   </button>
                 </>
               )}
+              {!editMode && (
+                <button
+                  onClick={handleUploadToPending}
+                  disabled={editLock !== null}
+                  className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-medium transition-colors text-sm whitespace-nowrap ${
+                    editLock !== null
+                      ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                      : 'bg-green-600 text-white hover:bg-green-700'
+                  }`}
+                  title={editLock !== null ? 'Upload disabled while another admin is in edit mode' : 'Upload PDFs to pending section'}
+                >
+                  <span className="hidden sm:inline">Upload to Pending</span>
+                  <span className="sm:hidden">Upload</span>
+                </button>
+              )}
               <button
                 onClick={() => setShowLabelManagement(true)}
                 className="px-3 sm:px-4 py-1.5 sm:py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors text-sm whitespace-nowrap"
@@ -1232,24 +1208,6 @@ function HomePage() {
                     {hasUnsavedChanges && <strong className="block sm:inline sm:ml-2 mt-1 sm:mt-0">Changes will be saved when you click "Save".</strong>}
                   </p>
                 </div>
-
-                {externalChanges && (
-                  <div className="mb-4 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-400 dark:border-yellow-600 rounded-lg p-3 sm:p-4 transition-colors flex items-start gap-3">
-                    <div className="flex-shrink-0">
-                      <svg className="w-5 h-5 text-yellow-600 dark:text-yellow-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                      </svg>
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-yellow-800 dark:text-yellow-200 text-xs sm:text-sm font-medium transition-colors">
-                        External Changes Detected
-                      </p>
-                      <p className="text-yellow-700 dark:text-yellow-300 text-xs mt-1 transition-colors">
-                        Another admin has made changes. Your working copy has been updated with their changes. Review before saving to avoid conflicts.
-                      </p>
-                    </div>
-                  </div>
-                )}
               </>
             )}
 
@@ -1366,14 +1324,6 @@ function HomePage() {
                 setSelectedPlaceholder(null);
               }}
               onSave={handleSavePlaceholder}
-            />
-          )}
-
-          {showConflictWarning && (
-            <ConflictWarningModal
-              onRefresh={handleRefresh}
-              onForceSave={handleForceSave}
-              onCancel={() => setShowConflictWarning(false)}
             />
           )}
         </>

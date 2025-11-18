@@ -5,9 +5,9 @@ function LabelManagementModal({ onClose, onUpdate }) {
   const [labels, setLabels] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editingId, setEditingId] = useState(null);
-  const [editForm, setEditForm] = useState({ name: '', color: '#10b981' });
+  const [editForm, setEditForm] = useState({ name: '', color: '#10b981', expiresAt: null });
   const [showAddForm, setShowAddForm] = useState(false);
-  const [addForm, setAddForm] = useState({ name: '', color: '#10b981' });
+  const [addForm, setAddForm] = useState({ name: '', color: '#10b981', expiresAt: null });
 
   useEffect(() => {
     loadLabels();
@@ -31,9 +31,9 @@ function LabelManagementModal({ onClose, onUpdate }) {
     }
 
     try {
-      const response = await labelAPI.create(addForm.name, addForm.color);
+      const response = await labelAPI.create(addForm.name, addForm.color, addForm.expiresAt);
       setLabels([...labels, response.data]);
-      setAddForm({ name: '', color: '#10b981' });
+      setAddForm({ name: '', color: '#10b981', expiresAt: null });
       setShowAddForm(false);
       if (onUpdate) onUpdate();
     } catch (error) {
@@ -44,7 +44,77 @@ function LabelManagementModal({ onClose, onUpdate }) {
 
   const handleEdit = (label) => {
     setEditingId(label.id);
-    setEditForm({ name: label.name, color: label.color });
+    setEditForm({
+      name: label.name,
+      color: label.color,
+      expiresAt: label.expires_at || null
+    });
+  };
+
+  // Helper function to get midnight of a date
+  const getMidnight = (date) => {
+    const midnight = new Date(date);
+    midnight.setHours(0, 0, 0, 0);
+    return midnight.toISOString();
+  };
+
+  // Quick expiration options
+  const setExpireToday = (formType) => {
+    const today = new Date();
+    today.setHours(23, 59, 59, 999); // End of today
+    const expiresAt = today.toISOString();
+
+    if (formType === 'add') {
+      setAddForm({ ...addForm, expiresAt });
+    } else {
+      setEditForm({ ...editForm, expiresAt });
+    }
+  };
+
+  const setExpireTomorrow = (formType) => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(23, 59, 59, 999); // End of tomorrow
+    const expiresAt = tomorrow.toISOString();
+
+    if (formType === 'add') {
+      setAddForm({ ...addForm, expiresAt });
+    } else {
+      setEditForm({ ...editForm, expiresAt });
+    }
+  };
+
+  const clearExpiration = (formType) => {
+    if (formType === 'add') {
+      setAddForm({ ...addForm, expiresAt: null });
+    } else {
+      setEditForm({ ...editForm, expiresAt: null });
+    }
+  };
+
+  // Check if a label is expired
+  const isExpired = (expiresAt) => {
+    if (!expiresAt) return false;
+    return new Date(expiresAt) < new Date();
+  };
+
+  // Format expiration date for display
+  const formatExpiration = (expiresAt) => {
+    if (!expiresAt) return null;
+    const date = new Date(expiresAt);
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const labelDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+
+    if (labelDate.getTime() === today.getTime()) {
+      return 'Today';
+    } else if (labelDate.getTime() === tomorrow.getTime()) {
+      return 'Tomorrow';
+    } else {
+      return date.toLocaleDateString();
+    }
   };
 
   const handleUpdate = async (id) => {
@@ -54,7 +124,7 @@ function LabelManagementModal({ onClose, onUpdate }) {
     }
 
     try {
-      const response = await labelAPI.update(id, editForm.name, editForm.color);
+      const response = await labelAPI.update(id, editForm.name, editForm.color, editForm.expiresAt);
       setLabels(labels.map(l => l.id === id ? response.data : l));
       setEditingId(null);
       if (onUpdate) onUpdate();
@@ -129,22 +199,23 @@ function LabelManagementModal({ onClose, onUpdate }) {
                     className="flex items-center gap-3 p-3 border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-700/50"
                   >
                     {editingId === label.id ? (
-                      <>
+                      <div className="flex-1 flex flex-col gap-3">
                         <input
                           type="text"
                           value={editForm.name}
                           onChange={(e) => setEditForm({ ...editForm, name: e.target.value })}
-                          className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                          className="px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
                           placeholder="Label name"
                         />
                         <div className="flex items-center gap-2">
+                          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Color:</label>
                           <input
                             type="color"
                             value={editForm.color}
                             onChange={(e) => setEditForm({ ...editForm, color: e.target.value })}
                             className="w-12 h-10 border border-gray-300 dark:border-gray-600 rounded cursor-pointer"
                           />
-                          <div className="flex gap-1 flex-wrap max-w-[200px]">
+                          <div className="flex gap-1 flex-wrap">
                             {predefinedColors.map(color => (
                               <button
                                 key={color}
@@ -156,28 +227,64 @@ function LabelManagementModal({ onClose, onUpdate }) {
                             ))}
                           </div>
                         </div>
-                        <button
-                          onClick={() => handleUpdate(label.id)}
-                          className="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
-                        >
-                          Save
-                        </button>
-                        <button
-                          onClick={() => setEditingId(null)}
-                          className="px-3 py-2 bg-gray-300 dark:bg-gray-600 text-gray-900 dark:text-white rounded-lg hover:bg-gray-400 dark:hover:bg-gray-500"
-                        >
-                          Cancel
-                        </button>
-                      </>
+                        <div className="flex flex-col gap-2">
+                          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                            Expiration: {editForm.expiresAt ? formatExpiration(editForm.expiresAt) : 'Never'}
+                          </label>
+                          <div className="flex gap-2 flex-wrap">
+                            <button
+                              onClick={() => setExpireToday('edit')}
+                              className="px-3 py-1 bg-orange-600 text-white text-sm rounded hover:bg-orange-700"
+                            >
+                              Expire Today
+                            </button>
+                            <button
+                              onClick={() => setExpireTomorrow('edit')}
+                              className="px-3 py-1 bg-yellow-600 text-white text-sm rounded hover:bg-yellow-700"
+                            >
+                              Expire Tomorrow
+                            </button>
+                            {editForm.expiresAt && (
+                              <button
+                                onClick={() => clearExpiration('edit')}
+                                className="px-3 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-700"
+                              >
+                                Clear
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleUpdate(label.id)}
+                            className="flex-1 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+                          >
+                            Save
+                          </button>
+                          <button
+                            onClick={() => setEditingId(null)}
+                            className="flex-1 px-3 py-2 bg-gray-300 dark:bg-gray-600 text-gray-900 dark:text-white rounded-lg hover:bg-gray-400 dark:hover:bg-gray-500"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
                     ) : (
                       <>
                         <div
                           className="w-8 h-8 rounded"
                           style={{ backgroundColor: label.color }}
                         />
-                        <span className="flex-1 font-medium text-gray-900 dark:text-white">
-                          {label.name}
-                        </span>
+                        <div className="flex-1 flex flex-col">
+                          <span className="font-medium text-gray-900 dark:text-white">
+                            {label.name}
+                          </span>
+                          {label.expires_at && (
+                            <span className={`text-xs ${isExpired(label.expires_at) ? 'text-red-600 dark:text-red-400' : 'text-gray-600 dark:text-gray-400'}`}>
+                              {isExpired(label.expires_at) ? '🔴 Expired' : '⏰ Expires'} {formatExpiration(label.expires_at)}
+                            </span>
+                          )}
+                        </div>
                         <button
                           onClick={() => handleEdit(label)}
                           className="px-3 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
@@ -229,6 +336,33 @@ function LabelManagementModal({ onClose, onUpdate }) {
                       ))}
                     </div>
                   </div>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Expiration: {addForm.expiresAt ? formatExpiration(addForm.expiresAt) : 'Never'}
+                    </label>
+                    <div className="flex gap-2 flex-wrap">
+                      <button
+                        onClick={() => setExpireToday('add')}
+                        className="px-3 py-1 bg-orange-600 text-white text-sm rounded hover:bg-orange-700"
+                      >
+                        Expire Today
+                      </button>
+                      <button
+                        onClick={() => setExpireTomorrow('add')}
+                        className="px-3 py-1 bg-yellow-600 text-white text-sm rounded hover:bg-yellow-700"
+                      >
+                        Expire Tomorrow
+                      </button>
+                      {addForm.expiresAt && (
+                        <button
+                          onClick={() => clearExpiration('add')}
+                          className="px-3 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-700"
+                        >
+                          Clear
+                        </button>
+                      )}
+                    </div>
+                  </div>
                   <div className="flex gap-2">
                     <button
                       onClick={handleCreate}
@@ -239,7 +373,7 @@ function LabelManagementModal({ onClose, onUpdate }) {
                     <button
                       onClick={() => {
                         setShowAddForm(false);
-                        setAddForm({ name: '', color: '#10b981' });
+                        setAddForm({ name: '', color: '#10b981', expiresAt: null });
                       }}
                       className="flex-1 px-4 py-2 bg-gray-300 dark:bg-gray-600 text-gray-900 dark:text-white rounded-lg hover:bg-gray-400 dark:hover:bg-gray-500"
                     >

@@ -160,6 +160,16 @@ db.serialize(() => {
     )
   `);
 
+  // Add expires_at column to labels table (migration)
+  db.run(`
+    ALTER TABLE labels ADD COLUMN expires_at DATETIME
+  `, (err) => {
+    // Ignore error if column already exists
+    if (err && !err.message.includes('duplicate column name')) {
+      console.error('Error adding expires_at column:', err);
+    }
+  });
+
   // Insert default labels if they don't exist
   db.run(`INSERT OR IGNORE INTO labels (name, color) VALUES ('NEW', '#10b981')`);
   db.run(`INSERT OR IGNORE INTO labels (name, color) VALUES ('MOVED', '#3b82f6')`);

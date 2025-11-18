@@ -54,10 +54,6 @@ function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10
         style={{
           aspectRatio: `${aspectWidth} / ${aspectHeight}`,
           animationDelay: animationDelay,
-          // Delay color changes to match this item's opacity midpoint
-          ...(isTransitioning && {
-            transition: `background-color 0.1s ease ${colorTransitionDelay}, color 0.1s ease ${colorTransitionDelay}, border-color 0.1s ease ${colorTransitionDelay}`
-          })
         }}
       >
         <div
@@ -75,6 +71,7 @@ function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10
               onDelete={onDelete}
               onEdit={onEditPlaceholder}
               isDragging={isDragging}
+              colorTransitionDelay={colorTransitionDelay}
             />
           ) : (
             <DraggableCoverSheetCard
@@ -86,6 +83,7 @@ function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10
               onMoveToPending={onMoveToPending}
               onMetadataUpdate={onMetadataUpdate}
               isDragging={isDragging}
+              colorTransitionDelay={colorTransitionDelay}
             />
           )}
         </div>

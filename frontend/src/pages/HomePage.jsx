@@ -488,12 +488,23 @@ function HomePage() {
     }
 
     try {
+      // Check if this is a pending PDF before deleting
+      const isPendingPdf = workingPendingPdfs.some(pdf => pdf && pdf.id === id);
+
       await pdfAPI.delete(id);
 
       if (editMode) {
         setWorkingPdfs(workingPdfs.filter((pdf) => pdf && pdf.id !== id));
         setWorkingPendingPdfs(workingPendingPdfs.filter((pdf) => pdf && pdf.id !== id));
-        setHasUnsavedChanges(true);
+
+        // Also update main state for pending PDFs to keep in sync
+        if (isPendingPdf) {
+          setPendingPdfs(pendingPdfs.filter((pdf) => pdf && pdf.id !== id));
+          // Pending PDF deletes are independent - don't mark as having unsaved changes
+        } else {
+          // Board PDF deletes require clicking "Save" to update positions
+          setHasUnsavedChanges(true);
+        }
       } else {
         setPdfs(pdfs.filter((pdf) => pdf && pdf.id !== id));
         setPendingPdfs(pendingPdfs.filter((pdf) => pdf && pdf.id !== id));
@@ -510,9 +521,22 @@ function HomePage() {
     setUploadToPending(true);
 
     if (editMode && uploadedPdf) {
+      // Uploads to pending are independent and don't require "Save"
       if (uploadedPdf.is_pending) {
-        setWorkingPendingPdfs([...workingPendingPdfs, uploadedPdf]);
+        // Reload data to get the uploaded PDF from backend
+        await loadData();
+        // Update working copies to include the new pending PDF
+        setPdfs(prev => {
+          setWorkingPdfs([...prev]);
+          return prev;
+        });
+        setPendingPdfs(prev => {
+          setWorkingPendingPdfs([...prev]);
+          return prev;
+        });
+        // Don't mark as having unsaved changes - pending uploads are independent
       } else {
+        // Uploads to board positions still require saving
         if (uploadTargetPosition !== null) {
           const newWorkingPdfs = [...workingPdfs];
           newWorkingPdfs.splice(uploadTargetPosition - 1, 0, uploadedPdf);
@@ -520,8 +544,8 @@ function HomePage() {
         } else {
           setWorkingPdfs([...workingPdfs, uploadedPdf]);
         }
+        setHasUnsavedChanges(true);
       }
-      setHasUnsavedChanges(true);
     } else {
       await loadData();
     }
@@ -580,7 +604,11 @@ function HomePage() {
     }
   };
 
-  const handleMetadataUpdate = (pdfId, metadata) => {
+  const handleMetadataUpdate = async (pdfId, metadata) => {
+    // Check if this is a pending PDF
+    const isPendingPdf = workingPendingPdfs.some(pdf => pdf && pdf.id === pdfId);
+
+    // Update working copies
     setWorkingPdfs(prevWorking =>
       prevWorking.map(pdf => (pdf && pdf.id === pdfId) ? { ...pdf, ...metadata } : pdf)
     );
@@ -596,8 +624,23 @@ function HomePage() {
         prevPending.map(pdf => (pdf && pdf.id === pdfId) ? { ...pdf, ...metadata } : pdf)
       );
     } else {
-      // Mark changes as unsaved when in edit mode
-      setHasUnsavedChanges(true);
+      // Pending PDF metadata updates are independent and save immediately
+      if (isPendingPdf) {
+        try {
+          await pdfAPI.updateMetadata(pdfId, metadata);
+          // Update main state as well to keep in sync
+          setPendingPdfs(prevPending =>
+            prevPending.map(pdf => (pdf && pdf.id === pdfId) ? { ...pdf, ...metadata } : pdf)
+          );
+          // Don't mark as having unsaved changes - pending metadata updates are independent
+        } catch (error) {
+          console.error('Error saving pending PDF metadata:', error);
+          alert('Failed to save metadata changes');
+        }
+      } else {
+        // Board PDF metadata updates require clicking "Save"
+        setHasUnsavedChanges(true);
+      }
     }
   };
 

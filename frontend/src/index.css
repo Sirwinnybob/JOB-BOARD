@@ -99,13 +99,13 @@ body {
 }
 
 @utility animate-theme-bg {
-  animation: theme-fade-invert 0.8s ease-in-out, circular-reveal 0.8s ease-in-out;
-  /* Colors change instantly when dark class is added at animation midpoint (JS controls timing) */
+  animation: circular-reveal 0.8s ease-in-out;
+  /* Circular reveal animation from button position */
 }
 
 @utility animate-theme-header {
-  animation: theme-fade-invert 0.6s ease-in-out 0.15s backwards, circular-reveal 0.8s ease-in-out;
-  /* Colors change instantly when dark class is added at animation midpoint (JS controls timing) */
+  animation: circular-reveal 0.8s ease-in-out;
+  /* Circular reveal animation from button position */
 }
 
 @utility animate-theme-item {

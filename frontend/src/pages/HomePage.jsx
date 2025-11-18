@@ -450,29 +450,8 @@ function HomePage() {
     const pdfId = selectedPdfForLabels?.id;
     setSelectedPdfForLabels(null);
 
-    if (editMode && pdfId) {
-      try {
-        const allPdfsRes = await pdfAPI.getAll(true);
-        const allPdfs = allPdfsRes.data;
-        const updatedPdf = allPdfs.find(p => p && p.id === pdfId);
-
-        if (updatedPdf) {
-          if (updatedPdf.is_pending) {
-            setWorkingPendingPdfs(prevWorking =>
-              prevWorking.map(pdf => (pdf && pdf.id === pdfId) ? { ...pdf, labels: updatedPdf.labels } : pdf)
-            );
-          } else {
-            setWorkingPdfs(prevWorking =>
-              prevWorking.map(pdf => (pdf && pdf.id === pdfId) ? { ...pdf, labels: updatedPdf.labels } : pdf)
-            );
-          }
-        }
-      } catch (error) {
-        console.error('Error updating labels in working copy:', error);
-      }
-    } else {
-      await loadData();
-    }
+    // Always refresh data after label changes to ensure consistency
+    await loadData();
   };
 
   const handleMetadataUpdate = (pdfId, metadata) => {
@@ -950,15 +929,6 @@ function HomePage() {
                 )}
               </button>
             )}
-            <a
-              href="/manage-notifications.html"
-              className={`p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white ${!isTransitioning ? 'transition-colors' : ''} rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700`}
-              title="Manage Notifications"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-              </svg>
-            </a>
             <button
               onClick={toggleDarkMode}
               className={`p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white ${!isTransitioning ? 'transition-colors' : ''} rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700`}
@@ -974,6 +944,15 @@ function HomePage() {
                 </svg>
               )}
             </button>
+            <a
+              href="/manage-notifications.html"
+              className={`p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white ${!isTransitioning ? 'transition-colors' : ''} rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700`}
+              title="Manage Notifications"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+            </a>
               {isAuthenticated ? (
                 <button
                   onClick={handleLogout}
@@ -1007,36 +986,39 @@ function HomePage() {
                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
                 }`}
               >
-                {editMode ? (hasUnsavedChanges ? 'Save' : 'Done') : 'Edit'}
+                {editMode ? 'Save' : 'Edit'}
               </button>
               {editMode && (
-                <button
-                  onClick={() => setShowSettings(true)}
-                  className={`px-3 sm:px-4 py-1.5 sm:py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 ${!isTransitioning ? 'transition-colors' : ''} text-sm whitespace-nowrap`}
-                >
-                  Settings
-                </button>
+                <>
+                  <button
+                    onClick={() => setShowSettings(true)}
+                    className={`px-3 sm:px-4 py-1.5 sm:py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 ${!isTransitioning ? 'transition-colors' : ''} text-sm whitespace-nowrap`}
+                  >
+                    <span className="hidden sm:inline">Grid Settings</span>
+                    <span className="sm:hidden">Grid</span>
+                  </button>
+                  <button
+                    onClick={() => setShowLabelManagement(true)}
+                    className={`px-3 sm:px-4 py-1.5 sm:py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 ${!isTransitioning ? 'transition-colors' : ''} text-sm whitespace-nowrap`}
+                  >
+                    <span className="hidden sm:inline">Manage Labels</span>
+                    <span className="sm:hidden">Labels</span>
+                  </button>
+                  <button
+                    onClick={() => navigate('/admin/ocr-settings')}
+                    className={`px-3 sm:px-4 py-1.5 sm:py-2 bg-teal-600 text-white rounded-lg font-medium hover:bg-teal-700 ${!isTransitioning ? 'transition-colors' : ''} text-sm whitespace-nowrap`}
+                  >
+                    <span className="hidden sm:inline">OCR Settings</span>
+                    <span className="sm:hidden">OCR</span>
+                  </button>
+                </>
               )}
-              <button
-                onClick={() => setShowLabelManagement(true)}
-                className={`px-3 sm:px-4 py-1.5 sm:py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 ${!isTransitioning ? 'transition-colors' : ''} text-sm whitespace-nowrap`}
-              >
-                <span className="hidden sm:inline">Manage Labels</span>
-                <span className="sm:hidden">Labels</span>
-              </button>
               <button
                 onClick={() => setShowAlertModal(true)}
                 className={`px-3 sm:px-4 py-1.5 sm:py-2 bg-orange-600 text-white rounded-lg font-medium hover:bg-orange-700 ${!isTransitioning ? 'transition-colors' : ''} text-sm whitespace-nowrap`}
               >
                 <span className="hidden sm:inline">Send Alert</span>
                 <span className="sm:hidden">Alert</span>
-              </button>
-              <button
-                onClick={() => navigate('/admin/ocr-settings')}
-                className={`px-3 sm:px-4 py-1.5 sm:py-2 bg-teal-600 text-white rounded-lg font-medium hover:bg-teal-700 ${!isTransitioning ? 'transition-colors' : ''} text-sm whitespace-nowrap`}
-              >
-                <span className="hidden sm:inline">OCR Settings</span>
-                <span className="sm:hidden">OCR</span>
               </button>
             </div>
           </div>
@@ -1058,7 +1040,7 @@ function HomePage() {
                 <p className={`text-blue-800 dark:text-blue-200 text-xs sm:text-sm ${!isTransitioning ? 'transition-colors' : ''}`}>
                   <span className="hidden sm:inline">Drag and drop PDFs to reorder them. Click the tag icon to manage labels. Click the X to delete. Click the + button on empty slots to add placeholders.</span>
                   <span className="sm:hidden">Drag to reorder • Tag icon for labels • X to delete • + for placeholders</span>
-                  {hasUnsavedChanges && <strong className="block sm:inline sm:ml-2 mt-1 sm:mt-0">Changes will be saved when you click "Save".</strong>}
+                  {hasUnsavedChanges && <strong className="block sm:inline sm:ml-2 mt-1 sm:mt-0">Unsaved position changes.</strong>}
                 </p>
               </div>
             )}

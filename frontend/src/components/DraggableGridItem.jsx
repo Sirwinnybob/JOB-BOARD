@@ -4,6 +4,19 @@ import DraggableCoverSheetCard from './DraggableCoverSheetCard';
 import PlaceholderCard from './PlaceholderCard';
 
 function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10, editMode, onDelete, onLabelClick, onMoveToPending, onMetadataUpdate, onSlotMenuOpen, showSlotMenu, onSlotMenuClose, onAddPlaceholder, onUploadToSlot, onEditPlaceholder, isTransitioning, animationDelay, colorDelay }) {
+  // Log animation timing for first few items
+  React.useEffect(() => {
+    if (isTransitioning && index < 3) {
+      console.log(`[DraggableGridItem] Item ${index}:`, {
+        isTransitioning,
+        animationDelay,
+        colorDelay,
+        hasPdf: !!pdf,
+        isPlaceholder: pdf?.is_placeholder
+      });
+    }
+  }, [isTransitioning, index, animationDelay, colorDelay, pdf?.is_placeholder]);
+
   // Make this slot droppable
   const { setNodeRef: setDropRef, isOver } = useDroppable({
     id: id,

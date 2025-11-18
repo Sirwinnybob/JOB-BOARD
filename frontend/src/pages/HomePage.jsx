@@ -811,6 +811,13 @@ function HomePage() {
     // Only animate in grid view, not in slideshow
     const shouldAnimate = isTransitioning && viewMode === 'grid';
 
+    console.log('[HomePage] gridContent render:', {
+      isTransitioning,
+      viewMode,
+      shouldAnimate,
+      editMode
+    });
+
     if (isAuthenticated && editMode) {
       return (
         <AdminGrid

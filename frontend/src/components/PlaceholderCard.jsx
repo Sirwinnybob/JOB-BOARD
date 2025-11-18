@@ -11,6 +11,16 @@ function PlaceholderCard({
 }) {
   const { isTransitioning } = useDarkMode();
 
+  // Log when isTransitioning changes
+  React.useEffect(() => {
+    if (isTransitioning) {
+      console.log(`[PlaceholderCard] Card ${index}:`, {
+        isTransitioning,
+        willSwitchToSolid: isTransitioning
+      });
+    }
+  }, [isTransitioning, index]);
+
   return (
     <div
       className={`relative w-full h-full ${isTransitioning ? 'bg-gray-100 dark:bg-gray-700' : 'bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800'} rounded-lg shadow-md overflow-hidden ${!isTransitioning ? 'transition-all' : ''} ${

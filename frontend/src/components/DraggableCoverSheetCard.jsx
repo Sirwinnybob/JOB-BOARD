@@ -15,6 +15,17 @@ function DraggableCoverSheetCard({
   const [editValue, setEditValue] = useState('');
   const { darkMode, isTransitioning } = useDarkMode();
 
+  // Log when isTransitioning changes
+  React.useEffect(() => {
+    if (isTransitioning && index < 3) {
+      console.log(`[DraggableCoverSheetCard] Card ${index} (${pdf?.job_number || 'unknown'}):`, {
+        isTransitioning,
+        darkMode,
+        willDisableTransitions: !isTransitioning
+      });
+    }
+  }, [isTransitioning, index, pdf?.job_number, darkMode]);
+
   // Determine which image to use based on dark mode
   const imageBaseName = darkMode && pdf.dark_mode_images_base
     ? pdf.dark_mode_images_base

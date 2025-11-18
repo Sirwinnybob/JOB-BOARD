@@ -9,11 +9,13 @@ A production-ready, full-stack job board application with PDF preview grid, buil
 - **Admin Panel**: Secure authentication with drag-and-drop reordering
 - **Label System**: Apply colored labels (NEW, MOVED, PENDING, URGENT, COMPLETED) to PDFs
 - **Real-Time Updates**: WebSocket-based live synchronization across all devices
+- **Push Notifications**: Background notifications for job updates (works even when app is closed)
 - **iOS-Style Drag & Drop**: Smooth, snap-to-grid reordering with visual feedback
 - **Responsive Design**: Mobile-first design with Tailwind CSS
 - **Auto-Thumbnail Generation**: Automatic first-page thumbnail creation
 - **Grid Customization**: Admin can change rows/columns via settings
 - **Dockerized**: Production-ready Docker container with multi-stage build
+- **PWA Support**: Progressive Web App with offline capabilities
 
 ## Tech Stack
 
@@ -377,6 +379,25 @@ cd frontend
 npm test
 ```
 
+## Push Notifications Setup
+
+This application supports Web Push notifications that work even when the PWA is closed. See **[PUSH_NOTIFICATIONS_SETUP.md](PUSH_NOTIFICATIONS_SETUP.md)** for complete setup guide.
+
+### Quick Start
+
+1. **Generate VAPID Keys**: Open `generate-vapid-keys.html` in your browser
+2. **Add to .env**: Copy the keys to your environment variables
+3. **Restart Backend**: Apply the configuration
+4. **Subscribe Devices**: Open `manage-notifications.html` on each device to subscribe
+
+**Each device needs its own subscription!** Use the `manage-notifications.html` tool to easily subscribe tablets and phones without developer tools.
+
+### Notification Types
+
+- **NEW JOB**: When jobs are published or moved from pending to active
+- **JOB(S) MOVED**: When jobs are reordered on the board
+- **Custom Alerts**: Admins can send custom notifications anytime
+
 ## Environment Variables
 
 | Variable | Description | Default |
@@ -386,6 +407,9 @@ npm test
 | `JWT_SECRET` | JWT signing secret | Required |
 | `ADMIN_USERNAME` | Admin username | Required |
 | `ADMIN_PASSWORD` | Admin password | Required |
+| `VAPID_PUBLIC_KEY` | Web Push public key | Optional (required for push notifications) |
+| `VAPID_PRIVATE_KEY` | Web Push private key | Optional (required for push notifications) |
+| `VAPID_SUBJECT` | Contact email for push service | `mailto:admin@example.com` |
 
 ## Performance
 

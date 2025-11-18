@@ -1091,30 +1091,42 @@ function HomePage() {
     <div className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800 relative">
       {/* Circular reveal overlay for background/header - Grid items render on top with their own animation */}
       {isTransitioning && (
-        <>
+        <div
+          className="fixed inset-0 z-0"
+          style={{
+            perspective: '1000px',
+            isolation: 'isolate'
+          }}
+        >
           {/* Light theme background - always stays visible underneath */}
           <div
-            className="fixed inset-0 z-0 bg-gradient-to-br from-gray-100 to-gray-200"
+            className="absolute inset-0 bg-gradient-to-br from-gray-100 to-gray-200"
             style={{
-              transform: 'translateZ(0)',
+              transform: 'translate3d(0, 0, 0)',
               backfaceVisibility: 'hidden',
-              WebkitBackfaceVisibility: 'hidden'
+              WebkitBackfaceVisibility: 'hidden',
+              isolation: 'isolate',
+              contain: 'layout paint style',
+              filter: 'blur(0)' // Force GPU layer
             }}
           />
           {/* Dark theme overlay - expands for dark mode, retracts for light mode */}
           <div
-            className="fixed inset-0 z-[1] bg-gradient-to-br from-gray-900 to-gray-800"
+            className="absolute inset-0 bg-gradient-to-br from-gray-900 to-gray-800"
             style={{
               animation: targetDarkMode
                 ? 'circular-reveal 0.8s ease-in-out forwards'
                 : 'circular-retract 0.8s ease-in-out forwards',
-              willChange: 'clip-path',
-              transform: 'translateZ(0)',
+              willChange: 'clip-path, transform',
+              transform: 'translate3d(0, 0, 0)',
               backfaceVisibility: 'hidden',
-              WebkitBackfaceVisibility: 'hidden'
+              WebkitBackfaceVisibility: 'hidden',
+              isolation: 'isolate',
+              contain: 'layout paint style',
+              filter: 'blur(0)' // Force GPU layer
             }}
           />
-        </>
+        </div>
       )}
       {/* Pull-to-Refresh Indicator */}
       {(pullToRefresh.pulling || pullToRefresh.refreshing) && (

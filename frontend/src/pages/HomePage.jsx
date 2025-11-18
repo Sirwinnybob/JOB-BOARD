@@ -994,7 +994,8 @@ function HomePage() {
                     onClick={() => setShowSettings(true)}
                     className={`px-3 sm:px-4 py-1.5 sm:py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 ${!isTransitioning ? 'transition-colors' : ''} text-sm whitespace-nowrap`}
                   >
-                    Settings
+                    <span className="hidden sm:inline">Grid Settings</span>
+                    <span className="sm:hidden">Grid</span>
                   </button>
                   <button
                     onClick={() => setShowLabelManagement(true)}

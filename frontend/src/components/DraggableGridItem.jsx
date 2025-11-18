@@ -43,13 +43,20 @@ function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10
   } : undefined;
 
   if (pdf) {
+    // Calculate when this item's color should change (at opacity midpoint)
+    const colorTransitionDelay = isTransitioning ? `${0.8 + index * 0.15 + 0.3}s` : '0s';
+
     return (
       <div
         ref={setDropRef}
         className={`flex flex-col ${isOver ? 'ring-2 ring-blue-500' : ''} ${isTransitioning ? 'animate-theme-item' : ''}`}
         style={{
           aspectRatio: `${aspectWidth} / ${aspectHeight}`,
-          animationDelay: animationDelay
+          animationDelay: animationDelay,
+          // Delay color changes to match this item's opacity midpoint
+          ...(isTransitioning && {
+            transition: `background-color 0.1s ease ${colorTransitionDelay}, color 0.1s ease ${colorTransitionDelay}, border-color 0.1s ease ${colorTransitionDelay}`
+          })
         }}
       >
         <div
@@ -86,6 +93,9 @@ function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10
   }
 
   // Empty slot
+  // Calculate when this item's color should change (at opacity midpoint)
+  const colorTransitionDelay = isTransitioning ? `${0.8 + index * 0.15 + 0.3}s` : '0s';
+
   return (
     <div
       ref={setDropRef}
@@ -94,7 +104,11 @@ function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10
       } ${isTransitioning ? 'animate-theme-item' : ''}`}
       style={{
         aspectRatio: `${aspectWidth} / ${aspectHeight}`,
-        animationDelay: animationDelay
+        animationDelay: animationDelay,
+        // Delay color changes to match this item's opacity midpoint
+        ...(isTransitioning && {
+          transition: `background-color 0.1s ease ${colorTransitionDelay}, color 0.1s ease ${colorTransitionDelay}, border-color 0.1s ease ${colorTransitionDelay}`
+        })
       }}
     >
       {editMode ? (

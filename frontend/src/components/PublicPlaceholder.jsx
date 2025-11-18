@@ -3,48 +3,62 @@ import { useDarkMode } from '../contexts/DarkModeContext';
 
 /**
  * PublicPlaceholder component for use in PDFGrid public view
- * Implements delayed dark mode transitions to match the cascade animation
- * Uses the same pattern as DraggableCoverSheetCard
+ * Uses the same pattern as DraggableCoverSheetCard image transitions:
+ * - delayedDarkMode state updates at the item's transition time
+ * - Fast CSS transition with NO delay (state update controls timing)
  */
 function PublicPlaceholder({ placeholder, colorTransitionDelay, onClick }) {
   const { darkMode, isTransitioning } = useDarkMode();
 
-  // Get background style based on darkMode (not delayed)
-  // The CSS transition delay handles the visual timing
+  // Delayed dark mode for this specific placeholder (updates at item's color transition time)
+  const [delayedDarkMode, setDelayedDarkMode] = React.useState(darkMode);
+
+  // Update delayedDarkMode with per-item timing during transitions
+  React.useEffect(() => {
+    if (isTransitioning && colorTransitionDelay) {
+      // Parse the delay value (e.g., "0.7s" -> 700ms)
+      const delayMs = parseFloat(colorTransitionDelay) * 1000;
+      const timeout = setTimeout(() => {
+        setDelayedDarkMode(darkMode);
+      }, delayMs);
+      return () => clearTimeout(timeout);
+    } else {
+      // When not transitioning, update immediately
+      setDelayedDarkMode(darkMode);
+    }
+  }, [darkMode, isTransitioning, colorTransitionDelay]);
+
+  // Get background style based on delayedDarkMode
   const getBackgroundStyle = () => {
     const baseStyle = {};
 
     if (isTransitioning) {
-      // During transition, use solid color based on current darkMode
-      baseStyle.backgroundColor = darkMode ? 'rgb(55, 65, 81)' : 'rgb(243, 244, 246)'; // gray-700 : gray-100
+      // During transition, use solid color
+      baseStyle.backgroundColor = delayedDarkMode ? 'rgb(55, 65, 81)' : 'rgb(243, 244, 246)'; // gray-700 : gray-100
+      // Fast transition with NO delay - timing controlled by state update
+      baseStyle.transition = 'background-color 0.2s ease, border-color 0.2s ease';
     } else {
       // Normal state, use gradient via inline style
-      baseStyle.backgroundImage = darkMode
+      baseStyle.backgroundImage = delayedDarkMode
         ? 'linear-gradient(to bottom right, rgb(55, 65, 81), rgb(31, 41, 55))' // gray-700 to gray-800
         : 'linear-gradient(to bottom right, rgb(243, 244, 246), rgb(229, 231, 235))'; // gray-100 to gray-200
     }
 
     // Add border color
-    baseStyle.borderColor = darkMode ? 'rgb(75, 85, 99)' : 'rgb(209, 213, 219)'; // gray-600 : gray-300
-
-    // Add color transition delay during theme transitions
-    // The delay in the CSS transition controls WHEN the visual change happens
-    if (isTransitioning && colorTransitionDelay) {
-      baseStyle.transition = `background-color 0.1s ease ${colorTransitionDelay}, background-image 0.1s ease ${colorTransitionDelay}, border-color 0.1s ease ${colorTransitionDelay}`;
-    }
+    baseStyle.borderColor = delayedDarkMode ? 'rgb(75, 85, 99)' : 'rgb(209, 213, 219)'; // gray-600 : gray-300
 
     return baseStyle;
   };
 
-  // Get text color based on darkMode (not delayed)
+  // Get text color based on delayedDarkMode
   const getTextStyle = () => {
     const baseStyle = {
-      color: darkMode ? 'rgb(156, 163, 175)' : 'rgb(75, 85, 99)' // gray-400 : gray-600
+      color: delayedDarkMode ? 'rgb(156, 163, 175)' : 'rgb(75, 85, 99)' // gray-400 : gray-600
     };
 
-    // Add color transition delay during theme transitions
-    if (isTransitioning && colorTransitionDelay) {
-      baseStyle.transition = `color 0.1s ease ${colorTransitionDelay}`;
+    // Fast transition with NO delay during theme transitions
+    if (isTransitioning) {
+      baseStyle.transition = 'color 0.2s ease';
     }
 
     return baseStyle;

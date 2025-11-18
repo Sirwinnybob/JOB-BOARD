@@ -99,13 +99,11 @@ body {
 }
 
 @utility animate-theme-bg {
-  animation: circular-reveal 0.8s ease-in-out;
-  /* Circular reveal animation from button position */
+  /* Removed - using overlay approach instead */
 }
 
 @utility animate-theme-header {
-  animation: circular-reveal 0.8s ease-in-out;
-  /* Circular reveal animation from button position */
+  /* Removed - using overlay approach instead */
 }
 
 @utility animate-theme-item {

@@ -20,13 +20,13 @@ function PDFGrid({ pdfs, rows, cols, aspectWidth = 11, aspectHeight = 10, onPdfC
     >
       {Array.from({ length: totalSlots }).map((_, index) => {
         const pdf = pdfs[index];
-        // Start grid items after background/header finish (at 0.8s)
+        // With View Transitions API: circular reveal animates 0-0.8s
+        // Grid items start fading in sync, cascading from top-left
         // Each item starts 150ms after the previous for visible cascade
-        const animationDelay = isTransitioning ? `${0.8 + index * 0.15}s` : '0s';
-        // Color changes at each item's opacity midpoint
-        // Delay is relative to when DOM class changes (t=400ms), not from t=0!
-        // Midpoint: 0.8s + index*0.15s + 0.3s, minus 0.4s for DOM class timing
-        const colorTransitionDelay = isTransitioning ? `${0.8 + index * 0.15 + 0.3 - 0.4}s` : '0s';
+        const animationDelay = isTransitioning ? `${index * 0.15}s` : '0s';
+        // Color changes at each item's opacity midpoint (0.3s into 0.6s animation)
+        // DOM class changes immediately with View Transitions, so delay is just animation delay + midpoint
+        const colorTransitionDelay = isTransitioning ? `${index * 0.15 + 0.3}s` : '0s';
 
         return (
           <div

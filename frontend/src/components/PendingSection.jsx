@@ -248,7 +248,7 @@ function PendingSection({ pdfs, onMovePdfToBoard, onMoveAllPdfsToBoard, onDelete
       <div className={`bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg p-6 mb-6 ${!isTransitioning ? 'transition-colors' : ''}`}>
         <div className="flex justify-between items-center mb-2">
           <h2 className={`text-lg font-semibold text-yellow-900 dark:text-yellow-100 ${!isTransitioning ? 'transition-colors' : ''}`}>
-            📥 PENDING PDFs
+            📥 PENDING Jobs
           </h2>
           {editMode && (
             <button
@@ -261,8 +261,8 @@ function PendingSection({ pdfs, onMovePdfToBoard, onMoveAllPdfsToBoard, onDelete
         </div>
         <p className={`text-sm text-yellow-700 dark:text-yellow-300 ${!isTransitioning ? 'transition-colors' : ''}`}>
           {editMode
-            ? 'No pending PDFs. Upload PDFs to pending using the button above.'
-            : 'No pending PDFs. Enter edit mode to upload PDFs.'
+            ? 'No pending Jobs. Upload Jobs to pending using the button above.'
+            : 'No pending Jobs. Enter edit mode to upload Jobs.'
           }
         </p>
       </div>
@@ -274,12 +274,12 @@ function PendingSection({ pdfs, onMovePdfToBoard, onMoveAllPdfsToBoard, onDelete
       <div className="flex justify-between items-center mb-4">
         <div>
           <h2 className={`text-lg font-semibold text-yellow-900 dark:text-yellow-100 ${!isTransitioning ? 'transition-colors' : ''}`}>
-            📥 PENDING PDFs ({pdfs.length})
+            📥 PENDING Jobs ({pdfs.length})
           </h2>
           <p className={`text-sm text-yellow-700 dark:text-yellow-300 mt-1 ${!isTransitioning ? 'transition-colors' : ''}`}>
             {editMode
-              ? 'These PDFs are uploaded but not yet visible on the board. Drag them to the board or click "Add to Board".'
-              : 'These PDFs are uploaded but not yet visible on the board. Click to view. Enter edit mode to add them to the board.'
+              ? 'These Jobs are uploaded but not yet visible on the board. Drag them to the board or click "Add to Board".'
+              : 'These Jobs are uploaded but not yet visible on the board. Click to view. Enter edit mode to add them to the board.'
             }
           </p>
         </div>

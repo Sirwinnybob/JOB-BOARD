@@ -112,4 +112,8 @@ export const ocrAPI = {
   },
 };
 
+export const alertAPI = {
+  broadcast: (message) => api.post('/alerts/broadcast', { message }),
+};
+
 export default api;

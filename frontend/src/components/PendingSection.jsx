@@ -176,11 +176,22 @@ function DraggablePendingItem({ pdf, index, onMovePdfToBoard, onDelete, editMode
       {/* Thumbnail */}
       <div className={`flex-1 aspect-[4/3] bg-gray-100 dark:bg-gray-700 flex items-center justify-center ${!isTransitioning ? 'transition-colors' : ''} min-h-0`}>
         {pdf.thumbnail ? (
-          <img
-            src={`/thumbnails/${pdf.thumbnail}`}
-            alt={pdf.original_name}
-            className={`w-full h-full object-cover dark:invert ${!isTransitioning ? 'transition-all' : ''}`}
-          />
+          <div className="relative w-full h-full">
+            {/* Light mode image */}
+            <img
+              src={pdf.images_base ? `/thumbnails/${pdf.images_base}-1.png` : `/thumbnails/${pdf.thumbnail}`}
+              alt={pdf.original_name}
+              className="absolute inset-0 w-full h-full object-cover transition-opacity duration-200"
+              style={{ opacity: darkMode ? 0 : 1 }}
+            />
+            {/* Dark mode image */}
+            <img
+              src={pdf.dark_mode_images_base ? `/thumbnails/${pdf.dark_mode_images_base}-1.png` : (pdf.images_base ? `/thumbnails/${pdf.images_base}-1.png` : `/thumbnails/${pdf.thumbnail}`)}
+              alt={pdf.original_name}
+              className="absolute inset-0 w-full h-full object-cover transition-opacity duration-200"
+              style={{ opacity: darkMode ? 1 : 0 }}
+            />
+          </div>
         ) : (
           <div className="text-gray-400 text-center p-4">
             <svg

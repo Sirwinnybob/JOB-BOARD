@@ -1091,30 +1091,42 @@ function HomePage() {
     <div className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800 relative">
       {/* Circular reveal overlay for background/header - Grid items render on top with their own animation */}
       {isTransitioning && (
-        <>
+        <div
+          className="fixed inset-0 z-0"
+          style={{
+            perspective: '1000px',
+            isolation: 'isolate'
+          }}
+        >
           {/* Light theme background - always stays visible underneath */}
           <div
-            className="fixed inset-0 z-0 bg-gradient-to-br from-gray-100 to-gray-200"
+            className="absolute inset-0 bg-gradient-to-br from-gray-100 to-gray-200"
             style={{
-              transform: 'translateZ(0)',
+              transform: 'translate3d(0, 0, 0)',
               backfaceVisibility: 'hidden',
-              WebkitBackfaceVisibility: 'hidden'
+              WebkitBackfaceVisibility: 'hidden',
+              isolation: 'isolate',
+              contain: 'layout paint style',
+              filter: 'blur(0)' // Force GPU layer
             }}
           />
           {/* Dark theme overlay - expands for dark mode, retracts for light mode */}
           <div
-            className="fixed inset-0 z-[1] bg-gradient-to-br from-gray-900 to-gray-800"
+            className="absolute inset-0 bg-gradient-to-br from-gray-900 to-gray-800"
             style={{
               animation: targetDarkMode
                 ? 'circular-reveal 0.8s ease-in-out forwards'
                 : 'circular-retract 0.8s ease-in-out forwards',
-              willChange: 'clip-path',
-              transform: 'translateZ(0)',
+              willChange: 'clip-path, transform',
+              transform: 'translate3d(0, 0, 0)',
               backfaceVisibility: 'hidden',
-              WebkitBackfaceVisibility: 'hidden'
+              WebkitBackfaceVisibility: 'hidden',
+              isolation: 'isolate',
+              contain: 'layout paint style',
+              filter: 'blur(0)' // Force GPU layer
             }}
           />
-        </>
+        </div>
       )}
       {/* Pull-to-Refresh Indicator */}
       {(pullToRefresh.pulling || pullToRefresh.refreshing) && (
@@ -1148,20 +1160,187 @@ function HomePage() {
         </div>
       )}
 
-      {/* Header */}
-      <header
-        className="bg-white dark:bg-gray-800 shadow-sm relative z-10"
-        style={{
-          transform: 'translateZ(0)',
-          backfaceVisibility: 'hidden',
-          WebkitBackfaceVisibility: 'hidden'
-        }}
-      >
+      {/* Header - During transition, render twice with circular reveal */}
+      {isTransitioning ? (
+        <div className="relative z-10">
+          {/* Light header - always visible underneath */}
+          <header
+            className="bg-white shadow-sm"
+            style={{
+              transform: 'translate3d(0, 0, 0)',
+              backfaceVisibility: 'hidden',
+              WebkitBackfaceVisibility: 'hidden'
+            }}
+          >
+            <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4">
+              <div className="flex justify-between items-center">
+                <h1 className="text-lg sm:text-2xl font-bold text-gray-900">
+                  <span className="hidden sm:inline">Kustom Kraft Cabinets - Job Board</span>
+                  <span className="sm:hidden">KKC - Job Board</span>
+                </h1>
+                <div className="flex items-center space-x-2 sm:space-x-4">
+                {!editMode && (
+                  <button
+                    onClick={toggleViewMode}
+                    className="p-2 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100"
+                    title={viewMode === 'grid' ? 'Slideshow View' : 'Grid View'}
+                  >
+                    {viewMode === 'grid' ? (
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                      </svg>
+                    ) : (
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                      </svg>
+                    )}
+                  </button>
+                )}
+                <button
+                  onClick={(e) => toggleDarkMode(e)}
+                  className="p-2 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100"
+                  title={darkMode ? 'Light Mode' : 'Dark Mode'}
+                >
+                  {darkMode ? (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                    </svg>
+                  )}
+                </button>
+                <a
+                  href="/manage-notifications.html"
+                  className="p-2 text-gray-600 hover:text-gray-900 rounded-lg hover:bg-gray-100"
+                  title="Manage Notifications"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                  </svg>
+                </a>
+                  {isAuthenticated ? (
+                    <button
+                      onClick={handleLogout}
+                      className="text-xs sm:text-sm text-gray-600 hover:text-gray-900 px-2 py-1 sm:px-0 sm:py-0"
+                      title="Logout from admin account"
+                    >
+                      Logout
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => navigate('/login')}
+                      className="text-xs sm:text-sm text-gray-600 hover:text-gray-900 px-2 py-1 sm:px-0 sm:py-0"
+                      title="Login to admin panel"
+                    >
+                      Admin
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </header>
+          {/* Dark header - on top with circular reveal */}
+          <header
+            className="absolute top-0 left-0 right-0 bg-gray-800 shadow-sm"
+            style={{
+              animation: targetDarkMode
+                ? 'circular-reveal 0.8s ease-in-out forwards'
+                : 'circular-retract 0.8s ease-in-out forwards',
+              willChange: 'clip-path, transform',
+              transform: 'translate3d(0, 0, 0)',
+              backfaceVisibility: 'hidden',
+              WebkitBackfaceVisibility: 'hidden',
+              isolation: 'isolate',
+              contain: 'layout paint style',
+              filter: 'blur(0)'
+            }}
+          >
+            <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4">
+              <div className="flex justify-between items-center">
+                <h1 className="text-lg sm:text-2xl font-bold text-white">
+                  <span className="hidden sm:inline">Kustom Kraft Cabinets - Job Board</span>
+                  <span className="sm:hidden">KKC - Job Board</span>
+                </h1>
+                <div className="flex items-center space-x-2 sm:space-x-4">
+                {!editMode && (
+                  <button
+                    onClick={toggleViewMode}
+                    className="p-2 text-gray-300 hover:text-white rounded-lg hover:bg-gray-700"
+                    title={viewMode === 'grid' ? 'Slideshow View' : 'Grid View'}
+                  >
+                    {viewMode === 'grid' ? (
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                      </svg>
+                    ) : (
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                      </svg>
+                    )}
+                  </button>
+                )}
+                <button
+                  onClick={(e) => toggleDarkMode(e)}
+                  className="p-2 text-gray-300 hover:text-white rounded-lg hover:bg-gray-700"
+                  title={darkMode ? 'Light Mode' : 'Dark Mode'}
+                >
+                  {darkMode ? (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                  ) : (
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                    </svg>
+                  )}
+                </button>
+                <a
+                  href="/manage-notifications.html"
+                  className="p-2 text-gray-300 hover:text-white rounded-lg hover:bg-gray-700"
+                  title="Manage Notifications"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                  </svg>
+                </a>
+                  {isAuthenticated ? (
+                    <button
+                      onClick={handleLogout}
+                      className="text-xs sm:text-sm text-gray-300 hover:text-white px-2 py-1 sm:px-0 sm:py-0"
+                      title="Logout from admin account"
+                    >
+                      Logout
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => navigate('/login')}
+                      className="text-xs sm:text-sm text-gray-300 hover:text-white px-2 py-1 sm:px-0 sm:py-0"
+                      title="Login to admin panel"
+                    >
+                      Admin
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          </header>
+        </div>
+      ) : (
+        <header
+          className="bg-white dark:bg-gray-800 shadow-sm relative z-10"
+          style={{
+            transform: 'translateZ(0)',
+            backfaceVisibility: 'hidden',
+            WebkitBackfaceVisibility: 'hidden'
+          }}
+        >
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4">
           <div className="flex justify-between items-center">
             <h1 className={`text-lg sm:text-2xl font-bold text-gray-900 dark:text-white ${!isTransitioning ? 'transition-colors' : ''}`}>
               <span className="hidden sm:inline">Kustom Kraft Cabinets - Job Board</span>
-              <span className="sm:hidden">KK Cabinets</span>
+              <span className="sm:hidden">KKC - Job Board</span>
             </h1>
             <div className="flex items-center space-x-2 sm:space-x-4">
             {!editMode && (
@@ -1226,11 +1405,12 @@ function HomePage() {
           </div>
         </div>
       </header>
+      )}
 
       {/* Admin Toolbar - Only visible when authenticated */}
-      {isAuthenticated && (
+      {isAuthenticated && !isTransitioning && (
         <div
-          className={`bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 ${!isTransitioning ? 'transition-colors' : ''} overflow-x-auto relative z-10`}
+          className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 transition-colors overflow-x-auto relative z-10"
           style={{
             transform: 'translateZ(0)',
             backfaceVisibility: 'hidden',

@@ -437,9 +437,9 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
                   />
                 )}
 
-                {/* Labels - Bottom Left (Bigger) */}
+                {/* Labels - Top Left (Bigger) */}
                 {pdf.labels && pdf.labels.length > 0 && (
-                  <div className="absolute bottom-4 left-4 flex flex-wrap gap-2">
+                  <div className="absolute top-4 left-4 flex flex-wrap gap-2">
                     {pdf.labels.map((label) => (
                       <span
                         key={label.id}

@@ -250,6 +250,19 @@ function HomePage() {
     setHasUnsavedChanges(true);
   };
 
+  const handleCancelEdit = () => {
+    if (hasUnsavedChanges) {
+      if (!confirm('You have unsaved changes. Are you sure you want to discard them?')) {
+        return;
+      }
+    }
+    // Discard changes and exit edit mode
+    setEditMode(false);
+    setHasUnsavedChanges(false);
+    setWorkingPdfs([]);
+    setWorkingPendingPdfs([]);
+  };
+
   const handleToggleEditMode = async () => {
     if (editMode) {
       // Exiting edit mode - save if there are changes
@@ -987,13 +1000,22 @@ function HomePage() {
                 {editMode ? (hasUnsavedChanges ? 'Save' : 'Done') : 'Edit'}
               </button>
               {editMode && (
-                <button
-                  onClick={() => setShowSettings(true)}
-                  className="px-3 sm:px-4 py-1.5 sm:py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors text-sm whitespace-nowrap"
-                  title="Configure grid size and aspect ratio"
-                >
-                  Settings
-                </button>
+                <>
+                  <button
+                    onClick={handleCancelEdit}
+                    className="px-3 sm:px-4 py-1.5 sm:py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-colors text-sm whitespace-nowrap"
+                    title="Discard all changes and exit edit mode"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => setShowSettings(true)}
+                    className="px-3 sm:px-4 py-1.5 sm:py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors text-sm whitespace-nowrap"
+                    title="Configure grid size and aspect ratio"
+                  >
+                    Settings
+                  </button>
+                </>
               )}
               <button
                 onClick={() => setShowLabelManagement(true)}

@@ -22,7 +22,7 @@ import {
 } from '../utils/notifications';
 
 function HomePage() {
-  const { darkMode, toggleDarkMode, isTransitioning } = useDarkMode();
+  const { darkMode, toggleDarkMode, isTransitioning, targetDarkMode } = useDarkMode();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [pdfs, setPdfs] = useState([]);
   const [pendingPdfs, setPendingPdfs] = useState([]);
@@ -930,11 +930,11 @@ function HomePage() {
   };
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800 ${!isTransitioning ? 'transition-colors' : ''}`}>
+    <div className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800">
       {/* Theme Transition Overlay - Reveals new theme in a circle from button */}
       {isTransitioning && (
         <div
-          className={`fixed inset-0 z-[9999] pointer-events-none ${darkMode ? 'bg-gradient-to-br from-gray-900 to-gray-800' : 'bg-gradient-to-br from-gray-100 to-gray-200'}`}
+          className={`fixed inset-0 z-[9999] pointer-events-none ${targetDarkMode ? 'bg-gradient-to-br from-gray-900 to-gray-800' : 'bg-gradient-to-br from-gray-100 to-gray-200'}`}
           style={{
             animation: 'circular-reveal 0.8s ease-in-out forwards'
           }}
@@ -971,7 +971,7 @@ function HomePage() {
       )}
 
       {/* Header */}
-      <header className={`bg-white dark:bg-gray-800 shadow-sm ${!isTransitioning ? 'transition-colors' : ''}`}>
+      <header className="bg-white dark:bg-gray-800 shadow-sm">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4">
           <div className="flex justify-between items-center">
             <h1 className={`text-lg sm:text-2xl font-bold text-gray-900 dark:text-white ${!isTransitioning ? 'transition-colors' : ''}`}>

@@ -22,7 +22,6 @@ export function DarkModeProvider({ children }) {
   });
 
   const [isTransitioning, setIsTransitioning] = useState(false);
-  const isManualTransition = useRef(false);
 
   // Listen for system preference changes
   useEffect(() => {
@@ -40,47 +39,24 @@ export function DarkModeProvider({ children }) {
   }, []);
 
   // Save preference to localStorage and update document class
-  // Skip immediate class update during manual transitions
   useEffect(() => {
     localStorage.setItem('darkMode', darkMode.toString());
-
-    // Don't update the class immediately if we're in a manual transition
-    // (the toggleDarkMode function will handle it at the right time)
-    if (!isManualTransition.current) {
-      if (darkMode) {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-      }
+    if (darkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
     }
   }, [darkMode]);
 
   const toggleDarkMode = () => {
-    isManualTransition.current = true;
+    // Update state immediately - the CSS animations will handle the visual transition
+    setDarkMode(prev => !prev);
     setIsTransitioning(true);
 
-    // Switch theme early in the cascade so items transition through the color change
-    // This happens when background/header are mid-fade and grid items are starting
-    setTimeout(() => {
-      const newDarkMode = !darkMode;
-
-      // Manually update the document class
-      if (newDarkMode) {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-      }
-
-      // Update state (this will also update localStorage via useEffect)
-      setDarkMode(newDarkMode);
-      isManualTransition.current = false;
-    }, 450); // Switch while elements are fading, giving time for rendering
-
     // Reset transition state after all animations complete
-    // Longest: last item (24) at 300ms + (23*80ms) + 600ms = ~2740ms
     setTimeout(() => {
       setIsTransitioning(false);
-    }, 3000); // Allow enough time for all cascading animations
+    }, 3000);
   };
 
   return (

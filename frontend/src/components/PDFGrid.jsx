@@ -21,26 +21,31 @@ function PDFGrid({ pdfs, rows, cols, aspectWidth = 11, aspectHeight = 10, onPdfC
         // Create visible cascade: each item starts 80ms after the previous
         // This gives time for proper rendering and creates smooth wave effect
         const animationDelay = isTransitioning ? `${0.3 + index * 0.08}s` : '0s';
+        // Color should switch when opacity is lowest: animationStart + (duration/2)
+        const colorDelay = isTransitioning ? `${0.3 + index * 0.08 + 0.3}s` : '0s';
 
         return (
           <div
             key={pdf?.id || `empty-${index}`}
-            className={`flex flex-col transition-all duration-500 ease-in-out ${isTransitioning ? 'animate-theme-item' : ''}`}
+            className={`flex flex-col ${isTransitioning ? 'animate-theme-item' : 'transition-all duration-500 ease-in-out'}`}
             style={{
               aspectRatio: `${aspectWidth} / ${aspectHeight}`,
-              animationDelay
+              animationDelay,
+              ...(isTransitioning && {
+                transition: `background-color 0.1s ease ${colorDelay}, color 0.1s ease ${colorDelay}, border-color 0.1s ease ${colorDelay}`
+              })
             }}
           >
             {!pdf ? (
-              <div className="w-full h-full bg-gray-200 dark:bg-gray-700 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 transition-colors" />
+              <div className={`w-full h-full bg-gray-200 dark:bg-gray-700 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 ${!isTransitioning ? 'transition-colors' : ''}`} />
             ) : pdf.is_placeholder ? (
               <div
                 onClick={(e) => onPdfClick(pdf, e)}
-                className="relative w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-lg shadow-md border-2 border-dashed border-gray-300 dark:border-gray-600 overflow-hidden transition-all duration-500 cursor-pointer hover:opacity-90 transition-opacity"
+                className={`relative w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-lg shadow-md border-2 border-dashed border-gray-300 dark:border-gray-600 overflow-hidden cursor-pointer hover:opacity-90 transition-opacity ${!isTransitioning ? 'transition-all duration-500' : ''}`}
                 data-pdf-id={pdf.id}
               >
                 <div className="w-full h-full flex items-center justify-center p-2 sm:p-3 md:p-4">
-                  <p className="text-gray-600 dark:text-gray-400 text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-center break-words leading-tight transition-colors">
+                  <p className={`text-gray-600 dark:text-gray-400 text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-center break-words leading-tight ${!isTransitioning ? 'transition-colors' : ''}`}>
                     {pdf.placeholder_text || 'PLACEHOLDER'}
                   </p>
                 </div>

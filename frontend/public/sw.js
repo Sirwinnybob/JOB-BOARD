@@ -81,20 +81,35 @@ self.addEventListener('fetch', (event) => {
 // Handle notification clicks
 self.addEventListener('notificationclick', (event) => {
   console.log('[SW] Notification clicked:', event.notification.tag);
+  const jobId = event.notification.data?.jobId;
+  console.log('[SW] Job ID from notification:', jobId);
   event.notification.close();
 
   // Open or focus the app window
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      // If a window is already open, focus it
+      // If a window is already open, focus it and send message
       for (const client of clientList) {
         if (client.url.includes(self.registration.scope) && 'focus' in client) {
+          // Send message to the app to highlight the job
+          if (jobId) {
+            client.postMessage({
+              type: 'HIGHLIGHT_JOB',
+              jobId: jobId
+            });
+          }
           return client.focus();
         }
       }
       // Otherwise, open a new window
       if (clients.openWindow) {
-        return clients.openWindow('/');
+        // Store jobId in a way the app can retrieve it when it loads
+        if (jobId) {
+          // Use sessionStorage via clients.openWindow with URL parameter
+          return clients.openWindow(`/?highlightJob=${jobId}`);
+        } else {
+          return clients.openWindow('/');
+        }
       }
     })
   );
@@ -113,7 +128,7 @@ self.addEventListener('push', (event) => {
       tag: data.tag || 'job-board-notification',
       requireInteraction: false,
       vibrate: [200, 100, 200],
-      data: data.data || {}
+      data: { jobId: data.jobId, ...(data.data || {}) }
     };
 
     event.waitUntil(
@@ -125,7 +140,7 @@ self.addEventListener('push', (event) => {
 // Handle messages from the main app (for WebSocket-triggered notifications)
 self.addEventListener('message', (event) => {
   if (event.data && event.data.type === 'SHOW_NOTIFICATION') {
-    const { title, body, tag, requireInteraction } = event.data;
+    const { title, body, tag, requireInteraction, jobId } = event.data;
 
     const options = {
       body: body || 'Job Board Update',
@@ -134,7 +149,8 @@ self.addEventListener('message', (event) => {
       tag: tag || 'job-board-notification',
       requireInteraction: requireInteraction || false,
       vibrate: [200, 100, 200],
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      data: { jobId } // Store jobId in notification data
     };
 
     event.waitUntil(

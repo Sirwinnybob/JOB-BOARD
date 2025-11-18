@@ -31,6 +31,26 @@ body {
   animation: border-pulse 2s ease-in-out infinite;
 }
 
+/* Notification glow animation */
+@keyframes notification-glow {
+  0%, 100% {
+    box-shadow: 0 0 20px 5px rgba(59, 130, 246, 0.6),
+                0 0 40px 10px rgba(59, 130, 246, 0.3),
+                0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 30px 8px rgba(59, 130, 246, 0.8),
+                0 0 60px 15px rgba(59, 130, 246, 0.4),
+                0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+}
+
+@utility notification-glow {
+  animation: notification-glow 2s ease-in-out infinite;
+  border-color: rgb(59, 130, 246) !important;
+  border-width: 2px !important;
+}
+
 /* Hide scrollbar for slideshow view */
 @utility scrollbar-hide {
   -ms-overflow-style: none;  /* IE and Edge */

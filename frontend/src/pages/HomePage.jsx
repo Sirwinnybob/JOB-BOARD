@@ -55,6 +55,7 @@ function HomePage() {
   const [originRect, setOriginRect] = useState(null);
   const [currentSlideshowIndex, setCurrentSlideshowIndex] = useState(0);
   const [pullToRefresh, setPullToRefresh] = useState({ pulling: false, distance: 0, refreshing: false });
+  const [highlightedJobId, setHighlightedJobId] = useState(null);
   const navigate = useNavigate();
 
   // Configure drag sensors
@@ -108,6 +109,62 @@ function HomePage() {
     loadData();
   }, [loadData]);
 
+  // Check URL parameter for highlightJob on mount
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const highlightJobId = urlParams.get('highlightJob');
+    if (highlightJobId) {
+      // Wait for PDFs to load, then highlight
+      const waitForPdfs = setInterval(() => {
+        if (pdfs.length > 0) {
+          clearInterval(waitForPdfs);
+          setHighlightedJobId(parseInt(highlightJobId));
+          // Clean up URL
+          window.history.replaceState({}, '', '/');
+        }
+      }, 100);
+      // Clear interval after 5 seconds if PDFs don't load
+      setTimeout(() => clearInterval(waitForPdfs), 5000);
+    }
+  }, [pdfs]);
+
+  // Listen for service worker messages to highlight jobs
+  useEffect(() => {
+    if (!('serviceWorker' in navigator)) return;
+
+    const handleMessage = (event) => {
+      if (event.data && event.data.type === 'HIGHLIGHT_JOB') {
+        console.log('[HomePage] Received highlight job message:', event.data.jobId);
+        setHighlightedJobId(event.data.jobId);
+      }
+    };
+
+    navigator.serviceWorker.addEventListener('message', handleMessage);
+    return () => {
+      navigator.serviceWorker.removeEventListener('message', handleMessage);
+    };
+  }, []);
+
+  // Scroll to and clear highlight after delay
+  useEffect(() => {
+    if (highlightedJobId && pdfs.length > 0) {
+      // Scroll to the job card
+      setTimeout(() => {
+        const jobElement = document.querySelector(`[data-pdf-id="${highlightedJobId}"]`);
+        if (jobElement) {
+          jobElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+      }, 300);
+
+      // Clear highlight after 5 seconds
+      const timeout = setTimeout(() => {
+        setHighlightedJobId(null);
+      }, 5000);
+
+      return () => clearTimeout(timeout);
+    }
+  }, [highlightedJobId, pdfs]);
+
   // WebSocket connection for live updates
   const handleWebSocketMessage = useCallback((message) => {
     console.log('Received update:', message.type);
@@ -115,10 +172,10 @@ function HomePage() {
     // Handle notifications (trigger browser notifications for updates)
     if (message.type === 'pdf_uploaded' && message.data?.is_pending === 0) {
       // Only notify for jobs uploaded directly to the board (not pending)
-      showNewJobNotification();
+      showNewJobNotification(message.data?.id);
     } else if (message.type === 'job_activated') {
       // Notify when a job is moved from pending to active board
-      showNewJobNotification();
+      showNewJobNotification(message.data?.id);
     } else if (message.type === 'pdfs_reordered') {
       showJobsMovedNotification();
     } else if (message.type === 'custom_alert') {
@@ -867,6 +924,7 @@ function HomePage() {
         aspectHeight={settings.aspect_ratio_height}
         onPdfClick={handlePdfClick}
         isTransitioning={shouldAnimate}
+        highlightedJobId={highlightedJobId}
       />
     );
   };

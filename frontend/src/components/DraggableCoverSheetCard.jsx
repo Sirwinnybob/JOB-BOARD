@@ -125,7 +125,7 @@ function DraggableCoverSheetCard({
         className={`border border-gray-300 dark:border-gray-600 rounded-t px-2 py-1 flex justify-between items-center text-xs ${!isTransitioning ? 'transition-colors' : ''} shadow-sm z-10 flex-shrink-0`}
         style={getHeaderStyle()}
       >
-        <div className="flex-1 min-w-0">
+        <div className="min-w-0">
           <div className="flex items-center gap-1">
             <span
               className={`font-semibold ${pdf.construction_method ? 'text-white' : 'text-gray-600 dark:text-gray-400'}`}
@@ -156,7 +156,7 @@ function DraggableCoverSheetCard({
                     handleStartEdit('job_number', pdf.job_number);
                   }
                 }}
-                className={`flex-1 truncate px-1 rounded ${
+                className={`flex-1 truncate px-1 rounded font-bold ${
                   pdf.construction_method ? 'text-white' : 'text-gray-900 dark:text-white'
                 } ${
                   editMode ? 'cursor-pointer hover:bg-black/10' : 'cursor-default'
@@ -169,7 +169,7 @@ function DraggableCoverSheetCard({
             )}
           </div>
         </div>
-        <div className="flex-1 min-w-0 ml-2">
+        <div className="min-w-0">
           <div className="flex items-center gap-1">
             <span
               className={`font-semibold ${pdf.construction_method ? 'text-white' : 'text-gray-600 dark:text-gray-400'}`}
@@ -204,7 +204,7 @@ function DraggableCoverSheetCard({
                     handleStartEdit('construction_method', pdf.construction_method);
                   }
                 }}
-                className={`flex-1 truncate px-1 rounded ${
+                className={`flex-1 truncate px-1 rounded font-bold ${
                   pdf.construction_method ? 'text-white' : 'text-gray-900 dark:text-white'
                 } ${
                   editMode ? 'cursor-pointer hover:bg-black/10' : 'cursor-default'

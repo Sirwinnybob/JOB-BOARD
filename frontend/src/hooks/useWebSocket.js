@@ -152,6 +152,15 @@ function useWebSocket(onMessage, enabled = true) {
     };
   }, [connect, enabled]);
 
+  const send = useCallback((message) => {
+    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify(message));
+      return true;
+    }
+    console.warn('WebSocket not connected, message not sent:', message);
+    return false;
+  }, []);
+
   // Handle page visibility changes (PWA backgrounding/foregrounding)
   useEffect(() => {
     if (!enabled) return;
@@ -192,6 +201,7 @@ function useWebSocket(onMessage, enabled = true) {
 
   return {
     isConnected: wsRef.current?.readyState === WebSocket.OPEN,
+    send,
   };
 }
 

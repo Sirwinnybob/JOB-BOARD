@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { pdfAPI, settingsAPI, authAPI } from '../utils/api';
@@ -9,6 +9,7 @@ import UploadModal from '../components/UploadModal';
 import SettingsModal from '../components/SettingsModal';
 import LabelModal from '../components/LabelModal';
 import LabelManagementModal from '../components/LabelManagementModal';
+import PlaceholderEditModal from '../components/PlaceholderEditModal';
 import AlertModal from '../components/AlertModal';
 import PendingSection from '../components/PendingSection';
 import useWebSocket from '../hooks/useWebSocket';
@@ -39,6 +40,8 @@ function HomePage() {
   const [showLabelManagement, setShowLabelManagement] = useState(false);
   const [showAlertModal, setShowAlertModal] = useState(false);
   const [selectedPdfForLabels, setSelectedPdfForLabels] = useState(null);
+  const [showPlaceholderEdit, setShowPlaceholderEdit] = useState(false);
+  const [selectedPlaceholder, setSelectedPlaceholder] = useState(null);
   const [showSlotMenu, setShowSlotMenu] = useState(null);
   const [selectedPdf, setSelectedPdf] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -55,6 +58,10 @@ function HomePage() {
   const [originRect, setOriginRect] = useState(null);
   const [currentSlideshowIndex, setCurrentSlideshowIndex] = useState(0);
   const [pullToRefresh, setPullToRefresh] = useState({ pulling: false, distance: 0, refreshing: false });
+  const [editLock, setEditLock] = useState(null); // { lockedBy: sessionId, lockedAt: timestamp }
+  const [sessionId] = useState(() => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+  const lastActivityRef = useRef(Date.now());
+  const inactivityTimerRef = useRef(null);
   const [highlightedJobId, setHighlightedJobId] = useState(null);
   const navigate = useNavigate();
 
@@ -169,6 +176,20 @@ function HomePage() {
   const handleWebSocketMessage = useCallback((message) => {
     console.log('Received update:', message.type);
 
+    // Handle edit lock messages
+    if (message.type === 'edit_lock_acquired') {
+      const { sessionId: lockedBy, timestamp } = message.data;
+      setEditLock({ lockedBy, lockedAt: timestamp });
+      console.log('[Edit Lock] Acquired by session:', lockedBy);
+      return;
+    }
+
+    if (message.type === 'edit_lock_released') {
+      setEditLock(null);
+      console.log('[Edit Lock] Released');
+      return;
+    }
+
     // Handle notifications (trigger browser notifications for updates)
     if (message.type === 'pdf_uploaded' && message.data?.is_pending === 0) {
       // Only notify for jobs uploaded directly to the board (not pending)
@@ -203,12 +224,7 @@ function HomePage() {
       return;
     }
 
-    // Skip other reloads during edit mode
-    if (editMode) {
-      console.log('Skipping reload during edit mode');
-      return;
-    }
-
+    // During edit mode, mark that external changes occurred but still apply them
     const relevantTypes = [
       'pdf_uploaded',
       'pdf_deleted',
@@ -234,11 +250,25 @@ function HomePage() {
         setOriginRect(null);
       }
 
-      loadData();
+      if (editMode) {
+        // During edit mode, only apply pending uploads from other admins
+        // Board changes are prevented by edit lock
+        if (message.type === 'pdf_uploaded' && message.data?.is_pending) {
+          console.log('Pending PDF uploaded while in edit mode - updating working copy');
+          loadData().then(() => {
+            setPendingPdfs(prev => {
+              setWorkingPendingPdfs([...prev]);
+              return prev;
+            });
+          });
+        }
+      } else {
+        loadData();
+      }
     }
   }, [editMode, loadData, viewMode]);
 
-  useWebSocket(handleWebSocketMessage, true);
+  const { send: sendWebSocketMessage } = useWebSocket(handleWebSocketMessage, true);
 
   // Pull-to-refresh functionality
   useEffect(() => {
@@ -323,9 +353,44 @@ function HomePage() {
     loadData();
   };
 
+  // Track activity to prevent inactivity timeout
+  const trackActivity = useCallback(() => {
+    if (editMode) {
+      lastActivityRef.current = Date.now();
+    }
+  }, [editMode]);
+
   const handleReorder = (newPdfs) => {
     setWorkingPdfs(newPdfs);
     setHasUnsavedChanges(true);
+    trackActivity();
+  };
+
+  const handleCancelEdit = () => {
+    if (hasUnsavedChanges) {
+      if (!confirm('You have unsaved changes. Are you sure you want to discard them?')) {
+        return;
+      }
+    }
+
+    // Release edit lock
+    sendWebSocketMessage({
+      type: 'edit_lock_released',
+      data: { sessionId }
+    });
+    console.log('[Edit Lock] Released lock (cancelled)');
+
+    // Clear inactivity timer
+    if (inactivityTimerRef.current) {
+      clearInterval(inactivityTimerRef.current);
+      inactivityTimerRef.current = null;
+    }
+
+    // Discard changes and exit edit mode
+    setEditMode(false);
+    setHasUnsavedChanges(false);
+    setWorkingPdfs([]);
+    setWorkingPendingPdfs([]);
   };
 
   const handleToggleEditMode = async () => {
@@ -411,14 +476,56 @@ function HomePage() {
           return;
         }
       }
+
+      // Release edit lock
+      sendWebSocketMessage({
+        type: 'edit_lock_released',
+        data: { sessionId }
+      });
+      console.log('[Edit Lock] Released lock');
+
+      // Clear inactivity timer
+      if (inactivityTimerRef.current) {
+        clearInterval(inactivityTimerRef.current);
+        inactivityTimerRef.current = null;
+      }
+
       setEditMode(false);
       setHasUnsavedChanges(false);
     } else {
-      // Entering edit mode - create working copies
+      // Check if edit mode is locked by another admin
+      if (editLock && editLock.lockedBy !== sessionId) {
+        // Check if lock is stale (more than 6 minutes old)
+        const lockAge = Date.now() - editLock.lockedAt;
+        if (lockAge < 6 * 60 * 1000) { // 6 minutes
+          alert('Another admin is currently in edit mode. Please wait until they finish.');
+          return;
+        }
+        console.log('[Edit Lock] Stale lock detected, proceeding');
+      }
+
+      // Entering edit mode - acquire lock
+      sendWebSocketMessage({
+        type: 'edit_lock_acquired',
+        data: { sessionId, timestamp: Date.now() }
+      });
+      console.log('[Edit Lock] Acquired lock');
+
+      setEditMode(true);
       setWorkingPdfs([...pdfs]);
       setWorkingPendingPdfs([...pendingPdfs]);
       setHasUnsavedChanges(false);
-      setEditMode(true);
+      lastActivityRef.current = Date.now();
+
+      // Start inactivity timer (check every 30 seconds)
+      inactivityTimerRef.current = setInterval(() => {
+        const inactiveTime = Date.now() - lastActivityRef.current;
+        if (inactiveTime >= 5 * 60 * 1000) { // 5 minutes
+          console.log('[Edit Lock] Inactivity timeout - auto-exiting edit mode');
+          alert('Edit mode automatically closed due to 5 minutes of inactivity.');
+          handleCancelEdit();
+        }
+      }, 30000); // Check every 30 seconds
 
       // Request notification permission for admins and subscribe to push
       requestNotificationPermission()
@@ -440,12 +547,24 @@ function HomePage() {
     }
 
     try {
+      // Check if this is a pending PDF before deleting
+      const isPendingPdf = workingPendingPdfs.some(pdf => pdf && pdf.id === id);
+
       await pdfAPI.delete(id);
 
       if (editMode) {
         setWorkingPdfs(workingPdfs.filter((pdf) => pdf && pdf.id !== id));
         setWorkingPendingPdfs(workingPendingPdfs.filter((pdf) => pdf && pdf.id !== id));
-        setHasUnsavedChanges(true);
+
+        // Also update main state for pending PDFs to keep in sync
+        if (isPendingPdf) {
+          setPendingPdfs(pendingPdfs.filter((pdf) => pdf && pdf.id !== id));
+          // Pending PDF deletes are independent - don't mark as having unsaved changes
+        } else {
+          // Board PDF deletes require clicking "Save" to update positions
+          setHasUnsavedChanges(true);
+          trackActivity();
+        }
       } else {
         setPdfs(pdfs.filter((pdf) => pdf && pdf.id !== id));
         setPendingPdfs(pendingPdfs.filter((pdf) => pdf && pdf.id !== id));
@@ -462,9 +581,22 @@ function HomePage() {
     setUploadToPending(true);
 
     if (editMode && uploadedPdf) {
+      // Uploads to pending are independent and don't require "Save"
       if (uploadedPdf.is_pending) {
-        setWorkingPendingPdfs([...workingPendingPdfs, uploadedPdf]);
+        // Reload data to get the uploaded PDF from backend
+        await loadData();
+        // Update working copies to include the new pending PDF
+        setPdfs(prev => {
+          setWorkingPdfs([...prev]);
+          return prev;
+        });
+        setPendingPdfs(prev => {
+          setWorkingPendingPdfs([...prev]);
+          return prev;
+        });
+        // Don't mark as having unsaved changes - pending uploads are independent
       } else {
+        // Uploads to board positions still require saving
         if (uploadTargetPosition !== null) {
           const newWorkingPdfs = [...workingPdfs];
           newWorkingPdfs.splice(uploadTargetPosition - 1, 0, uploadedPdf);
@@ -472,8 +604,8 @@ function HomePage() {
         } else {
           setWorkingPdfs([...workingPdfs, uploadedPdf]);
         }
+        setHasUnsavedChanges(true);
       }
-      setHasUnsavedChanges(true);
     } else {
       await loadData();
     }
@@ -511,7 +643,11 @@ function HomePage() {
     await loadData();
   };
 
-  const handleMetadataUpdate = (pdfId, metadata) => {
+  const handleMetadataUpdate = async (pdfId, metadata) => {
+    // Check if this is a pending PDF
+    const isPendingPdf = workingPendingPdfs.some(pdf => pdf && pdf.id === pdfId);
+
+    // Update working copies
     setWorkingPdfs(prevWorking =>
       prevWorking.map(pdf => (pdf && pdf.id === pdfId) ? { ...pdf, ...metadata } : pdf)
     );
@@ -527,8 +663,24 @@ function HomePage() {
         prevPending.map(pdf => (pdf && pdf.id === pdfId) ? { ...pdf, ...metadata } : pdf)
       );
     } else {
-      // Mark changes as unsaved when in edit mode
-      setHasUnsavedChanges(true);
+      // Pending PDF metadata updates are independent and save immediately
+      if (isPendingPdf) {
+        try {
+          await pdfAPI.updateMetadata(pdfId, metadata);
+          // Update main state as well to keep in sync
+          setPendingPdfs(prevPending =>
+            prevPending.map(pdf => (pdf && pdf.id === pdfId) ? { ...pdf, ...metadata } : pdf)
+          );
+          // Don't mark as having unsaved changes - pending metadata updates are independent
+        } catch (error) {
+          console.error('Error saving pending PDF metadata:', error);
+          alert('Failed to save metadata changes');
+        }
+      } else {
+        // Board PDF metadata updates require clicking "Save"
+        setHasUnsavedChanges(true);
+        trackActivity();
+      }
     }
   };
 
@@ -560,12 +712,18 @@ function HomePage() {
     }
   };
 
-  const handleEditPlaceholder = async (placeholder) => {
-    const newText = prompt('Enter placeholder text:', placeholder.placeholder_text || 'PLACEHOLDER');
-    if (newText === null) return; // User cancelled
+  const handleEditPlaceholder = (placeholder) => {
+    setSelectedPlaceholder(placeholder);
+    setShowPlaceholderEdit(true);
+  };
+
+  const handleSavePlaceholder = async (newText) => {
+    if (!selectedPlaceholder) return;
 
     try {
-      await pdfAPI.updateMetadata(placeholder.id, { placeholder_text: newText });
+      await pdfAPI.updateMetadata(selectedPlaceholder.id, { placeholder_text: newText });
+      setShowPlaceholderEdit(false);
+      setSelectedPlaceholder(null);
       await loadData(); // Reload to show the updated text
     } catch (error) {
       console.error('Error updating placeholder text:', error);
@@ -1030,6 +1188,7 @@ function HomePage() {
                 <button
                   onClick={handleLogout}
                   className={`text-xs sm:text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white ${!isTransitioning ? 'transition-colors' : ''} px-2 py-1 sm:px-0 sm:py-0`}
+                  title="Logout from admin account"
                 >
                   Logout
                 </button>
@@ -1037,6 +1196,7 @@ function HomePage() {
                 <button
                   onClick={() => navigate('/login')}
                   className={`text-xs sm:text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white ${!isTransitioning ? 'transition-colors' : ''} px-2 py-1 sm:px-0 sm:py-0`}
+                  title="Login to admin panel"
                 >
                   Admin
                 </button>
@@ -1058,14 +1218,23 @@ function HomePage() {
                     ? 'bg-blue-600 text-white hover:bg-blue-700'
                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
                 }`}
+                title={editMode ? (hasUnsavedChanges ? 'Save changes and exit edit mode' : 'Exit edit mode') : 'Enter edit mode to reorder and manage jobs'}
               >
                 {editMode ? 'Save' : 'Edit'}
               </button>
               {editMode && (
                 <>
                   <button
+                    onClick={handleCancelEdit}
+                    className={`px-3 sm:px-4 py-1.5 sm:py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 ${!isTransitioning ? 'transition-colors' : ''} text-sm whitespace-nowrap`}
+                    title="Discard all changes and exit edit mode"
+                  >
+                    Cancel
+                  </button>
+                  <button
                     onClick={() => setShowSettings(true)}
                     className={`px-3 sm:px-4 py-1.5 sm:py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 ${!isTransitioning ? 'transition-colors' : ''} text-sm whitespace-nowrap`}
+                    title="Configure grid size and aspect ratio"
                   >
                     <span className="hidden sm:inline">Grid Settings</span>
                     <span className="sm:hidden">Grid</span>
@@ -1073,6 +1242,7 @@ function HomePage() {
                   <button
                     onClick={() => setShowLabelManagement(true)}
                     className={`px-3 sm:px-4 py-1.5 sm:py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 ${!isTransitioning ? 'transition-colors' : ''} text-sm whitespace-nowrap`}
+                    title="Create, edit, and delete job labels"
                   >
                     <span className="hidden sm:inline">Manage Labels</span>
                     <span className="sm:hidden">Labels</span>
@@ -1080,11 +1250,27 @@ function HomePage() {
                   <button
                     onClick={() => navigate('/admin/ocr-settings')}
                     className={`px-3 sm:px-4 py-1.5 sm:py-2 bg-teal-600 text-white rounded-lg font-medium hover:bg-teal-700 ${!isTransitioning ? 'transition-colors' : ''} text-sm whitespace-nowrap`}
+                    title="Configure OCR extraction settings for job numbers and types"
                   >
                     <span className="hidden sm:inline">OCR Settings</span>
                     <span className="sm:hidden">OCR</span>
                   </button>
                 </>
+              )}
+              {!editMode && (
+                <button
+                  onClick={handleUploadToPending}
+                  disabled={editLock !== null}
+                  className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-medium ${!isTransitioning ? 'transition-colors' : ''} text-sm whitespace-nowrap ${
+                    editLock !== null
+                      ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                      : 'bg-green-600 text-white hover:bg-green-700'
+                  }`}
+                  title={editLock !== null ? 'Upload disabled while another admin is in edit mode' : 'Upload PDFs to pending section'}
+                >
+                  <span className="hidden sm:inline">Upload to Pending</span>
+                  <span className="sm:hidden">Upload</span>
+                </button>
               )}
               <button
                 onClick={() => setShowAlertModal(true)}
@@ -1220,6 +1406,17 @@ function HomePage() {
             <LabelManagementModal
               onClose={() => setShowLabelManagement(false)}
               onUpdate={loadData}
+            />
+          )}
+
+          {showPlaceholderEdit && selectedPlaceholder && (
+            <PlaceholderEditModal
+              placeholder={selectedPlaceholder}
+              onClose={() => {
+                setShowPlaceholderEdit(false);
+                setSelectedPlaceholder(null);
+              }}
+              onSave={handleSavePlaceholder}
             />
           )}
 

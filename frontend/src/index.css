@@ -74,9 +74,9 @@ body {
 }
 
 @utility animate-theme-header {
-  animation: theme-fade-invert 0.4s ease-in-out 0.2s backwards;
+  animation: theme-fade-invert 0.6s ease-in-out 0.15s backwards;
 }
 
 @utility animate-theme-item {
-  animation: theme-fade 0.4s ease-in-out backwards;
+  animation: theme-fade 0.6s ease-in-out backwards;
 }

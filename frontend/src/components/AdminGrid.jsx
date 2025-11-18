@@ -11,6 +11,8 @@ function AdminGrid({ pdfs, rows, cols, aspectWidth, aspectHeight, editMode, onRe
     gridTemplateColumns: `repeat(${responsiveCols}, minmax(0, 1fr))`,
   };
 
+  console.log('[AdminGrid] Render with isTransitioning:', isTransitioning);
+
   return (
     <div
       className="grid gap-2 sm:gap-4 w-full"
@@ -23,6 +25,14 @@ function AdminGrid({ pdfs, rows, cols, aspectWidth, aspectHeight, editMode, onRe
         const animationDelay = isTransitioning ? `${0.8 + index * 0.15}s` : '0s';
         // Color should switch when opacity is lowest: animationStart + (duration/2)
         const colorDelay = isTransitioning ? `${0.8 + index * 0.15 + 0.3}s` : '0s';
+
+        if (isTransitioning && index < 3) {
+          console.log(`[AdminGrid] Item ${index}:`, {
+            animationDelay,
+            colorDelay,
+            hasPdf: !!pdf
+          });
+        }
 
         return (
           <DraggableGridItem

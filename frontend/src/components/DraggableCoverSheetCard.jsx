@@ -16,19 +16,39 @@ function DraggableCoverSheetCard({
   const [editValue, setEditValue] = useState('');
   const { darkMode, isTransitioning } = useDarkMode();
 
+  // Delayed dark mode for this specific card (updates at item's color transition time)
+  const [delayedDarkMode, setDelayedDarkMode] = useState(darkMode);
+
+  // Update delayedDarkMode with per-item timing during transitions
+  React.useEffect(() => {
+    if (isTransitioning && colorTransitionDelay) {
+      // Parse the delay value (e.g., "0.7s" -> 700ms)
+      const delayMs = parseFloat(colorTransitionDelay) * 1000;
+      const timeout = setTimeout(() => {
+        setDelayedDarkMode(darkMode);
+      }, delayMs);
+      return () => clearTimeout(timeout);
+    } else {
+      // When not transitioning, update immediately
+      setDelayedDarkMode(darkMode);
+    }
+  }, [darkMode, isTransitioning, colorTransitionDelay]);
+
   // Log when isTransitioning changes
   React.useEffect(() => {
     if (isTransitioning && index < 3) {
       console.log(`[DraggableCoverSheetCard] Card ${index} (${pdf?.job_number || 'unknown'}):`, {
         isTransitioning,
         darkMode,
+        delayedDarkMode,
+        colorTransitionDelay,
         willDisableTransitions: !isTransitioning
       });
     }
-  }, [isTransitioning, index, pdf?.job_number, darkMode]);
+  }, [isTransitioning, index, pdf?.job_number, darkMode, delayedDarkMode, colorTransitionDelay]);
 
-  // Determine which image to use based on dark mode
-  const imageBaseName = darkMode && pdf.dark_mode_images_base
+  // Determine which image to use based on DELAYED dark mode
+  const imageBaseName = delayedDarkMode && pdf.dark_mode_images_base
     ? pdf.dark_mode_images_base
     : pdf.images_base;
   const imageSrc = imageBaseName ? `/thumbnails/${imageBaseName}-1.png` : `/thumbnails/${pdf.thumbnail}`;

@@ -87,6 +87,21 @@ wss.on('connection', (ws, req) => {
   ws.on('error', (error) => {
     console.error('❌ WebSocket error:', error);
   });
+
+  // Handle incoming messages from clients
+  ws.on('message', (message) => {
+    try {
+      const data = JSON.parse(message);
+
+      // Relay edit lock messages to all clients
+      if (data.type === 'edit_lock_acquired' || data.type === 'edit_lock_released') {
+        console.log(`📢 Relaying ${data.type} from ${data.data?.sessionId?.substring(0, 10)}...`);
+        broadcastUpdate(data.type, data.data);
+      }
+    } catch (error) {
+      console.error('❌ Error parsing WebSocket message:', error);
+    }
+  });
 });
 
 // Heartbeat to detect broken connections (increased to 60s for better stability)

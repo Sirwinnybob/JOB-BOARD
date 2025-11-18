@@ -1,7 +1,5 @@
 import { useState } from 'react';
-import axios from 'axios';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+import { alertAPI } from '../utils/api';
 
 export default function AlertModal({ isOpen, onClose }) {
   const [message, setMessage] = useState('');
@@ -27,16 +25,7 @@ export default function AlertModal({ isOpen, onClose }) {
     setSuccess(false);
 
     try {
-      const token = localStorage.getItem('token');
-      await axios.post(
-        `${API_URL}/api/alerts/broadcast`,
-        { message: message.trim() },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      await alertAPI.broadcast(message.trim());
 
       setSuccess(true);
       setMessage('');

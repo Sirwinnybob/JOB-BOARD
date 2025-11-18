@@ -11,6 +11,8 @@ function useWebSocket(onMessage, enabled = true) {
   const reconnectTimeoutRef = useRef(null);
   const reconnectAttemptsRef = useRef(0);
   const onMessageRef = useRef(onMessage);
+  const lastMessageTimeRef = useRef(Date.now());
+  const heartbeatIntervalRef = useRef(null);
 
   // Keep the ref up to date with the latest callback
   useEffect(() => {
@@ -32,10 +34,25 @@ function useWebSocket(onMessage, enabled = true) {
       ws.onopen = () => {
         console.log('✅ WebSocket connected');
         reconnectAttemptsRef.current = 0;
+        lastMessageTimeRef.current = Date.now();
+
+        // Start heartbeat monitoring
+        if (heartbeatIntervalRef.current) {
+          clearInterval(heartbeatIntervalRef.current);
+        }
+        heartbeatIntervalRef.current = setInterval(() => {
+          const timeSinceLastMessage = Date.now() - lastMessageTimeRef.current;
+          // If no message received in 90 seconds, connection might be stale
+          if (timeSinceLastMessage > 90000 && ws.readyState === WebSocket.OPEN) {
+            console.warn('⚠️  No WebSocket activity for 90s, reconnecting...');
+            ws.close();
+          }
+        }, 30000); // Check every 30 seconds
       };
 
       ws.onmessage = (event) => {
         try {
+          lastMessageTimeRef.current = Date.now();
           const data = JSON.parse(event.data);
           // Only log important message types to reduce console noise
           if (!['ping', 'pong'].includes(data.type)) {
@@ -126,11 +143,52 @@ function useWebSocket(onMessage, enabled = true) {
       if (reconnectTimeoutRef.current) {
         clearTimeout(reconnectTimeoutRef.current);
       }
+      if (heartbeatIntervalRef.current) {
+        clearInterval(heartbeatIntervalRef.current);
+      }
       if (wsRef.current) {
         wsRef.current.close();
       }
     };
   }, [connect, enabled]);
+
+  // Handle page visibility changes (PWA backgrounding/foregrounding)
+  useEffect(() => {
+    if (!enabled) return;
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        console.log('📱 App became visible, checking WebSocket connection...');
+
+        // Reset reconnection attempts when app comes to foreground
+        reconnectAttemptsRef.current = 0;
+
+        // If connection is closed or not connected, reconnect immediately
+        if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
+          console.log('🔄 Reconnecting after app became visible...');
+          connect();
+        } else {
+          // Connection appears open, check if it's actually alive
+          const timeSinceLastMessage = Date.now() - lastMessageTimeRef.current;
+          if (timeSinceLastMessage > 60000) {
+            console.log('🔄 Connection may be stale, reconnecting...');
+            wsRef.current.close();
+            connect();
+          } else {
+            console.log('✅ WebSocket still connected');
+          }
+        }
+      } else if (document.visibilityState === 'hidden') {
+        console.log('📱 App went to background');
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [enabled, connect]);
 
   return {
     isConnected: wsRef.current?.readyState === WebSocket.OPEN,

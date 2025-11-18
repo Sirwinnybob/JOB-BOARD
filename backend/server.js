@@ -611,25 +611,45 @@ app.put('/api/pdfs/:id/status', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'is_pending is required' });
     }
 
-    db.run(
-      'UPDATE pdfs SET is_pending = ? WHERE id = ?',
-      [is_pending ? 1 : 0, id],
-      function (err) {
-        if (err) {
-          console.error('Database error:', err);
-          return res.status(500).json({ error: 'Database error' });
-        }
-
-        if (this.changes === 0) {
-          return res.status(404).json({ error: 'PDF not found' });
-        }
-
-        // Broadcast update to all clients
-        broadcastUpdate('pdf_status_updated', { id, is_pending: is_pending ? 1 : 0 });
-
-        res.json({ success: true, id, is_pending: is_pending ? 1 : 0 });
+    // First, get the current status to check if we're activating a pending job
+    db.get('SELECT is_pending FROM pdfs WHERE id = ?', [id], (err, row) => {
+      if (err) {
+        console.error('Database error:', err);
+        return res.status(500).json({ error: 'Database error' });
       }
-    );
+
+      if (!row) {
+        return res.status(404).json({ error: 'PDF not found' });
+      }
+
+      const oldIsPending = row.is_pending;
+      const newIsPending = is_pending ? 1 : 0;
+
+      db.run(
+        'UPDATE pdfs SET is_pending = ? WHERE id = ?',
+        [newIsPending, id],
+        function (err) {
+          if (err) {
+            console.error('Database error:', err);
+            return res.status(500).json({ error: 'Database error' });
+          }
+
+          if (this.changes === 0) {
+            return res.status(404).json({ error: 'PDF not found' });
+          }
+
+          // If moving from pending to active, send job_activated event
+          if (oldIsPending === 1 && newIsPending === 0) {
+            broadcastUpdate('job_activated', { id, is_pending: newIsPending });
+          } else {
+            // Otherwise, send regular status update
+            broadcastUpdate('pdf_status_updated', { id, is_pending: newIsPending });
+          }
+
+          res.json({ success: true, id, is_pending: newIsPending });
+        }
+      );
+    });
   } catch (error) {
     console.error('Error updating PDF status:', error);
     res.status(500).json({ error: 'Internal server error' });

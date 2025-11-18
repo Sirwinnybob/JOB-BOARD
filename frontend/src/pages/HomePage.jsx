@@ -112,7 +112,11 @@ function HomePage() {
     console.log('Received update:', message.type);
 
     // Handle notifications (trigger browser notifications for updates)
-    if (message.type === 'pdf_uploaded') {
+    if (message.type === 'pdf_uploaded' && message.data?.is_pending === 0) {
+      // Only notify for jobs uploaded directly to the board (not pending)
+      showNewJobNotification();
+    } else if (message.type === 'job_activated') {
+      // Notify when a job is moved from pending to active board
       showNewJobNotification();
     } else if (message.type === 'pdfs_reordered') {
       showJobsMovedNotification();
@@ -153,6 +157,7 @@ function HomePage() {
       'pdfs_reordered',
       'pdf_labels_updated',
       'pdf_status_updated',
+      'job_activated',
       'pdf_metadata_updated',
       'pdf_dark_mode_ready',
       'label_created',

@@ -22,6 +22,7 @@ export function DarkModeProvider({ children }) {
   });
 
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [buttonPosition, setButtonPosition] = useState({ x: 0, y: 0 });
   const transitionTimeoutRef = useRef(null);
   const classChangeTimeoutRef = useRef(null);
 
@@ -57,11 +58,28 @@ export function DarkModeProvider({ children }) {
     }
   }, [darkMode, isTransitioning]);
 
-  const toggleDarkMode = () => {
+  const toggleDarkMode = (event) => {
     console.log('[DarkModeContext] ========== TOGGLE START ==========');
     console.log('[DarkModeContext] Current darkMode:', darkMode);
     const newDarkMode = !darkMode;
     console.log('[DarkModeContext] New darkMode will be:', newDarkMode);
+
+    // Capture button position from click event
+    if (event) {
+      const x = event.clientX;
+      const y = event.clientY;
+      setButtonPosition({ x, y });
+
+      // Set CSS custom properties for circular reveal animation
+      document.documentElement.style.setProperty('--theme-toggle-x', `${x}px`);
+      document.documentElement.style.setProperty('--theme-toggle-y', `${y}px`);
+
+      // Calculate the maximum distance from click point to corner of viewport
+      const maxX = Math.max(x, window.innerWidth - x);
+      const maxY = Math.max(y, window.innerHeight - y);
+      const maxRadius = Math.sqrt(maxX * maxX + maxY * maxY);
+      document.documentElement.style.setProperty('--theme-toggle-radius', `${maxRadius}px`);
+    }
 
     // Clear any existing timeouts
     if (transitionTimeoutRef.current) {

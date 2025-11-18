@@ -930,15 +930,21 @@ function HomePage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800">
-      {/* Theme Transition Overlay - Reveals new theme in a circle from button */}
+    <div className="min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800 relative">
+      {/* Circular reveal overlay for background/header - Grid items render on top with their own animation */}
       {isTransitioning && (
-        <div
-          className={`fixed inset-0 z-[9999] pointer-events-none ${targetDarkMode ? 'bg-gradient-to-br from-gray-900 to-gray-800' : 'bg-gradient-to-br from-gray-100 to-gray-200'}`}
-          style={{
-            animation: 'circular-reveal 0.8s ease-in-out forwards'
-          }}
-        />
+        <>
+          {/* Old theme background - stays visible */}
+          <div className={`fixed inset-0 z-0 ${!targetDarkMode ? 'bg-gradient-to-br from-gray-900 to-gray-800' : 'bg-gradient-to-br from-gray-100 to-gray-200'}`} />
+          {/* New theme overlay - expands in circle */}
+          <div
+            className={`fixed inset-0 z-[1] ${targetDarkMode ? 'bg-gradient-to-br from-gray-900 to-gray-800' : 'bg-gradient-to-br from-gray-100 to-gray-200'}`}
+            style={{
+              clipPath: 'circle(20px at var(--theme-toggle-x) var(--theme-toggle-y))',
+              animation: 'circular-reveal 0.8s ease-in-out forwards'
+            }}
+          />
+        </>
       )}
       {/* Pull-to-Refresh Indicator */}
       {(pullToRefresh.pulling || pullToRefresh.refreshing) && (
@@ -971,7 +977,7 @@ function HomePage() {
       )}
 
       {/* Header */}
-      <header className="bg-white dark:bg-gray-800 shadow-sm">
+      <header className="bg-white dark:bg-gray-800 shadow-sm relative z-10">
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4">
           <div className="flex justify-between items-center">
             <h1 className={`text-lg sm:text-2xl font-bold text-gray-900 dark:text-white ${!isTransitioning ? 'transition-colors' : ''}`}>
@@ -1042,7 +1048,7 @@ function HomePage() {
 
       {/* Admin Toolbar - Only visible when authenticated */}
       {isAuthenticated && (
-        <div className={`bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 ${!isTransitioning ? 'transition-colors' : ''} overflow-x-auto`}>
+        <div className={`bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 ${!isTransitioning ? 'transition-colors' : ''} overflow-x-auto relative z-10`}>
           <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2 sm:py-3">
             <div className="flex flex-nowrap sm:flex-wrap gap-2 sm:gap-3 min-w-max sm:min-w-0">
               <button
@@ -1093,7 +1099,7 @@ function HomePage() {
       )}
 
       {/* Main Content */}
-      <main className={viewMode === 'grid' ? 'max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8' : 'w-full'}>
+      <main className={viewMode === 'grid' ? 'max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 relative z-10' : 'w-full relative z-10'}>
         {isAuthenticated && editMode ? (
           <DndContext
             sensors={sensors}

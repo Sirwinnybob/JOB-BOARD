@@ -71,10 +71,13 @@ function PublicPlaceholder({ placeholder, colorTransitionDelay, onClick }) {
       data-pdf-id={placeholder.id}
       style={getBackgroundStyle()}
     >
-      <div className="w-full h-full flex items-center justify-center p-2 sm:p-3 md:p-4">
+      <div className="w-full h-full flex items-center justify-center px-3 sm:px-4 md:px-6 py-2 sm:py-3 md:py-4">
         <p
-          className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-center break-words leading-tight"
-          style={getTextStyle()}
+          className="font-bold text-center break-words leading-tight w-full"
+          style={{
+            ...getTextStyle(),
+            fontSize: 'clamp(1rem, 5vw, 3rem)'
+          }}
         >
           {placeholder.placeholder_text || 'PLACEHOLDER'}
         </p>

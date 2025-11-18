@@ -60,12 +60,9 @@ export function DarkModeProvider({ children }) {
   }, [darkMode, isTransitioning]);
 
   const toggleDarkMode = (event) => {
-    console.log('[DarkModeContext] ========== TOGGLE START ==========');
-    console.log('[DarkModeContext] Current darkMode:', darkMode);
     const newDarkMode = !darkMode;
-    console.log('[DarkModeContext] New darkMode will be:', newDarkMode);
 
-    // Capture button position from click event
+    // Capture button position from click event for circular reveal
     if (event) {
       const x = event.clientX;
       const y = event.clientY;
@@ -75,50 +72,49 @@ export function DarkModeProvider({ children }) {
       document.documentElement.style.setProperty('--theme-toggle-x', `${x}px`);
       document.documentElement.style.setProperty('--theme-toggle-y', `${y}px`);
 
-      // Calculate the maximum distance from click point to corner of viewport
+      // Calculate radius to cover entire viewport from click point
+      // Add extra padding to ensure full coverage on all devices
       const maxX = Math.max(x, window.innerWidth - x);
       const maxY = Math.max(y, window.innerHeight - y);
-      const maxRadius = Math.sqrt(maxX * maxX + maxY * maxY);
+      const maxRadius = Math.sqrt(maxX * maxX + maxY * maxY) * 1.5; // 1.5x for safety margin
       document.documentElement.style.setProperty('--theme-toggle-radius', `${maxRadius}px`);
+    }
+
+    // Check if View Transitions API is supported
+    if (!document.startViewTransition) {
+      // Fallback: instant change without animation
+      setDarkMode(newDarkMode);
+      if (newDarkMode) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+      return;
     }
 
     // Clear any existing timeouts
     if (transitionTimeoutRef.current) {
       clearTimeout(transitionTimeoutRef.current);
     }
-    if (classChangeTimeoutRef.current) {
-      clearTimeout(classChangeTimeoutRef.current);
-    }
 
-    // Set transitioning flag FIRST and capture target theme
+    // Use View Transitions API for smooth, native animation
     setIsTransitioning(true);
-    setTargetDarkMode(newDarkMode); // Capture the target theme for overlay
-    console.log('[DarkModeContext] t=0ms: isTransitioning set to true');
-    console.log('[DarkModeContext] t=0ms: targetDarkMode set to', newDarkMode);
-    console.log('[DarkModeContext] t=0ms: darkMode state will update at t=400ms (NOT now!)');
+    setTargetDarkMode(newDarkMode);
 
-    // Apply theme change immediately for circular reveal
-    console.log('[DarkModeContext] t=0ms: Applying theme change immediately');
+    const transition = document.startViewTransition(() => {
+      // Update React state and DOM
+      setDarkMode(newDarkMode);
+      if (newDarkMode) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    });
 
-    // Update React state AND DOM together at the same time
-    setDarkMode(newDarkMode);
-    console.log('[DarkModeContext] t=0ms: darkMode React state updated to', newDarkMode);
-
-    if (newDarkMode) {
-      document.documentElement.classList.add('dark');
-      console.log('[DarkModeContext] t=0ms: Added "dark" class to DOM');
-    } else {
-      document.documentElement.classList.remove('dark');
-      console.log('[DarkModeContext] t=0ms: Removed "dark" class from DOM');
-    }
-
-    // Reset transition state after all animations complete
-    // Longest: last item (24) at 0.8s + (23*0.15s) + 0.6s duration = ~4.85s
-    transitionTimeoutRef.current = setTimeout(() => {
-      console.log('[DarkModeContext] t=5000ms: Animation complete, resetting isTransitioning');
+    // Reset transition state when animation completes
+    transition.finished.finally(() => {
       setIsTransitioning(false);
-      console.log('[DarkModeContext] ========== TOGGLE END ==========');
-    }, 5000);
+    });
   };
 
   // Cleanup timeouts on unmount

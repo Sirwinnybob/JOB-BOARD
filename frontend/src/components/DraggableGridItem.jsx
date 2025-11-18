@@ -44,8 +44,8 @@ function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10
 
   if (pdf) {
     // Calculate when this item's color should change (at opacity midpoint)
-    // Delay is relative to when DOM class changes (t=400ms), not from t=0!
-    const colorTransitionDelay = isTransitioning ? `${0.8 + index * 0.15 + 0.3 - 0.4}s` : '0s';
+    // With View Transitions: DOM class changes immediately, so delay is just animation delay + midpoint
+    const colorTransitionDelay = isTransitioning ? `${index * 0.15 + 0.3}s` : '0s';
 
     return (
       <div
@@ -93,8 +93,8 @@ function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10
 
   // Empty slot
   // Calculate when this item's color should change (at opacity midpoint)
-  // Delay is relative to when DOM class changes (t=400ms), not from t=0!
-  const colorTransitionDelay = isTransitioning ? `${0.8 + index * 0.15 + 0.3 - 0.4}s` : '0s';
+  // With View Transitions: DOM class changes immediately, so delay is just animation delay + midpoint
+  const colorTransitionDelay = isTransitioning ? `${index * 0.15 + 0.3}s` : '0s';
 
   return (
     <div

@@ -426,45 +426,44 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
           return (
             <div
               key={pdf.id}
-              className={`flex-shrink-0 ${isMobilePortrait ? 'w-full' : 'w-[60%]'} h-full snap-center flex items-center justify-center p-4`}
+              className={`flex-shrink-0 ${isMobilePortrait ? 'w-full' : 'w-[60%]'} h-full snap-center flex flex-col ${isMobilePortrait ? 'p-2' : 'p-4'}`}
             >
+              {/* Job Info Header */}
               <div
-                className="relative h-full max-w-6xl w-full mx-auto flex items-center justify-center"
+                className="flex-shrink-0 rounded-t-lg shadow-md border border-gray-300 dark:border-gray-600 px-3 py-2 flex justify-between items-center text-xs sm:text-sm transition-colors"
+                style={{
+                  backgroundColor: pdf.construction_method
+                    ? pdf.construction_method === 'Face Frame'
+                      ? 'rgb(150, 179, 82)'
+                      : pdf.construction_method === 'Frameless'
+                      ? 'rgb(237, 146, 35)'
+                      : 'rgb(0, 133, 138)'
+                    : 'rgb(229, 231, 235)'
+                }}
               >
-                {/* Job Info Header */}
-                <div
-                  className="absolute top-0 left-0 right-0 z-20 bg-white dark:bg-gray-800 rounded-t-lg shadow-md border border-gray-300 dark:border-gray-600 px-3 py-2 flex justify-between items-center text-xs sm:text-sm transition-colors"
-                  style={{
-                    backgroundColor: pdf.construction_method
-                      ? pdf.construction_method === 'Face Frame'
-                        ? 'rgb(150, 179, 82)'
-                        : pdf.construction_method === 'Frameless'
-                        ? 'rgb(237, 146, 35)'
-                        : 'rgb(0, 133, 138)'
-                      : undefined
-                  }}
-                >
-                  <div className="flex items-center gap-1">
-                    <span className={`font-semibold hidden sm:inline ${pdf.construction_method ? 'text-white' : 'text-gray-600 dark:text-gray-400'}`}>
-                      Job#:
-                    </span>
-                    <span className={`font-bold ${pdf.construction_method ? 'text-white' : 'text-gray-900 dark:text-white'}`}>
-                      {pdf.job_number || '—'}
-                    </span>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <span className={`font-semibold hidden sm:inline ${pdf.construction_method ? 'text-white' : 'text-gray-600 dark:text-gray-400'}`}>
-                      Type:
-                    </span>
-                    <span className={`font-bold ${pdf.construction_method ? 'text-white' : 'text-gray-900 dark:text-white'}`}>
-                      {isMobilePortrait
-                        ? (pdf.construction_method === 'Face Frame' ? 'FF' : pdf.construction_method === 'Frameless' ? 'FL' : pdf.construction_method || '—')
-                        : (pdf.construction_method || '—')
-                      }
-                    </span>
-                  </div>
+                <div className="flex items-center gap-1">
+                  <span className={`font-semibold hidden sm:inline ${pdf.construction_method ? 'text-white' : 'text-gray-600 dark:text-gray-400'}`}>
+                    Job#:
+                  </span>
+                  <span className={`font-bold ${pdf.construction_method ? 'text-white' : 'text-gray-900 dark:text-white'}`}>
+                    {pdf.job_number || '—'}
+                  </span>
                 </div>
+                <div className="flex items-center gap-1">
+                  <span className={`font-semibold hidden sm:inline ${pdf.construction_method ? 'text-white' : 'text-gray-600 dark:text-gray-400'}`}>
+                    Type:
+                  </span>
+                  <span className={`font-bold ${pdf.construction_method ? 'text-white' : 'text-gray-900 dark:text-white'}`}>
+                    {isMobilePortrait
+                      ? (pdf.construction_method === 'Face Frame' ? 'FF' : pdf.construction_method === 'Frameless' ? 'FL' : pdf.construction_method || '—')
+                      : (pdf.construction_method || '—')
+                    }
+                  </span>
+                </div>
+              </div>
 
+              {/* Image Container */}
+              <div className="relative flex-1 max-w-6xl w-full mx-auto flex items-center justify-center overflow-hidden">
                 {pdf.is_placeholder ? (
                   <div
                     className="max-w-full max-h-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-lg shadow-md border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center p-4 sm:p-6 md:p-8 transition-colors"
@@ -513,8 +512,8 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
           );
         })}
 
-        {/* Right spacer - allows last slide to center */}
-        <div className="flex-shrink-0 w-[20%] h-full snap-end"></div>
+        {/* Right spacer - allows last slide to center (hidden in mobile portrait) */}
+        {!isMobilePortrait && <div className="flex-shrink-0 w-[20%] h-full snap-end"></div>}
       </div>
 
       {/* Navigation Arrows */}

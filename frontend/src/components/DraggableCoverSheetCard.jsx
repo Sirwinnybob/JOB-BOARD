@@ -143,7 +143,7 @@ function DraggableCoverSheetCard({
         <div className="min-w-0">
           <div className="flex items-center gap-1">
             <span
-              className={`font-semibold ${pdf.construction_method ? 'text-white' : 'text-gray-600 dark:text-gray-400'}`}
+              className={`font-semibold hidden md:inline ${pdf.construction_method ? 'text-white' : 'text-gray-600 dark:text-gray-400'}`}
               style={getColorTransitionStyle(['color'])}
             >
               Job#:
@@ -187,7 +187,7 @@ function DraggableCoverSheetCard({
         <div className="min-w-0">
           <div className="flex items-center gap-1">
             <span
-              className={`font-semibold ${pdf.construction_method ? 'text-white' : 'text-gray-600 dark:text-gray-400'}`}
+              className={`font-semibold hidden md:inline ${pdf.construction_method ? 'text-white' : 'text-gray-600 dark:text-gray-400'}`}
               style={getColorTransitionStyle(['color'])}
             >
               Type:
@@ -212,23 +212,42 @@ function DraggableCoverSheetCard({
                 <option value="Both">Both</option>
               </select>
             ) : (
-              <span
-                onClick={(e) => {
-                  if (editMode) {
-                    e.stopPropagation();
-                    handleStartEdit('construction_method', pdf.construction_method);
-                  }
-                }}
-                className={`flex-1 truncate px-1 rounded font-bold ${
-                  pdf.construction_method ? 'text-white' : 'text-gray-900 dark:text-white'
-                } ${
-                  editMode ? 'cursor-pointer hover:bg-black/10' : 'cursor-default'
-                }`}
-                style={getColorTransitionStyle(['color'])}
-                title={editMode ? (pdf.construction_method || 'Click to select type') : pdf.construction_method}
-              >
-                {pdf.construction_method || '—'}
-              </span>
+              <>
+                <span
+                  onClick={(e) => {
+                    if (editMode) {
+                      e.stopPropagation();
+                      handleStartEdit('construction_method', pdf.construction_method);
+                    }
+                  }}
+                  className={`hidden md:inline flex-1 truncate px-1 rounded font-bold ${
+                    pdf.construction_method ? 'text-white' : 'text-gray-900 dark:text-white'
+                  } ${
+                    editMode ? 'cursor-pointer hover:bg-black/10' : 'cursor-default'
+                  }`}
+                  style={getColorTransitionStyle(['color'])}
+                  title={editMode ? (pdf.construction_method || 'Click to select type') : pdf.construction_method}
+                >
+                  {pdf.construction_method || '—'}
+                </span>
+                <span
+                  onClick={(e) => {
+                    if (editMode) {
+                      e.stopPropagation();
+                      handleStartEdit('construction_method', pdf.construction_method);
+                    }
+                  }}
+                  className={`md:hidden flex-1 truncate px-1 rounded font-bold ${
+                    pdf.construction_method ? 'text-white' : 'text-gray-900 dark:text-white'
+                  } ${
+                    editMode ? 'cursor-pointer hover:bg-black/10' : 'cursor-default'
+                  }`}
+                  style={getColorTransitionStyle(['color'])}
+                  title={editMode ? (pdf.construction_method || 'Click to select type') : pdf.construction_method}
+                >
+                  {pdf.construction_method === 'Face Frame' ? 'FF' : pdf.construction_method === 'Frameless' ? 'FL' : pdf.construction_method || '—'}
+                </span>
+              </>
             )}
           </div>
         </div>
@@ -288,11 +307,11 @@ function DraggableCoverSheetCard({
 
       {/* Labels */}
       {pdf.labels && pdf.labels.length > 0 && (
-        <div className="absolute top-2 left-2 right-2 flex flex-wrap gap-1">
+        <div className="absolute top-1 left-1 right-1 flex flex-wrap gap-0.5 sm:gap-1 sm:top-2 sm:left-2 sm:right-2">
           {pdf.labels.map((label) => (
             <span
               key={label.id}
-              className="px-2 py-0.5 text-xs font-bold text-white rounded shadow-lg"
+              className="px-1.5 py-0.5 text-[10px] sm:text-xs font-bold text-white rounded shadow-lg"
               style={{ backgroundColor: label.color }}
             >
               {label.name}

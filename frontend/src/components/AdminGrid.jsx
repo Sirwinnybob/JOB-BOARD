@@ -20,9 +20,10 @@ function AdminGrid({ pdfs, rows, cols, aspectWidth, aspectHeight, editMode, onRe
     >
       {Array.from({ length: totalSlots }).map((_, index) => {
         const pdf = pdfs[index];
-        // Start grid items after background/header finish (at 0.8s)
+        // With View Transitions API: circular reveal animates 0-0.8s
+        // Grid items start fading in sync, cascading from top-left
         // Each item starts 150ms after the previous for visible cascade
-        const animationDelay = isTransitioning ? `${0.8 + index * 0.15}s` : '0s';
+        const animationDelay = isTransitioning ? `${index * 0.15}s` : '0s';
 
         if (isTransitioning && index < 3) {
           console.log(`[AdminGrid] Item ${index}:`, {

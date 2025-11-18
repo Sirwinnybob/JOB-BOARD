@@ -1092,14 +1092,15 @@ function HomePage() {
       {/* Circular reveal overlay for background/header - Grid items render on top with their own animation */}
       {isTransitioning && (
         <>
-          {/* Old theme background - stays visible */}
-          <div className={`fixed inset-0 z-0 ${!targetDarkMode ? 'bg-gradient-to-br from-gray-900 to-gray-800' : 'bg-gradient-to-br from-gray-100 to-gray-200'}`} />
-          {/* New theme overlay - expands in circle */}
+          {/* Light theme background - always stays visible underneath */}
+          <div className="fixed inset-0 z-0 bg-gradient-to-br from-gray-100 to-gray-200" />
+          {/* Dark theme overlay - expands for dark mode, retracts for light mode */}
           <div
-            className={`fixed inset-0 z-[1] ${targetDarkMode ? 'bg-gradient-to-br from-gray-900 to-gray-800' : 'bg-gradient-to-br from-gray-100 to-gray-200'}`}
+            className="fixed inset-0 z-[1] bg-gradient-to-br from-gray-900 to-gray-800"
             style={{
-              clipPath: 'circle(20px at var(--theme-toggle-x) var(--theme-toggle-y))',
-              animation: 'circular-reveal 0.8s ease-in-out forwards'
+              animation: targetDarkMode
+                ? 'circular-reveal 0.8s ease-in-out forwards'
+                : 'circular-retract 0.8s ease-in-out forwards'
             }}
           />
         </>

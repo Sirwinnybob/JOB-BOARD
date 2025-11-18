@@ -899,7 +899,7 @@ function HomePage() {
       )}
 
       {/* Header */}
-      <header className={`bg-white dark:bg-gray-800 shadow-sm transition-colors ${isTransitioning && viewMode === 'grid' ? 'animate-theme-header' : ''}`}>
+      <header className={`relative z-10 bg-white dark:bg-gray-800 shadow-sm transition-colors ${isTransitioning && viewMode === 'grid' ? 'animate-theme-header' : ''}`}>
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4">
           <div className="flex justify-between items-center">
             <h1 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white transition-colors">
@@ -961,7 +961,7 @@ function HomePage() {
 
       {/* Admin Toolbar - Only visible when authenticated */}
       {isAuthenticated && (
-        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 transition-colors overflow-x-auto">
+        <div className="relative z-10 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 transition-colors overflow-x-auto">
           <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2 sm:py-3">
             <div className="flex flex-nowrap sm:flex-wrap gap-2 sm:gap-3 min-w-max sm:min-w-0">
               <button
@@ -1002,7 +1002,7 @@ function HomePage() {
       )}
 
       {/* Main Content */}
-      <main className={viewMode === 'grid' ? 'max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8' : 'w-full'}>
+      <main className={viewMode === 'grid' ? 'relative z-10 max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8' : 'relative z-10 w-full'}>
         {isAuthenticated && editMode ? (
           <DndContext
             sensors={sensors}

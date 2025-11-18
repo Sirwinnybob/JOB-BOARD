@@ -18,7 +18,11 @@ function AdminGrid({ pdfs, rows, cols, aspectWidth, aspectHeight, editMode, onRe
     >
       {Array.from({ length: totalSlots }).map((_, index) => {
         const pdf = pdfs[index];
-        const animationDelay = isTransitioning ? `${0.4 + index * 0.1}s` : '0s';
+        // Stagger delays but ensure midpoint aligns: delay + (duration/2) = 400ms
+        // With 400ms duration, midpoint is at delay + 200ms
+        // So for midpoint at 400ms: delay = 400ms - 200ms = 200ms
+        // Add small stagger: 200ms + (index * 10ms)
+        const animationDelay = isTransitioning ? `${0.2 + index * 0.01}s` : '0s';
 
         return (
           <DraggableGridItem

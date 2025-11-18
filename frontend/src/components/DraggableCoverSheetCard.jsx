@@ -48,10 +48,15 @@ function DraggableCoverSheetCard({
   }, [isTransitioning, index, pdf?.job_number, darkMode, delayedDarkMode, colorTransitionDelay]);
 
   // Determine which image to use based on DELAYED dark mode
-  const imageBaseName = delayedDarkMode && pdf.dark_mode_images_base
-    ? pdf.dark_mode_images_base
-    : pdf.images_base;
-  const imageSrc = imageBaseName ? `/thumbnails/${imageBaseName}-1.png` : `/thumbnails/${pdf.thumbnail}`;
+  const lightImageBase = pdf.images_base;
+  const darkImageBase = pdf.dark_mode_images_base;
+
+  // Generate both image sources for cross-fade
+  const lightImageSrc = lightImageBase ? `/thumbnails/${lightImageBase}-1.png` : `/thumbnails/${pdf.thumbnail}`;
+  const darkImageSrc = darkImageBase ? `/thumbnails/${darkImageBase}-1.png` : lightImageSrc;
+
+  // For backward compatibility with single image
+  const imageSrc = delayedDarkMode && darkImageBase ? darkImageSrc : lightImageSrc;
 
   const handleStartEdit = (field, currentValue) => {
     setEditing(field);
@@ -220,12 +225,35 @@ function DraggableCoverSheetCard({
         } ${isDragging ? 'opacity-50' : ''}`}
         style={getColorTransitionStyle(['background-color', 'border-color'])}
       >
-      <img
-        src={imageSrc}
-        alt={pdf.original_name}
-        className={`w-full h-full object-cover ${!isTransitioning ? 'transition-all' : ''}`}
-        draggable={false}
-      />
+      {/* Cross-fade between light and dark images */}
+      {darkImageBase && darkImageBase !== lightImageBase ? (
+        <>
+          {/* Light mode image */}
+          <img
+            src={lightImageSrc}
+            alt={pdf.original_name}
+            className="absolute inset-0 w-full h-full object-cover transition-opacity duration-200"
+            style={{ opacity: delayedDarkMode ? 0 : 1 }}
+            draggable={false}
+          />
+          {/* Dark mode image */}
+          <img
+            src={darkImageSrc}
+            alt={pdf.original_name}
+            className="absolute inset-0 w-full h-full object-cover transition-opacity duration-200"
+            style={{ opacity: delayedDarkMode ? 1 : 0 }}
+            draggable={false}
+          />
+        </>
+      ) : (
+        /* Single image (no dark mode variant) */
+        <img
+          src={imageSrc}
+          alt={pdf.original_name}
+          className={`w-full h-full object-cover ${!isTransitioning ? 'transition-all' : ''}`}
+          draggable={false}
+        />
+      )}
 
       {/* Labels */}
       {pdf.labels && pdf.labels.length > 0 && (

@@ -14,7 +14,7 @@ import useWebSocket from '../hooks/useWebSocket';
 import { useDarkMode } from '../contexts/DarkModeContext';
 
 function HomePage() {
-  const { darkMode, toggleDarkMode, isTransitioning } = useDarkMode();
+  const { darkMode, toggleDarkMode, isTransitioning, showCircularReveal, targetDarkMode, previousDarkMode } = useDarkMode();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [pdfs, setPdfs] = useState([]);
   const [pendingPdfs, setPendingPdfs] = useState([]);
@@ -851,6 +851,23 @@ function HomePage() {
 
   return (
     <div className={`min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800 transition-colors ${isTransitioning && viewMode === 'grid' ? 'animate-theme-bg' : ''}`}>
+      {/* Circular reveal overlay for background/header - Grid items render on top with their own animation */}
+      {showCircularReveal && (
+        <>
+          {/* Old theme background - stays visible */}
+          <div className={`fixed inset-0 z-0 ${previousDarkMode ? 'bg-gradient-to-br from-gray-900 to-gray-800' : 'bg-gradient-to-br from-gray-100 to-gray-200'}`} />
+
+          {/* New theme overlay - expands in circle */}
+          <div
+            className={`fixed inset-0 z-[1] ${targetDarkMode ? 'bg-gradient-to-br from-gray-900 to-gray-800' : 'bg-gradient-to-br from-gray-100 to-gray-200'}`}
+            style={{
+              clipPath: 'circle(20px at var(--theme-toggle-x) var(--theme-toggle-y))',
+              animation: 'circular-reveal 0.8s ease-in-out forwards'
+            }}
+          />
+        </>
+      )}
+
       {/* Pull-to-Refresh Indicator */}
       {(pullToRefresh.pulling || pullToRefresh.refreshing) && (
         <div
@@ -908,7 +925,7 @@ function HomePage() {
               </button>
             )}
             <button
-              onClick={toggleDarkMode}
+              onClick={(e) => toggleDarkMode(e)}
               className="p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
               title={darkMode ? 'Light Mode' : 'Dark Mode'}
             >

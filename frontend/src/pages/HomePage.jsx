@@ -808,6 +808,9 @@ function HomePage() {
   }
 
   const gridContent = () => {
+    // Only animate in grid view, not in slideshow
+    const shouldAnimate = isTransitioning && viewMode === 'grid';
+
     if (isAuthenticated && editMode) {
       return (
         <AdminGrid
@@ -828,7 +831,7 @@ function HomePage() {
           onUploadToSlot={handleUploadToSlot}
           onMoveToPending={handleMovePdfToPending}
           onEditPlaceholder={handleEditPlaceholder}
-          isTransitioning={isTransitioning}
+          isTransitioning={shouldAnimate}
         />
       );
     }
@@ -841,13 +844,13 @@ function HomePage() {
         aspectWidth={settings.aspect_ratio_width}
         aspectHeight={settings.aspect_ratio_height}
         onPdfClick={handlePdfClick}
-        isTransitioning={isTransitioning}
+        isTransitioning={shouldAnimate}
       />
     );
   };
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800 transition-colors ${isTransitioning ? 'animate-theme-bg' : ''}`}>
+    <div className={`min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800 transition-colors ${isTransitioning && viewMode === 'grid' ? 'animate-theme-bg' : ''}`}>
       {/* Pull-to-Refresh Indicator */}
       {(pullToRefresh.pulling || pullToRefresh.refreshing) && (
         <div
@@ -879,7 +882,7 @@ function HomePage() {
       )}
 
       {/* Header */}
-      <header className={`bg-white dark:bg-gray-800 shadow-sm transition-colors ${isTransitioning ? 'animate-theme-header' : ''}`}>
+      <header className={`bg-white dark:bg-gray-800 shadow-sm transition-colors ${isTransitioning && viewMode === 'grid' ? 'animate-theme-header' : ''}`}>
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4">
           <div className="flex justify-between items-center">
             <h1 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white transition-colors">

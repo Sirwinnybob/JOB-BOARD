@@ -50,9 +50,14 @@ export function DarkModeProvider({ children }) {
 
   const toggleDarkMode = () => {
     setIsTransitioning(true);
-    setDarkMode(prev => !prev);
 
-    // Reset transition state after animation completes
+    // Delay the actual theme change to the midpoint of the animation (when opacity is lowest)
+    // This creates the effect of colors inverting during the fade
+    setTimeout(() => {
+      setDarkMode(prev => !prev);
+    }, 400); // 0.4s = 50% of 0.8s background animation
+
+    // Reset transition state after all animations complete
     setTimeout(() => {
       setIsTransitioning(false);
     }, 2500); // Allow enough time for all cascading animations

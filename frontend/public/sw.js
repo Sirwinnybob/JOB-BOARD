@@ -108,8 +108,8 @@ self.addEventListener('push', (event) => {
     const data = event.data.json();
     const options = {
       body: data.body || 'Job Board Update',
-      icon: '/icon-192.png',
-      badge: '/favicon-96x96.png',
+      icon: '/web-app-manifest-192x192.png',
+      badge: '/web-app-manifest-192x192.png',
       tag: data.tag || 'job-board-notification',
       requireInteraction: false,
       vibrate: [200, 100, 200],
@@ -129,8 +129,8 @@ self.addEventListener('message', (event) => {
 
     const options = {
       body: body || 'Job Board Update',
-      icon: '/icon-192.png',
-      badge: '/favicon-96x96.png',
+      icon: '/web-app-manifest-192x192.png',
+      badge: '/web-app-manifest-192x192.png',
       tag: tag || 'job-board-notification',
       requireInteraction: requireInteraction || false,
       vibrate: [200, 100, 200],

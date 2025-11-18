@@ -61,7 +61,7 @@ export function DarkModeProvider({ children }) {
     console.log('[DarkModeContext] ========== TOGGLE START ==========');
     console.log('[DarkModeContext] Current darkMode:', darkMode);
     const newDarkMode = !darkMode;
-    console.log('[DarkModeContext] New darkMode:', newDarkMode);
+    console.log('[DarkModeContext] New darkMode will be:', newDarkMode);
 
     // Clear any existing timeouts
     if (transitionTimeoutRef.current) {
@@ -74,16 +74,18 @@ export function DarkModeProvider({ children }) {
     // Set transitioning flag FIRST
     setIsTransitioning(true);
     console.log('[DarkModeContext] t=0ms: isTransitioning set to true');
+    console.log('[DarkModeContext] t=0ms: darkMode state will update at t=400ms (NOT now!)');
 
-    // Update state immediately (for React state, but NOT DOM yet)
-    setDarkMode(newDarkMode);
-    console.log('[DarkModeContext] t=0ms: darkMode state updated to', newDarkMode);
-
-    // CRITICAL: Delay the DOM class change until the animation midpoint
+    // CRITICAL: Delay BOTH the DOM class change AND React state update until animation midpoint
     // Background animation: 0.8s duration, midpoint at 0.4s
     // This is when opacity is lowest, so color change is less visible
     classChangeTimeoutRef.current = setTimeout(() => {
-      console.log('[DarkModeContext] t=400ms: Applying DOM class change NOW');
+      console.log('[DarkModeContext] t=400ms: Applying BOTH DOM class AND React state change NOW');
+
+      // Update React state AND DOM together at the same time
+      setDarkMode(newDarkMode);
+      console.log('[DarkModeContext] t=400ms: darkMode React state updated to', newDarkMode);
+
       if (newDarkMode) {
         document.documentElement.classList.add('dark');
         console.log('[DarkModeContext] t=400ms: Added "dark" class to DOM');

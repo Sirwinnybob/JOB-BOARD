@@ -52,8 +52,8 @@ export const pdfAPI = {
 
 export const labelAPI = {
   getAll: () => api.get('/labels'),
-  create: (name, color) => api.post('/labels', { name, color }),
-  update: (id, name, color) => api.put(`/labels/${id}`, { name, color }),
+  create: (name, color, expiresAt) => api.post('/labels', { name, color, expiresAt }),
+  update: (id, name, color, expiresAt) => api.put(`/labels/${id}`, { name, color, expiresAt }),
   delete: (id) => api.delete(`/labels/${id}`),
 };
 

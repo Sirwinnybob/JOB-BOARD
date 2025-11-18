@@ -362,7 +362,8 @@ app.get('/api/pdfs', async (req, res) => {
         db.all(
           `SELECT l.* FROM labels l
            INNER JOIN pdf_labels pl ON l.id = pl.label_id
-           WHERE pl.pdf_id = ?`,
+           WHERE pl.pdf_id = ?
+           AND (l.expires_at IS NULL OR l.expires_at > datetime('now'))`,
           [pdf.id],
           (err, labels) => {
             if (err) {
@@ -850,15 +851,15 @@ app.get('/api/labels', async (req, res) => {
 
 app.post('/api/labels', authMiddleware, async (req, res) => {
   try {
-    const { name, color } = req.body;
+    const { name, color, expiresAt } = req.body;
 
     if (!name || !color) {
       return res.status(400).json({ error: 'Name and color required' });
     }
 
     db.run(
-      'INSERT INTO labels (name, color) VALUES (?, ?)',
-      [name.toUpperCase(), color],
+      'INSERT INTO labels (name, color, expires_at) VALUES (?, ?, ?)',
+      [name.toUpperCase(), color, expiresAt || null],
       function (err) {
         if (err) {
           if (err.message.includes('UNIQUE')) {
@@ -872,13 +873,15 @@ app.post('/api/labels', authMiddleware, async (req, res) => {
         broadcastUpdate('label_created', {
           id: this.lastID,
           name: name.toUpperCase(),
-          color
+          color,
+          expires_at: expiresAt || null
         });
 
         res.json({
           id: this.lastID,
           name: name.toUpperCase(),
-          color
+          color,
+          expires_at: expiresAt || null
         });
       }
     );
@@ -891,15 +894,15 @@ app.post('/api/labels', authMiddleware, async (req, res) => {
 app.put('/api/labels/:id', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, color } = req.body;
+    const { name, color, expiresAt } = req.body;
 
     if (!name || !color) {
       return res.status(400).json({ error: 'Name and color required' });
     }
 
     db.run(
-      'UPDATE labels SET name = ?, color = ? WHERE id = ?',
-      [name.toUpperCase(), color, id],
+      'UPDATE labels SET name = ?, color = ?, expires_at = ? WHERE id = ?',
+      [name.toUpperCase(), color, expiresAt || null, id],
       function (err) {
         if (err) {
           if (err.message.includes('UNIQUE')) {
@@ -917,13 +920,15 @@ app.put('/api/labels/:id', authMiddleware, async (req, res) => {
         broadcastUpdate('label_updated', {
           id: parseInt(id),
           name: name.toUpperCase(),
-          color
+          color,
+          expires_at: expiresAt || null
         });
 
         res.json({
           id: parseInt(id),
           name: name.toUpperCase(),
-          color
+          color,
+          expires_at: expiresAt || null
         });
       }
     );

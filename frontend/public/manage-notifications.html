@@ -57,6 +57,29 @@
     button.danger:hover {
       background: #c82333;
     }
+    .back-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      font-size: 14px;
+      color: #666;
+      background: #f8f9fa;
+      border: 1px solid #dee2e6;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 20px;
+      width: auto;
+    }
+    .back-btn:hover {
+      background: #e9ecef;
+      color: #333;
+    }
+    .back-btn svg {
+      width: 16px;
+      height: 16px;
+    }
     .info {
       background: #d1ecf1;
       border: 1px solid #bee5eb;
@@ -117,6 +140,13 @@
 </head>
 <body>
   <div class="container">
+    <button class="back-btn" onclick="window.history.back()">
+      <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+      </svg>
+      Back to Job Board
+    </button>
+
     <h1>🔔 Manage Push Notifications</h1>
     <p class="subtitle">Subscribe to job board updates on this device</p>
 

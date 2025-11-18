@@ -14,9 +14,13 @@ function PlaceholderCard({
 
   // Helper to get transition style for colored elements
   const getColorTransitionStyle = (properties = ['color']) => {
-    if (!isTransitioning || !colorTransitionDelay) return {};
+    if (!isTransitioning || !colorTransitionDelay) {
+      // When not transitioning, use standard transitions
+      return {};
+    }
+    // During transition, use delayed transition
     const transitions = properties.map(prop => `${prop} 0.1s ease ${colorTransitionDelay}`);
-    return { transition: transitions.join(', ') };
+    return { transition: transitions.join(', '), willChange: properties.join(', ') };
   };
 
   // Log when isTransitioning changes
@@ -39,7 +43,7 @@ function PlaceholderCard({
       {/* Placeholder Text */}
       <div className="w-full h-full flex items-center justify-center p-4">
         <p
-          className="text-gray-600 dark:text-gray-700 text-4xl font-bold text-center break-words leading-tight"
+          className={`text-gray-600 dark:text-gray-400 text-4xl font-bold text-center break-words leading-tight ${!isTransitioning ? 'transition-colors' : ''}`}
           style={getColorTransitionStyle(['color'])}
         >
           {placeholder.placeholder_text || 'PLACEHOLDER'}

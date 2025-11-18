@@ -92,18 +92,22 @@ body {
 @keyframes circular-reveal {
   0% {
     clip-path: circle(20px at var(--theme-toggle-x) var(--theme-toggle-y));
+    -webkit-clip-path: circle(20px at var(--theme-toggle-x) var(--theme-toggle-y));
   }
   100% {
     clip-path: circle(var(--theme-toggle-radius) at var(--theme-toggle-x) var(--theme-toggle-y));
+    -webkit-clip-path: circle(var(--theme-toggle-radius) at var(--theme-toggle-x) var(--theme-toggle-y));
   }
 }
 
 @keyframes circular-retract {
   0% {
     clip-path: circle(var(--theme-toggle-radius) at var(--theme-toggle-x) var(--theme-toggle-y));
+    -webkit-clip-path: circle(var(--theme-toggle-radius) at var(--theme-toggle-x) var(--theme-toggle-y));
   }
   100% {
     clip-path: circle(20px at var(--theme-toggle-x) var(--theme-toggle-y));
+    -webkit-clip-path: circle(20px at var(--theme-toggle-x) var(--theme-toggle-y));
   }
 }
 

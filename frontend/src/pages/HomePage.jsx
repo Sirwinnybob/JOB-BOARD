@@ -1093,14 +1093,25 @@ function HomePage() {
       {isTransitioning && (
         <>
           {/* Light theme background - always stays visible underneath */}
-          <div className="fixed inset-0 z-0 bg-gradient-to-br from-gray-100 to-gray-200" />
+          <div
+            className="fixed inset-0 z-0 bg-gradient-to-br from-gray-100 to-gray-200"
+            style={{
+              transform: 'translateZ(0)',
+              backfaceVisibility: 'hidden',
+              WebkitBackfaceVisibility: 'hidden'
+            }}
+          />
           {/* Dark theme overlay - expands for dark mode, retracts for light mode */}
           <div
             className="fixed inset-0 z-[1] bg-gradient-to-br from-gray-900 to-gray-800"
             style={{
               animation: targetDarkMode
                 ? 'circular-reveal 0.8s ease-in-out forwards'
-                : 'circular-retract 0.8s ease-in-out forwards'
+                : 'circular-retract 0.8s ease-in-out forwards',
+              willChange: 'clip-path',
+              transform: 'translateZ(0)',
+              backfaceVisibility: 'hidden',
+              WebkitBackfaceVisibility: 'hidden'
             }}
           />
         </>
@@ -1110,8 +1121,10 @@ function HomePage() {
         <div
           className="fixed top-0 left-0 right-0 z-50 flex justify-center transition-all duration-200"
           style={{
-            transform: `translateY(${pullToRefresh.pulling ? Math.min(pullToRefresh.distance - 60, 40) : 0}px)`,
-            opacity: pullToRefresh.refreshing ? 1 : Math.min(pullToRefresh.distance / 80, 1)
+            transform: `translateY(${pullToRefresh.pulling ? Math.min(pullToRefresh.distance - 60, 40) : 0}px) translateZ(0)`,
+            opacity: pullToRefresh.refreshing ? 1 : Math.min(pullToRefresh.distance / 80, 1),
+            backfaceVisibility: 'hidden',
+            WebkitBackfaceVisibility: 'hidden'
           }}
         >
           <div className="mt-4 bg-white dark:bg-gray-800 rounded-full p-3 shadow-lg">
@@ -1136,7 +1149,14 @@ function HomePage() {
       )}
 
       {/* Header */}
-      <header className="bg-white dark:bg-gray-800 shadow-sm relative z-10">
+      <header
+        className="bg-white dark:bg-gray-800 shadow-sm relative z-10"
+        style={{
+          transform: 'translateZ(0)',
+          backfaceVisibility: 'hidden',
+          WebkitBackfaceVisibility: 'hidden'
+        }}
+      >
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4">
           <div className="flex justify-between items-center">
             <h1 className={`text-lg sm:text-2xl font-bold text-gray-900 dark:text-white ${!isTransitioning ? 'transition-colors' : ''}`}>
@@ -1209,7 +1229,14 @@ function HomePage() {
 
       {/* Admin Toolbar - Only visible when authenticated */}
       {isAuthenticated && (
-        <div className={`bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 ${!isTransitioning ? 'transition-colors' : ''} overflow-x-auto relative z-10`}>
+        <div
+          className={`bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 ${!isTransitioning ? 'transition-colors' : ''} overflow-x-auto relative z-10`}
+          style={{
+            transform: 'translateZ(0)',
+            backfaceVisibility: 'hidden',
+            WebkitBackfaceVisibility: 'hidden'
+          }}
+        >
           <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2 sm:py-3">
             <div className="flex flex-nowrap sm:flex-wrap gap-2 sm:gap-3 min-w-max sm:min-w-0">
               <button
@@ -1286,7 +1313,14 @@ function HomePage() {
       )}
 
       {/* Main Content */}
-      <main className={viewMode === 'grid' ? 'max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 relative z-10' : 'w-full relative z-10'}>
+      <main
+        className={viewMode === 'grid' ? 'max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 relative z-10' : 'w-full relative z-10'}
+        style={{
+          transform: 'translateZ(0)',
+          backfaceVisibility: 'hidden',
+          WebkitBackfaceVisibility: 'hidden'
+        }}
+      >
         {isAuthenticated && editMode ? (
           <DndContext
             sensors={sensors}

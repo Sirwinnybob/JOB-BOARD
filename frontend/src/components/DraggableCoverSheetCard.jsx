@@ -88,7 +88,11 @@ function DraggableCoverSheetCard({
 
   // Determine header background color based on construction method
   const getHeaderStyle = () => {
-    const baseStyle = {};
+    const baseStyle = {
+      transform: 'translateZ(0)',
+      backfaceVisibility: 'hidden',
+      WebkitBackfaceVisibility: 'hidden'
+    };
 
     if (!pdf.construction_method) {
       baseStyle.backgroundColor = darkMode
@@ -113,9 +117,20 @@ function DraggableCoverSheetCard({
 
   // Helper to get transition style for colored elements
   const getColorTransitionStyle = (properties = ['color']) => {
-    if (!isTransitioning || !colorTransitionDelay) return {};
+    if (!isTransitioning || !colorTransitionDelay) {
+      return {
+        transform: 'translateZ(0)',
+        backfaceVisibility: 'hidden',
+        WebkitBackfaceVisibility: 'hidden'
+      };
+    }
     const transitions = properties.map(prop => `${prop} 0.1s ease ${colorTransitionDelay}`);
-    return { transition: transitions.join(', ') };
+    return {
+      transition: transitions.join(', '),
+      transform: 'translateZ(0)',
+      backfaceVisibility: 'hidden',
+      WebkitBackfaceVisibility: 'hidden'
+    };
   };
 
   return (
@@ -234,7 +249,12 @@ function DraggableCoverSheetCard({
             src={lightImageSrc}
             alt={pdf.original_name}
             className="absolute inset-0 w-full h-full object-cover transition-opacity duration-200"
-            style={{ opacity: delayedDarkMode ? 0 : 1 }}
+            style={{
+              opacity: delayedDarkMode ? 0 : 1,
+              transform: 'translateZ(0)',
+              backfaceVisibility: 'hidden',
+              WebkitBackfaceVisibility: 'hidden'
+            }}
             draggable={false}
           />
           {/* Dark mode image */}
@@ -242,7 +262,12 @@ function DraggableCoverSheetCard({
             src={darkImageSrc}
             alt={pdf.original_name}
             className="absolute inset-0 w-full h-full object-cover transition-opacity duration-200"
-            style={{ opacity: delayedDarkMode ? 1 : 0 }}
+            style={{
+              opacity: delayedDarkMode ? 1 : 0,
+              transform: 'translateZ(0)',
+              backfaceVisibility: 'hidden',
+              WebkitBackfaceVisibility: 'hidden'
+            }}
             draggable={false}
           />
         </>
@@ -252,6 +277,11 @@ function DraggableCoverSheetCard({
           src={imageSrc}
           alt={pdf.original_name}
           className={`w-full h-full object-cover ${!isTransitioning ? 'transition-all' : ''}`}
+          style={{
+            transform: 'translateZ(0)',
+            backfaceVisibility: 'hidden',
+            WebkitBackfaceVisibility: 'hidden'
+          }}
           draggable={false}
         />
       )}

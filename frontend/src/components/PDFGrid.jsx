@@ -21,6 +21,8 @@ function PDFGrid({ pdfs, rows, cols, aspectWidth = 11, aspectHeight = 10, onPdfC
         // Create visible cascade: each item starts 80ms after the previous
         // This gives time for proper rendering and creates smooth wave effect
         const animationDelay = isTransitioning ? `${0.3 + index * 0.08}s` : '0s';
+        // Color should switch when opacity is lowest: animationStart + (duration/2)
+        const colorDelay = isTransitioning ? `${0.3 + index * 0.08 + 0.3}s` : '0s';
 
         return (
           <div
@@ -28,7 +30,10 @@ function PDFGrid({ pdfs, rows, cols, aspectWidth = 11, aspectHeight = 10, onPdfC
             className={`flex flex-col transition-all duration-500 ease-in-out ${isTransitioning ? 'animate-theme-item' : ''}`}
             style={{
               aspectRatio: `${aspectWidth} / ${aspectHeight}`,
-              animationDelay
+              animationDelay,
+              ...(isTransitioning && {
+                transition: `background-color 0.1s ease ${colorDelay}, color 0.1s ease ${colorDelay}, border-color 0.1s ease ${colorDelay}`
+              })
             }}
           >
             {!pdf ? (

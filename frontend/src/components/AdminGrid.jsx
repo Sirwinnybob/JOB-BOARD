@@ -21,6 +21,8 @@ function AdminGrid({ pdfs, rows, cols, aspectWidth, aspectHeight, editMode, onRe
         // Create visible cascade: each item starts 80ms after the previous
         // This gives time for proper rendering and creates smooth wave effect
         const animationDelay = isTransitioning ? `${0.3 + index * 0.08}s` : '0s';
+        // Color should switch when opacity is lowest: animationStart + (duration/2)
+        const colorDelay = isTransitioning ? `${0.3 + index * 0.08 + 0.3}s` : '0s';
 
         return (
           <DraggableGridItem
@@ -43,6 +45,7 @@ function AdminGrid({ pdfs, rows, cols, aspectWidth, aspectHeight, editMode, onRe
             onEditPlaceholder={onEditPlaceholder}
             isTransitioning={isTransitioning}
             animationDelay={animationDelay}
+            colorDelay={colorDelay}
           />
         );
       })}

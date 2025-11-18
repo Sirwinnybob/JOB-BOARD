@@ -362,7 +362,8 @@ app.get('/api/pdfs', async (req, res) => {
         db.all(
           `SELECT l.* FROM labels l
            INNER JOIN pdf_labels pl ON l.id = pl.label_id
-           WHERE pl.pdf_id = ?`,
+           WHERE pl.pdf_id = ?
+           AND (l.expires_at IS NULL OR l.expires_at > datetime('now'))`,
           [pdf.id],
           (err, labels) => {
             if (err) {

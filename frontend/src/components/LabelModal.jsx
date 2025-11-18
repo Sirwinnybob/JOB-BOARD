@@ -14,7 +14,12 @@ function LabelModal({ pdf, onClose, onSuccess }) {
   const loadLabels = async () => {
     try {
       const response = await labelAPI.getAll();
-      setLabels(response.data);
+      // Filter out expired labels from the assignment list
+      const activeLabels = response.data.filter(label => {
+        if (!label.expires_at) return true; // No expiration, always active
+        return new Date(label.expires_at) > new Date(); // Not yet expired
+      });
+      setLabels(activeLabels);
 
       // Pre-select current labels
       if (pdf.labels) {

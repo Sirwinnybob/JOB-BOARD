@@ -91,7 +91,7 @@ body {
 
 @keyframes circular-reveal {
   0% {
-    clip-path: circle(0px at var(--theme-toggle-x) var(--theme-toggle-y));
+    clip-path: circle(20px at var(--theme-toggle-x) var(--theme-toggle-y));
   }
   100% {
     clip-path: circle(var(--theme-toggle-radius) at var(--theme-toggle-x) var(--theme-toggle-y));
@@ -99,13 +99,11 @@ body {
 }
 
 @utility animate-theme-bg {
-  animation: circular-reveal 0.8s ease-in-out;
-  /* Circular reveal animation from button position */
+  /* Removed - using overlay approach instead */
 }
 
 @utility animate-theme-header {
-  animation: circular-reveal 0.8s ease-in-out;
-  /* Circular reveal animation from button position */
+  /* Removed - using overlay approach instead */
 }
 
 @utility animate-theme-item {

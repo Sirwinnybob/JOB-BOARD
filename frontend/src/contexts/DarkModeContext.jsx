@@ -22,6 +22,7 @@ export function DarkModeProvider({ children }) {
   });
 
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [targetDarkMode, setTargetDarkMode] = useState(darkMode);
   const [buttonPosition, setButtonPosition] = useState({ x: 0, y: 0 });
   const transitionTimeoutRef = useRef(null);
   const classChangeTimeoutRef = useRef(null);
@@ -89,29 +90,27 @@ export function DarkModeProvider({ children }) {
       clearTimeout(classChangeTimeoutRef.current);
     }
 
-    // Set transitioning flag FIRST
+    // Set transitioning flag FIRST and capture target theme
     setIsTransitioning(true);
+    setTargetDarkMode(newDarkMode); // Capture the target theme for overlay
     console.log('[DarkModeContext] t=0ms: isTransitioning set to true');
+    console.log('[DarkModeContext] t=0ms: targetDarkMode set to', newDarkMode);
     console.log('[DarkModeContext] t=0ms: darkMode state will update at t=400ms (NOT now!)');
 
-    // CRITICAL: Delay BOTH the DOM class change AND React state update until animation midpoint
-    // Background animation: 0.8s duration, midpoint at 0.4s
-    // This is when opacity is lowest, so color change is less visible
-    classChangeTimeoutRef.current = setTimeout(() => {
-      console.log('[DarkModeContext] t=400ms: Applying BOTH DOM class AND React state change NOW');
+    // Apply theme change immediately for circular reveal
+    console.log('[DarkModeContext] t=0ms: Applying theme change immediately');
 
-      // Update React state AND DOM together at the same time
-      setDarkMode(newDarkMode);
-      console.log('[DarkModeContext] t=400ms: darkMode React state updated to', newDarkMode);
+    // Update React state AND DOM together at the same time
+    setDarkMode(newDarkMode);
+    console.log('[DarkModeContext] t=0ms: darkMode React state updated to', newDarkMode);
 
-      if (newDarkMode) {
-        document.documentElement.classList.add('dark');
-        console.log('[DarkModeContext] t=400ms: Added "dark" class to DOM');
-      } else {
-        document.documentElement.classList.remove('dark');
-        console.log('[DarkModeContext] t=400ms: Removed "dark" class from DOM');
-      }
-    }, 400); // 400ms = midpoint of 800ms background animation
+    if (newDarkMode) {
+      document.documentElement.classList.add('dark');
+      console.log('[DarkModeContext] t=0ms: Added "dark" class to DOM');
+    } else {
+      document.documentElement.classList.remove('dark');
+      console.log('[DarkModeContext] t=0ms: Removed "dark" class from DOM');
+    }
 
     // Reset transition state after all animations complete
     // Longest: last item (24) at 0.8s + (23*0.15s) + 0.6s duration = ~4.85s
@@ -135,7 +134,7 @@ export function DarkModeProvider({ children }) {
   }, []);
 
   return (
-    <DarkModeContext.Provider value={{ darkMode, toggleDarkMode, isTransitioning }}>
+    <DarkModeContext.Provider value={{ darkMode, toggleDarkMode, isTransitioning, targetDarkMode }}>
       {children}
     </DarkModeContext.Provider>
   );

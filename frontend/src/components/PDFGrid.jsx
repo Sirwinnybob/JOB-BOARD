@@ -33,22 +33,31 @@ function PDFGrid({ pdfs, rows, cols, aspectWidth = 11, aspectHeight = 10, onPdfC
             style={{
               aspectRatio: `${aspectWidth} / ${aspectHeight}`,
               animationDelay,
-              // Delay color changes to match this item's opacity midpoint
-              ...(isTransitioning && {
-                transition: `background-color 0.1s ease ${colorTransitionDelay}, color 0.1s ease ${colorTransitionDelay}, border-color 0.1s ease ${colorTransitionDelay}`
-              })
             }}
           >
             {!pdf ? (
-              <div className={`w-full h-full bg-gray-200 dark:bg-gray-700 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 ${!isTransitioning ? 'transition-colors' : ''}`} />
+              <div
+                className={`w-full h-full bg-gray-200 dark:bg-gray-700 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 ${!isTransitioning ? 'transition-colors' : ''}`}
+                style={isTransitioning ? {
+                  transition: `background-color 0.1s ease ${colorTransitionDelay}, border-color 0.1s ease ${colorTransitionDelay}`
+                } : {}}
+              />
             ) : pdf.is_placeholder ? (
               <div
                 onClick={(e) => onPdfClick(pdf, e)}
                 className={`relative w-full h-full ${isTransitioning ? 'bg-gray-100 dark:bg-gray-700' : 'bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800'} rounded-lg shadow-md border-2 border-dashed border-gray-300 dark:border-gray-600 overflow-hidden cursor-pointer hover:opacity-90 ${!isTransitioning ? 'transition-opacity transition-all duration-500' : ''}`}
                 data-pdf-id={pdf.id}
+                style={isTransitioning ? {
+                  transition: `background-color 0.1s ease ${colorTransitionDelay}, border-color 0.1s ease ${colorTransitionDelay}`
+                } : {}}
               >
                 <div className="w-full h-full flex items-center justify-center p-2 sm:p-3 md:p-4">
-                  <p className={`text-gray-600 dark:text-gray-400 text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-center break-words leading-tight ${!isTransitioning ? 'transition-colors' : ''}`}>
+                  <p
+                    className={`text-gray-600 dark:text-gray-400 text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-center break-words leading-tight ${!isTransitioning ? 'transition-colors' : ''}`}
+                    style={isTransitioning ? {
+                      transition: `color 0.1s ease ${colorTransitionDelay}`
+                    } : {}}
+                  >
                     {pdf.placeholder_text || 'PLACEHOLDER'}
                   </p>
                 </div>
@@ -64,6 +73,7 @@ function PDFGrid({ pdfs, rows, cols, aspectWidth = 11, aspectHeight = 10, onPdfC
                   index={index}
                   editMode={false}
                   isDragging={false}
+                  colorTransitionDelay={colorTransitionDelay}
                 />
               </div>
             )}

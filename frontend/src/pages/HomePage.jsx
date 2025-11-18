@@ -801,8 +801,8 @@ function HomePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center transition-colors">
-        <div className="text-xl text-gray-600 dark:text-gray-400 transition-colors">Loading...</div>
+      <div className={`min-h-screen bg-gray-100 dark:bg-gray-900 flex items-center justify-center ${!isTransitioning ? 'transition-colors' : ''}`}>
+        <div className={`text-xl text-gray-600 dark:text-gray-400 ${!isTransitioning ? 'transition-colors' : ''}`}>Loading...</div>
       </div>
     );
   }
@@ -857,7 +857,7 @@ function HomePage() {
   };
 
   return (
-    <div className={`min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800 transition-colors ${isTransitioning && viewMode === 'grid' ? 'animate-theme-bg' : ''}`}>
+    <div className={`min-h-screen bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-900 dark:to-gray-800 ${!isTransitioning ? 'transition-colors' : ''} ${isTransitioning && viewMode === 'grid' ? 'animate-theme-bg' : ''}`}>
       {/* Pull-to-Refresh Indicator */}
       {(pullToRefresh.pulling || pullToRefresh.refreshing) && (
         <div
@@ -889,10 +889,10 @@ function HomePage() {
       )}
 
       {/* Header */}
-      <header className={`bg-white dark:bg-gray-800 shadow-sm transition-colors ${isTransitioning && viewMode === 'grid' ? 'animate-theme-header' : ''}`}>
+      <header className={`bg-white dark:bg-gray-800 shadow-sm ${!isTransitioning ? 'transition-colors' : ''} ${isTransitioning && viewMode === 'grid' ? 'animate-theme-header' : ''}`}>
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4">
           <div className="flex justify-between items-center">
-            <h1 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white transition-colors">
+            <h1 className={`text-lg sm:text-2xl font-bold text-gray-900 dark:text-white ${!isTransitioning ? 'transition-colors' : ''}`}>
               <span className="hidden sm:inline">Kustom Kraft Cabinets - Job Board</span>
               <span className="sm:hidden">KK Cabinets</span>
             </h1>
@@ -900,7 +900,7 @@ function HomePage() {
             {!editMode && (
               <button
                 onClick={toggleViewMode}
-                className="p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+                className={`p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white ${!isTransitioning ? 'transition-colors' : ''} rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700`}
                 title={viewMode === 'grid' ? 'Slideshow View' : 'Grid View'}
               >
                 {viewMode === 'grid' ? (
@@ -916,7 +916,7 @@ function HomePage() {
             )}
             <button
               onClick={toggleDarkMode}
-              className="p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+              className={`p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white ${!isTransitioning ? 'transition-colors' : ''} rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700`}
               title={darkMode ? 'Light Mode' : 'Dark Mode'}
             >
               {darkMode ? (
@@ -932,14 +932,14 @@ function HomePage() {
               {isAuthenticated ? (
                 <button
                   onClick={handleLogout}
-                  className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors px-2 py-1 sm:px-0 sm:py-0"
+                  className={`text-xs sm:text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white ${!isTransitioning ? 'transition-colors' : ''} px-2 py-1 sm:px-0 sm:py-0`}
                 >
                   Logout
                 </button>
               ) : (
                 <button
                   onClick={() => navigate('/login')}
-                  className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors px-2 py-1 sm:px-0 sm:py-0"
+                  className={`text-xs sm:text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white ${!isTransitioning ? 'transition-colors' : ''} px-2 py-1 sm:px-0 sm:py-0`}
                 >
                   Admin
                 </button>
@@ -951,12 +951,12 @@ function HomePage() {
 
       {/* Admin Toolbar - Only visible when authenticated */}
       {isAuthenticated && (
-        <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 transition-colors overflow-x-auto">
+        <div className={`bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 ${!isTransitioning ? 'transition-colors' : ''} overflow-x-auto`}>
           <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2 sm:py-3">
             <div className="flex flex-nowrap sm:flex-wrap gap-2 sm:gap-3 min-w-max sm:min-w-0">
               <button
                 onClick={handleToggleEditMode}
-                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-medium transition-colors text-sm whitespace-nowrap ${
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg font-medium ${!isTransitioning ? 'transition-colors' : ''} text-sm whitespace-nowrap ${
                   editMode
                     ? 'bg-blue-600 text-white hover:bg-blue-700'
                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
@@ -967,21 +967,21 @@ function HomePage() {
               {editMode && (
                 <button
                   onClick={() => setShowSettings(true)}
-                  className="px-3 sm:px-4 py-1.5 sm:py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors text-sm whitespace-nowrap"
+                  className={`px-3 sm:px-4 py-1.5 sm:py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 ${!isTransitioning ? 'transition-colors' : ''} text-sm whitespace-nowrap`}
                 >
                   Settings
                 </button>
               )}
               <button
                 onClick={() => setShowLabelManagement(true)}
-                className="px-3 sm:px-4 py-1.5 sm:py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors text-sm whitespace-nowrap"
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 ${!isTransitioning ? 'transition-colors' : ''} text-sm whitespace-nowrap`}
               >
                 <span className="hidden sm:inline">Manage Labels</span>
                 <span className="sm:hidden">Labels</span>
               </button>
               <button
                 onClick={() => navigate('/admin/ocr-settings')}
-                className="px-3 sm:px-4 py-1.5 sm:py-2 bg-teal-600 text-white rounded-lg font-medium hover:bg-teal-700 transition-colors text-sm whitespace-nowrap"
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 bg-teal-600 text-white rounded-lg font-medium hover:bg-teal-700 ${!isTransitioning ? 'transition-colors' : ''} text-sm whitespace-nowrap`}
               >
                 <span className="hidden sm:inline">OCR Settings</span>
                 <span className="sm:hidden">OCR</span>
@@ -1002,8 +1002,8 @@ function HomePage() {
             onDragCancel={handleDragCancel}
           >
             {editMode && (
-              <div className="mb-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3 sm:p-4 transition-colors">
-                <p className="text-blue-800 dark:text-blue-200 text-xs sm:text-sm transition-colors">
+              <div className={`mb-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3 sm:p-4 ${!isTransitioning ? 'transition-colors' : ''}`}>
+                <p className={`text-blue-800 dark:text-blue-200 text-xs sm:text-sm ${!isTransitioning ? 'transition-colors' : ''}`}>
                   <span className="hidden sm:inline">Drag and drop PDFs to reorder them. Click the tag icon to manage labels. Click the X to delete. Click the + button on empty slots to add placeholders.</span>
                   <span className="sm:hidden">Drag to reorder • Tag icon for labels • X to delete • + for placeholders</span>
                   {hasUnsavedChanges && <strong className="block sm:inline sm:ml-2 mt-1 sm:mt-0">Changes will be saved when you click "Save".</strong>}
@@ -1040,7 +1040,7 @@ function HomePage() {
 
             {pdfs.length === 0 ? (
               <div className="text-center py-20">
-                <p className="text-xl text-gray-600 dark:text-gray-400 transition-colors">No job postings available</p>
+                <p className={`text-xl text-gray-600 dark:text-gray-400 ${!isTransitioning ? 'transition-colors' : ''}`}>No job postings available</p>
               </div>
             ) : (
               <>

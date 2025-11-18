@@ -54,9 +54,10 @@ export function DarkModeProvider({ children }) {
     setIsTransitioning(true);
 
     // Reset transition state after all animations complete
+    // Longest: last item (24) at 0.8s + (23*0.15s) + 0.6s duration = ~4.85s
     setTimeout(() => {
       setIsTransitioning(false);
-    }, 3000);
+    }, 5000);
   };
 
   return (

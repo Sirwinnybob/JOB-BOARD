@@ -1,4 +1,5 @@
 import React from 'react';
+import { useDarkMode } from '../contexts/DarkModeContext';
 
 function PlaceholderCard({
   placeholder,
@@ -8,10 +9,12 @@ function PlaceholderCard({
   isDragging,
   onEdit,
 }) {
+  const { isTransitioning } = useDarkMode();
+
   return (
     <div
-      className={`relative w-full h-full bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg shadow-md overflow-hidden transition-all ${
-        editMode ? 'cursor-move border-2 animate-border-pulse' : 'cursor-default border-2 border-dashed border-gray-300'
+      className={`relative w-full h-full ${isTransitioning ? 'bg-gray-100 dark:bg-gray-700' : 'bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800'} rounded-lg shadow-md overflow-hidden ${!isTransitioning ? 'transition-all' : ''} ${
+        editMode ? 'cursor-move border-2 animate-border-pulse' : 'cursor-default border-2 border-dashed border-gray-300 dark:border-gray-600'
       } ${isDragging ? 'opacity-50' : ''}`}
     >
       {/* Placeholder Text */}
@@ -27,7 +30,7 @@ function PlaceholderCard({
           {/* Edit button */}
           <button
             onClick={() => onEdit && onEdit(placeholder)}
-            className="absolute top-2 right-12 bg-blue-600 hover:bg-blue-700 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg transition-colors z-10"
+            className={`absolute top-2 right-12 bg-blue-600 hover:bg-blue-700 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg ${!isTransitioning ? 'transition-colors' : ''} z-10`}
             aria-label="Edit"
           >
             <svg
@@ -48,7 +51,7 @@ function PlaceholderCard({
           {/* Delete button */}
           <button
             onClick={() => onDelete(placeholder.id)}
-            className="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg transition-colors z-10"
+            className={`absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg ${!isTransitioning ? 'transition-colors' : ''} z-10`}
             aria-label="Delete"
           >
             <svg

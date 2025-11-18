@@ -74,7 +74,7 @@ function DraggableCoverSheetCard({
       >
         <div className="min-w-0">
           <div className="flex items-center gap-1">
-            <span className={`font-semibold hidden sm:inline ${pdf.construction_method ? 'text-white' : 'text-gray-600 dark:text-gray-400'}`}>Job#:</span>
+            <span className={`hidden sm:inline ${pdf.construction_method ? 'text-white' : 'text-gray-600 dark:text-gray-400'}`}>Job#:</span>
             {editMode && editing === 'job_number' ? (
               <input
                 type="text"
@@ -97,7 +97,7 @@ function DraggableCoverSheetCard({
                     handleStartEdit('job_number', pdf.job_number);
                   }
                 }}
-                className={`flex-1 truncate px-1 rounded ${
+                className={`flex-1 truncate px-1 rounded font-bold ${
                   pdf.construction_method ? 'text-white' : 'text-gray-900 dark:text-white'
                 } ${
                   editMode ? 'cursor-pointer hover:bg-black/10' : 'cursor-default'
@@ -111,7 +111,7 @@ function DraggableCoverSheetCard({
         </div>
         <div className="min-w-0">
           <div className="flex items-center gap-1">
-            <span className={`font-semibold hidden sm:inline ${pdf.construction_method ? 'text-white' : 'text-gray-600 dark:text-gray-400'}`}>Type:</span>
+            <span className={`hidden sm:inline ${pdf.construction_method ? 'text-white' : 'text-gray-600 dark:text-gray-400'}`}>Type:</span>
             {editMode && editing === 'construction_method' ? (
               <select
                 value={editValue}
@@ -138,7 +138,7 @@ function DraggableCoverSheetCard({
                     handleStartEdit('construction_method', pdf.construction_method);
                   }
                 }}
-                className={`flex-1 truncate px-1 rounded ${
+                className={`flex-1 truncate px-1 rounded font-bold ${
                   pdf.construction_method ? 'text-white' : 'text-gray-900 dark:text-white'
                 } ${
                   editMode ? 'cursor-pointer hover:bg-black/10' : 'cursor-default'

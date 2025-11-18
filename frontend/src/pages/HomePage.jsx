@@ -450,29 +450,8 @@ function HomePage() {
     const pdfId = selectedPdfForLabels?.id;
     setSelectedPdfForLabels(null);
 
-    if (editMode && pdfId) {
-      try {
-        const allPdfsRes = await pdfAPI.getAll(true);
-        const allPdfs = allPdfsRes.data;
-        const updatedPdf = allPdfs.find(p => p && p.id === pdfId);
-
-        if (updatedPdf) {
-          if (updatedPdf.is_pending) {
-            setWorkingPendingPdfs(prevWorking =>
-              prevWorking.map(pdf => (pdf && pdf.id === pdfId) ? { ...pdf, labels: updatedPdf.labels } : pdf)
-            );
-          } else {
-            setWorkingPdfs(prevWorking =>
-              prevWorking.map(pdf => (pdf && pdf.id === pdfId) ? { ...pdf, labels: updatedPdf.labels } : pdf)
-            );
-          }
-        }
-      } catch (error) {
-        console.error('Error updating labels in working copy:', error);
-      }
-    } else {
-      await loadData();
-    }
+    // Always refresh data after label changes to ensure consistency
+    await loadData();
   };
 
   const handleMetadataUpdate = (pdfId, metadata) => {
@@ -1007,7 +986,7 @@ function HomePage() {
                     : 'bg-gray-200 text-gray-700 hover:bg-gray-300 dark:bg-gray-700 dark:text-gray-200 dark:hover:bg-gray-600'
                 }`}
               >
-                {editMode ? (hasUnsavedChanges ? 'Save' : 'Done') : 'Edit'}
+                {editMode ? 'Save' : 'Edit'}
               </button>
               {editMode && (
                 <button
@@ -1058,7 +1037,7 @@ function HomePage() {
                 <p className={`text-blue-800 dark:text-blue-200 text-xs sm:text-sm ${!isTransitioning ? 'transition-colors' : ''}`}>
                   <span className="hidden sm:inline">Drag and drop PDFs to reorder them. Click the tag icon to manage labels. Click the X to delete. Click the + button on empty slots to add placeholders.</span>
                   <span className="sm:hidden">Drag to reorder • Tag icon for labels • X to delete • + for placeholders</span>
-                  {hasUnsavedChanges && <strong className="block sm:inline sm:ml-2 mt-1 sm:mt-0">Changes will be saved when you click "Save".</strong>}
+                  {hasUnsavedChanges && <strong className="block sm:inline sm:ml-2 mt-1 sm:mt-0">Unsaved position changes.</strong>}
                 </p>
               </div>
             )}

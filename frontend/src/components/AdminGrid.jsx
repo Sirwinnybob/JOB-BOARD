@@ -23,13 +23,10 @@ function AdminGrid({ pdfs, rows, cols, aspectWidth, aspectHeight, editMode, onRe
         // Start grid items after background/header finish (at 0.8s)
         // Each item starts 150ms after the previous for visible cascade
         const animationDelay = isTransitioning ? `${0.8 + index * 0.15}s` : '0s';
-        // Color should switch when opacity is lowest: animationStart + (duration/2)
-        const colorDelay = isTransitioning ? `${0.8 + index * 0.15 + 0.3}s` : '0s';
 
         if (isTransitioning && index < 3) {
           console.log(`[AdminGrid] Item ${index}:`, {
             animationDelay,
-            colorDelay,
             hasPdf: !!pdf
           });
         }
@@ -55,7 +52,6 @@ function AdminGrid({ pdfs, rows, cols, aspectWidth, aspectHeight, editMode, onRe
             onEditPlaceholder={onEditPlaceholder}
             isTransitioning={isTransitioning}
             animationDelay={animationDelay}
-            colorDelay={colorDelay}
           />
         );
       })}

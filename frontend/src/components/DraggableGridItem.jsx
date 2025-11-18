@@ -3,19 +3,18 @@ import { useDraggable, useDroppable } from '@dnd-kit/core';
 import DraggableCoverSheetCard from './DraggableCoverSheetCard';
 import PlaceholderCard from './PlaceholderCard';
 
-function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10, editMode, onDelete, onLabelClick, onMoveToPending, onMetadataUpdate, onSlotMenuOpen, showSlotMenu, onSlotMenuClose, onAddPlaceholder, onUploadToSlot, onEditPlaceholder, isTransitioning, animationDelay, colorDelay }) {
+function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10, editMode, onDelete, onLabelClick, onMoveToPending, onMetadataUpdate, onSlotMenuOpen, showSlotMenu, onSlotMenuClose, onAddPlaceholder, onUploadToSlot, onEditPlaceholder, isTransitioning, animationDelay }) {
   // Log animation timing for first few items
   React.useEffect(() => {
     if (isTransitioning && index < 3) {
       console.log(`[DraggableGridItem] Item ${index}:`, {
         isTransitioning,
         animationDelay,
-        colorDelay,
         hasPdf: !!pdf,
         isPlaceholder: pdf?.is_placeholder
       });
     }
-  }, [isTransitioning, index, animationDelay, colorDelay, pdf?.is_placeholder]);
+  }, [isTransitioning, index, animationDelay, pdf?.is_placeholder]);
 
   // Make this slot droppable
   const { setNodeRef: setDropRef, isOver } = useDroppable({
@@ -50,10 +49,7 @@ function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10
         className={`flex flex-col ${isOver ? 'ring-2 ring-blue-500' : ''} ${isTransitioning ? 'animate-theme-item' : ''}`}
         style={{
           aspectRatio: `${aspectWidth} / ${aspectHeight}`,
-          animationDelay: animationDelay,
-          ...(isTransitioning && colorDelay && {
-            transition: `background-color 0.1s ease ${colorDelay}, color 0.1s ease ${colorDelay}, border-color 0.1s ease ${colorDelay}`
-          })
+          animationDelay: animationDelay
         }}
       >
         <div
@@ -98,10 +94,7 @@ function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10
       } ${isTransitioning ? 'animate-theme-item' : ''}`}
       style={{
         aspectRatio: `${aspectWidth} / ${aspectHeight}`,
-        animationDelay: animationDelay,
-        ...(isTransitioning && colorDelay && {
-          transition: `background-color 0.1s ease ${colorDelay}, color 0.1s ease ${colorDelay}, border-color 0.1s ease ${colorDelay}`
-        })
+        animationDelay: animationDelay
       }}
     >
       {editMode ? (

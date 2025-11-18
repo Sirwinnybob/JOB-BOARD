@@ -880,6 +880,29 @@ app.put('/api/pdfs/:id/labels', authMiddleware, async (req, res) => {
   }
 });
 
+// Custom Alert Route - Send notification to all connected clients
+app.post('/api/alerts/broadcast', authMiddleware, async (req, res) => {
+  try {
+    const { message } = req.body;
+
+    if (!message || typeof message !== 'string' || message.trim().length === 0) {
+      return res.status(400).json({ error: 'Message is required' });
+    }
+
+    if (message.length > 500) {
+      return res.status(400).json({ error: 'Message must be 500 characters or less' });
+    }
+
+    // Broadcast custom alert to all connected clients
+    broadcastUpdate('custom_alert', { message: message.trim() });
+
+    res.json({ success: true, message: 'Alert sent to all connected clients' });
+  } catch (error) {
+    console.error('Error broadcasting alert:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // Settings Routes
 app.get('/api/settings', async (req, res) => {
   try {

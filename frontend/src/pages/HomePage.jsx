@@ -9,9 +9,16 @@ import UploadModal from '../components/UploadModal';
 import SettingsModal from '../components/SettingsModal';
 import LabelModal from '../components/LabelModal';
 import LabelManagementModal from '../components/LabelManagementModal';
+import AlertModal from '../components/AlertModal';
 import PendingSection from '../components/PendingSection';
 import useWebSocket from '../hooks/useWebSocket';
 import { useDarkMode } from '../contexts/DarkModeContext';
+import {
+  requestNotificationPermission,
+  showNewJobNotification,
+  showJobsMovedNotification,
+  showCustomAlertNotification,
+} from '../utils/notifications';
 
 function HomePage() {
   const { darkMode, toggleDarkMode, isTransitioning } = useDarkMode();
@@ -29,6 +36,7 @@ function HomePage() {
   const [showSettings, setShowSettings] = useState(false);
   const [showLabelModal, setShowLabelModal] = useState(false);
   const [showLabelManagement, setShowLabelManagement] = useState(false);
+  const [showAlertModal, setShowAlertModal] = useState(false);
   const [selectedPdfForLabels, setSelectedPdfForLabels] = useState(null);
   const [showSlotMenu, setShowSlotMenu] = useState(null);
   const [selectedPdf, setSelectedPdf] = useState(null);
@@ -103,6 +111,15 @@ function HomePage() {
   const handleWebSocketMessage = useCallback((message) => {
     console.log('Received update:', message.type);
 
+    // Handle notifications (trigger browser notifications for updates)
+    if (message.type === 'pdf_uploaded') {
+      showNewJobNotification();
+    } else if (message.type === 'pdfs_reordered') {
+      showJobsMovedNotification();
+    } else if (message.type === 'custom_alert') {
+      showCustomAlertNotification(message.data?.message || 'Admin Alert');
+    }
+
     // Handle metadata updates even during edit mode (OCR results)
     if (editMode && message.type === 'pdf_metadata_updated') {
       console.log('Updating metadata during edit mode:', message.data);
@@ -141,7 +158,8 @@ function HomePage() {
       'label_created',
       'label_updated',
       'label_deleted',
-      'settings_updated'
+      'settings_updated',
+      'custom_alert'
     ];
 
     if (relevantTypes.includes(message.type)) {
@@ -338,6 +356,11 @@ function HomePage() {
       setWorkingPendingPdfs([...pendingPdfs]);
       setHasUnsavedChanges(false);
       setEditMode(true);
+
+      // Request notification permission for admins
+      requestNotificationPermission().catch(err => {
+        console.error('Error requesting notification permission:', err);
+      });
     }
   };
 
@@ -980,6 +1003,13 @@ function HomePage() {
                 <span className="sm:hidden">Labels</span>
               </button>
               <button
+                onClick={() => setShowAlertModal(true)}
+                className={`px-3 sm:px-4 py-1.5 sm:py-2 bg-orange-600 text-white rounded-lg font-medium hover:bg-orange-700 ${!isTransitioning ? 'transition-colors' : ''} text-sm whitespace-nowrap`}
+              >
+                <span className="hidden sm:inline">Send Alert</span>
+                <span className="sm:hidden">Alert</span>
+              </button>
+              <button
                 onClick={() => navigate('/admin/ocr-settings')}
                 className={`px-3 sm:px-4 py-1.5 sm:py-2 bg-teal-600 text-white rounded-lg font-medium hover:bg-teal-700 ${!isTransitioning ? 'transition-colors' : ''} text-sm whitespace-nowrap`}
               >
@@ -1113,6 +1143,13 @@ function HomePage() {
             <LabelManagementModal
               onClose={() => setShowLabelManagement(false)}
               onUpdate={loadData}
+            />
+          )}
+
+          {showAlertModal && (
+            <AlertModal
+              isOpen={showAlertModal}
+              onClose={() => setShowAlertModal(false)}
             />
           )}
         </>

@@ -21,8 +21,8 @@ function PDFGrid({ pdfs, rows, cols, aspectWidth = 11, aspectHeight = 10, onPdfC
         // Start grid items after background/header finish (at 0.8s)
         // Each item starts 150ms after the previous for visible cascade
         const animationDelay = isTransitioning ? `${0.8 + index * 0.15}s` : '0s';
-        // Color should switch when opacity is lowest: animationStart + (duration/2)
-        const colorDelay = isTransitioning ? `${0.8 + index * 0.15 + 0.3}s` : '0s';
+        // Color changes at each item's opacity midpoint (animationStart + 300ms)
+        const colorTransitionDelay = isTransitioning ? `${0.8 + index * 0.15 + 0.3}s` : '0s';
 
         return (
           <div
@@ -31,8 +31,9 @@ function PDFGrid({ pdfs, rows, cols, aspectWidth = 11, aspectHeight = 10, onPdfC
             style={{
               aspectRatio: `${aspectWidth} / ${aspectHeight}`,
               animationDelay,
+              // Delay color changes to match this item's opacity midpoint
               ...(isTransitioning && {
-                transition: `background-color 0.1s ease ${colorDelay}, color 0.1s ease ${colorDelay}, border-color 0.1s ease ${colorDelay}`
+                transition: `background-color 0.1s ease ${colorTransitionDelay}, color 0.1s ease ${colorTransitionDelay}, border-color 0.1s ease ${colorTransitionDelay}`
               })
             }}
           >

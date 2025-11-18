@@ -3,19 +3,18 @@ import { useDraggable, useDroppable } from '@dnd-kit/core';
 import DraggableCoverSheetCard from './DraggableCoverSheetCard';
 import PlaceholderCard from './PlaceholderCard';
 
-function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10, editMode, onDelete, onLabelClick, onMoveToPending, onMetadataUpdate, onSlotMenuOpen, showSlotMenu, onSlotMenuClose, onAddPlaceholder, onUploadToSlot, onEditPlaceholder, isTransitioning, animationDelay, colorDelay }) {
+function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10, editMode, onDelete, onLabelClick, onMoveToPending, onMetadataUpdate, onSlotMenuOpen, showSlotMenu, onSlotMenuClose, onAddPlaceholder, onUploadToSlot, onEditPlaceholder, isTransitioning, animationDelay }) {
   // Log animation timing for first few items
   React.useEffect(() => {
     if (isTransitioning && index < 3) {
       console.log(`[DraggableGridItem] Item ${index}:`, {
         isTransitioning,
         animationDelay,
-        colorDelay,
         hasPdf: !!pdf,
         isPlaceholder: pdf?.is_placeholder
       });
     }
-  }, [isTransitioning, index, animationDelay, colorDelay, pdf?.is_placeholder]);
+  }, [isTransitioning, index, animationDelay, pdf?.is_placeholder]);
 
   // Make this slot droppable
   const { setNodeRef: setDropRef, isOver } = useDroppable({
@@ -44,6 +43,9 @@ function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10
   } : undefined;
 
   if (pdf) {
+    // Calculate when this item's color should change (at opacity midpoint)
+    const colorTransitionDelay = isTransitioning ? `${0.8 + index * 0.15 + 0.3}s` : '0s';
+
     return (
       <div
         ref={setDropRef}
@@ -51,8 +53,9 @@ function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10
         style={{
           aspectRatio: `${aspectWidth} / ${aspectHeight}`,
           animationDelay: animationDelay,
-          ...(isTransitioning && colorDelay && {
-            transition: `background-color 0.1s ease ${colorDelay}, color 0.1s ease ${colorDelay}, border-color 0.1s ease ${colorDelay}`
+          // Delay color changes to match this item's opacity midpoint
+          ...(isTransitioning && {
+            transition: `background-color 0.1s ease ${colorTransitionDelay}, color 0.1s ease ${colorTransitionDelay}, border-color 0.1s ease ${colorTransitionDelay}`
           })
         }}
       >
@@ -90,6 +93,9 @@ function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10
   }
 
   // Empty slot
+  // Calculate when this item's color should change (at opacity midpoint)
+  const colorTransitionDelay = isTransitioning ? `${0.8 + index * 0.15 + 0.3}s` : '0s';
+
   return (
     <div
       ref={setDropRef}
@@ -99,8 +105,9 @@ function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10
       style={{
         aspectRatio: `${aspectWidth} / ${aspectHeight}`,
         animationDelay: animationDelay,
-        ...(isTransitioning && colorDelay && {
-          transition: `background-color 0.1s ease ${colorDelay}, color 0.1s ease ${colorDelay}, border-color 0.1s ease ${colorDelay}`
+        // Delay color changes to match this item's opacity midpoint
+        ...(isTransitioning && {
+          transition: `background-color 0.1s ease ${colorTransitionDelay}, color 0.1s ease ${colorTransitionDelay}, border-color 0.1s ease ${colorTransitionDelay}`
         })
       }}
     >

@@ -21,8 +21,10 @@ function PDFGrid({ pdfs, rows, cols, aspectWidth = 11, aspectHeight = 10, onPdfC
         // Start grid items after background/header finish (at 0.8s)
         // Each item starts 150ms after the previous for visible cascade
         const animationDelay = isTransitioning ? `${0.8 + index * 0.15}s` : '0s';
-        // Color changes at each item's opacity midpoint (animationStart + 300ms)
-        const colorTransitionDelay = isTransitioning ? `${0.8 + index * 0.15 + 0.3}s` : '0s';
+        // Color changes at each item's opacity midpoint
+        // Delay is relative to when DOM class changes (t=400ms), not from t=0!
+        // Midpoint: 0.8s + index*0.15s + 0.3s, minus 0.4s for DOM class timing
+        const colorTransitionDelay = isTransitioning ? `${0.8 + index * 0.15 + 0.3 - 0.4}s` : '0s';
 
         return (
           <div
@@ -42,7 +44,7 @@ function PDFGrid({ pdfs, rows, cols, aspectWidth = 11, aspectHeight = 10, onPdfC
             ) : pdf.is_placeholder ? (
               <div
                 onClick={(e) => onPdfClick(pdf, e)}
-                className={`relative w-full h-full ${isTransitioning ? 'bg-gray-100 dark:bg-gray-700' : 'bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800'} rounded-lg shadow-md border-2 border-dashed border-gray-300 dark:border-gray-600 overflow-hidden cursor-pointer hover:opacity-90 transition-opacity ${!isTransitioning ? 'transition-all duration-500' : ''}`}
+                className={`relative w-full h-full ${isTransitioning ? 'bg-gray-100 dark:bg-gray-700' : 'bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800'} rounded-lg shadow-md border-2 border-dashed border-gray-300 dark:border-gray-600 overflow-hidden cursor-pointer hover:opacity-90 ${!isTransitioning ? 'transition-opacity transition-all duration-500' : ''}`}
                 data-pdf-id={pdf.id}
               >
                 <div className="w-full h-full flex items-center justify-center p-2 sm:p-3 md:p-4">
@@ -54,7 +56,7 @@ function PDFGrid({ pdfs, rows, cols, aspectWidth = 11, aspectHeight = 10, onPdfC
             ) : (
               <div
                 onClick={(e) => onPdfClick(pdf, e)}
-                className="w-full h-full cursor-pointer hover:opacity-90 transition-opacity"
+                className={`w-full h-full cursor-pointer hover:opacity-90 ${!isTransitioning ? 'transition-opacity' : ''}`}
                 data-pdf-id={pdf.id}
               >
                 <DraggableCoverSheetCard

@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 
 const DarkModeContext = createContext();
 
@@ -22,6 +22,7 @@ export function DarkModeProvider({ children }) {
   });
 
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const isManualTransition = useRef(false);
 
   // Listen for system preference changes
   useEffect(() => {
@@ -39,22 +40,40 @@ export function DarkModeProvider({ children }) {
   }, []);
 
   // Save preference to localStorage and update document class
+  // Skip immediate class update during manual transitions
   useEffect(() => {
     localStorage.setItem('darkMode', darkMode.toString());
-    if (darkMode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
+
+    // Don't update the class immediately if we're in a manual transition
+    // (the toggleDarkMode function will handle it at the right time)
+    if (!isManualTransition.current) {
+      if (darkMode) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
     }
   }, [darkMode]);
 
   const toggleDarkMode = () => {
+    isManualTransition.current = true;
     setIsTransitioning(true);
 
     // Delay the actual theme change to the midpoint of the animation (when opacity is lowest)
     // This creates the effect of colors inverting during the fade
     setTimeout(() => {
-      setDarkMode(prev => !prev);
+      const newDarkMode = !darkMode;
+
+      // Manually update the document class at the animation midpoint
+      if (newDarkMode) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+
+      // Update state (this will also update localStorage via useEffect)
+      setDarkMode(newDarkMode);
+      isManualTransition.current = false;
     }, 400); // 0.4s = 50% of 0.8s background animation
 
     // Reset transition state after all animations complete

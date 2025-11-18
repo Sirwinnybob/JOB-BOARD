@@ -13,7 +13,24 @@ This job board application supports background push notifications using the Web 
 
 ### 1. Generate VAPID Keys
 
-VAPID keys are required for Web Push. Generate them once:
+VAPID keys are required for Web Push. Choose one method:
+
+#### **Option A: Browser Tool (Easiest - No Terminal Required)**
+
+1. Open `generate-vapid-keys.html` in your browser (just double-click it)
+2. Click "Generate VAPID Keys"
+3. Click "Copy to Clipboard"
+4. Paste into your `.env` in Dockge
+
+**Perfect for Dockge users who can't terminal into containers!**
+
+#### **Option B: NPX (If you have Node.js locally)**
+
+```bash
+npx web-push generate-vapid-keys
+```
+
+#### **Option C: Container Script**
 
 ```bash
 cd backend
@@ -21,7 +38,7 @@ npm install
 node generate-vapid-keys.js
 ```
 
-This will output three values that you need to add to your `.env` file.
+All methods output three values that you need to add to your `.env` file.
 
 ### 2. Configure Environment Variables
 

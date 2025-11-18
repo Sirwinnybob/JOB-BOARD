@@ -59,12 +59,12 @@ export function DarkModeProvider({ children }) {
     isManualTransition.current = true;
     setIsTransitioning(true);
 
-    // Delay the actual theme change to the midpoint of the animation (when opacity is lowest)
-    // This creates the effect of colors inverting during the fade
+    // Switch theme early in the cascade so items transition through the color change
+    // This happens when background/header are mid-fade and grid items are starting
     setTimeout(() => {
       const newDarkMode = !darkMode;
 
-      // Manually update the document class at the animation midpoint
+      // Manually update the document class
       if (newDarkMode) {
         document.documentElement.classList.add('dark');
       } else {
@@ -74,13 +74,13 @@ export function DarkModeProvider({ children }) {
       // Update state (this will also update localStorage via useEffect)
       setDarkMode(newDarkMode);
       isManualTransition.current = false;
-    }, 400); // 0.4s = 50% of 0.8s background animation
+    }, 450); // Switch while elements are fading, giving time for rendering
 
     // Reset transition state after all animations complete
-    // Longest animation: last grid item at ~200ms + (24 * 10ms) + 400ms = ~840ms
+    // Longest: last item (24) at 300ms + (23*80ms) + 600ms = ~2740ms
     setTimeout(() => {
       setIsTransitioning(false);
-    }, 1000); // Allow enough time for all cascading animations
+    }, 3000); // Allow enough time for all cascading animations
   };
 
   return (

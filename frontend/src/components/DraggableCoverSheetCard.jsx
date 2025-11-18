@@ -13,7 +13,7 @@ function DraggableCoverSheetCard({
 }) {
   const [editing, setEditing] = useState(null);
   const [editValue, setEditValue] = useState('');
-  const { darkMode } = useDarkMode();
+  const { darkMode, isTransitioning } = useDarkMode();
 
   // Determine which image to use based on dark mode
   const imageBaseName = darkMode && pdf.dark_mode_images_base
@@ -69,7 +69,7 @@ function DraggableCoverSheetCard({
     <div className="relative w-full h-full flex flex-col">
       {/* Job Info Section - At top of slot */}
       <div
-        className="border border-gray-300 dark:border-gray-600 rounded-t px-2 py-1 flex justify-between items-center text-xs transition-colors shadow-sm z-10 flex-shrink-0"
+        className={`border border-gray-300 dark:border-gray-600 rounded-t px-2 py-1 flex justify-between items-center text-xs ${!isTransitioning ? 'transition-colors' : ''} shadow-sm z-10 flex-shrink-0`}
         style={getHeaderStyle()}
       >
         <div className="flex-1 min-w-0">
@@ -154,14 +154,14 @@ function DraggableCoverSheetCard({
 
       {/* Cover Sheet Card */}
       <div
-        className={`flex-1 relative bg-white dark:bg-gray-800 rounded-b-lg shadow-md overflow-hidden transition-all min-h-0 ${
+        className={`flex-1 relative bg-white dark:bg-gray-800 rounded-b-lg shadow-md overflow-hidden ${!isTransitioning ? 'transition-all' : ''} min-h-0 ${
           editMode ? 'cursor-move border-2 animate-border-pulse' : 'cursor-default border border-gray-200 dark:border-gray-700'
         } ${isDragging ? 'opacity-50' : ''}`}
       >
       <img
         src={imageSrc}
         alt={pdf.original_name}
-        className="w-full h-full object-cover transition-all"
+        className={`w-full h-full object-cover ${!isTransitioning ? 'transition-all' : ''}`}
         draggable={false}
       />
 
@@ -187,7 +187,7 @@ function DraggableCoverSheetCard({
             e.stopPropagation();
             onLabelClick(pdf);
           }}
-          className="absolute bottom-2 right-2 bg-purple-600 hover:bg-purple-700 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg transition-colors z-10"
+          className={`absolute bottom-2 right-2 bg-purple-600 hover:bg-purple-700 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg ${!isTransitioning ? 'transition-colors' : ''} z-10`}
           aria-label="Manage Labels"
           title="Manage Labels"
         >
@@ -214,7 +214,7 @@ function DraggableCoverSheetCard({
           {onMoveToPending && (
             <button
               onClick={() => onMoveToPending(pdf.id)}
-              className="absolute top-2 right-12 bg-yellow-600 hover:bg-yellow-700 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg transition-colors z-10"
+              className={`absolute top-2 right-12 bg-yellow-600 hover:bg-yellow-700 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg ${!isTransitioning ? 'transition-colors' : ''} z-10`}
               aria-label="Move to Pending"
               title="Move to Pending"
             >
@@ -236,7 +236,7 @@ function DraggableCoverSheetCard({
           {/* Delete button */}
           <button
             onClick={() => onDelete(pdf.id)}
-            className="absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg transition-colors z-10"
+            className={`absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg ${!isTransitioning ? 'transition-colors' : ''} z-10`}
             aria-label="Delete"
           >
             <svg

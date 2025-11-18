@@ -49,6 +49,8 @@ function PlaceholderCard({
     if (isTransitioning) {
       // During transition, use solid color
       baseStyle.backgroundColor = delayedDarkMode ? 'rgb(55, 65, 81)' : 'rgb(243, 244, 246)'; // gray-700 : gray-100
+      // Fast transition with NO delay - timing controlled by state update
+      baseStyle.transition = 'background-color 0.2s ease, border-color 0.2s ease';
     } else {
       // Normal state, use gradient via inline style
       baseStyle.backgroundImage = delayedDarkMode
@@ -59,11 +61,6 @@ function PlaceholderCard({
     // Add border color
     baseStyle.borderColor = delayedDarkMode ? 'rgb(75, 85, 99)' : 'rgb(209, 213, 219)'; // gray-600 : gray-300
 
-    // Add color transition delay during theme transitions
-    if (isTransitioning && colorTransitionDelay) {
-      baseStyle.transition = `background-color 0.1s ease ${colorTransitionDelay}, background-image 0.1s ease ${colorTransitionDelay}, border-color 0.1s ease ${colorTransitionDelay}`;
-    }
-
     return baseStyle;
   };
 
@@ -73,9 +70,9 @@ function PlaceholderCard({
       color: delayedDarkMode ? 'rgb(156, 163, 175)' : 'rgb(75, 85, 99)' // gray-400 : gray-600
     };
 
-    // Add color transition delay during theme transitions
-    if (isTransitioning && colorTransitionDelay) {
-      baseStyle.transition = `color 0.1s ease ${colorTransitionDelay}`;
+    // Fast transition with NO delay during theme transitions
+    if (isTransitioning) {
+      baseStyle.transition = 'color 0.2s ease';
     }
 
     return baseStyle;

@@ -201,8 +201,17 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
 
       if (immediate) {
         // For immediate scrolls (like before close animation), set scrollLeft directly
+        // IMPORTANT: Temporarily disable scroll snap or it will snap back to nearest point
+        const originalScrollSnapType = container.style.scrollSnapType;
+        container.style.scrollSnapType = 'none';
+
         container.scrollLeft = targetScroll;
         console.log(`[SlideShowView] Scroll completed immediately, new scrollLeft: ${container.scrollLeft.toFixed(2)}px`);
+
+        // Re-enable scroll snap after a frame (animation will start soon)
+        requestAnimationFrame(() => {
+          container.style.scrollSnapType = originalScrollSnapType;
+        });
       } else {
         container.scrollTo({
           left: targetScroll,
@@ -217,15 +226,11 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
     if (isClosing) {
       console.log('%c[SlideShowView] Closing animation started', 'background: #dc2626; color: white; padding: 4px 8px; border-radius: 3px; font-weight: bold;');
 
-      // IMPORTANT: Scroll to current index immediately before animation
-      // This ensures the currently visible item is properly centered
-      scrollToIndex(currentIndex, true); // immediate = true for instant scroll
-
-      // Wait for scroll to complete before starting animation
+      // Don't try to scroll before animation - currentIndex state can be stale
+      // The container is already showing approximately the right content
+      // Just start the animation immediately
       requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          setAnimationState('zoom-out');
-        });
+        setAnimationState('zoom-out');
       });
 
       const timer = setTimeout(() => {
@@ -235,7 +240,7 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
       }, 400); // Match animation duration
       return () => clearTimeout(timer);
     }
-  }, [isClosing, onAnimationComplete, currentIndex, scrollToIndex]);
+  }, [isClosing, onAnimationComplete]);
 
   useEffect(() => {
     const container = scrollContainerRef.current;

@@ -1406,7 +1406,7 @@ app.get('/api/delivery-schedule', async (req, res) => {
   });
 });
 
-app.put('/api/delivery-schedule', authenticateToken, async (req, res) => {
+app.put('/api/delivery-schedule', authMiddleware, async (req, res) => {
   const { slot, data } = req.body;
 
   if (!slot || !data) {

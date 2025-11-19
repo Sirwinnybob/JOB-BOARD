@@ -1445,8 +1445,13 @@ function HomePage() {
               </div>
             ) : (
               <>
-                {/* Grid is always loaded, hidden when in slideshow mode (unless closing) */}
-                <div className={viewMode === 'slideshow' && !isClosingSlideshow ? 'hidden' : ''}>
+                {/* Grid is always loaded, kept in layout for smooth animations */}
+                <div
+                  className={viewMode === 'slideshow' && !isClosingSlideshow ? 'opacity-0 pointer-events-none' : 'opacity-100'}
+                  style={{
+                    transition: isClosingSlideshow ? 'none' : 'opacity 0.3s ease-in-out'
+                  }}
+                >
                   {gridContent()}
                 </div>
 

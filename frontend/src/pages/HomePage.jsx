@@ -13,6 +13,7 @@ import PlaceholderEditModal from '../components/PlaceholderEditModal';
 import AlertModal from '../components/AlertModal';
 import PendingSection from '../components/PendingSection';
 import DeliveryScheduleModal from '../components/DeliveryScheduleModal';
+import ConfirmModal from '../components/ConfirmModal';
 import useWebSocket from '../hooks/useWebSocket';
 import { useDarkMode } from '../contexts/DarkModeContext';
 import {
@@ -41,6 +42,7 @@ function HomePage() {
   const [showLabelManagement, setShowLabelManagement] = useState(false);
   const [showAlertModal, setShowAlertModal] = useState(false);
   const [showDeliverySchedule, setShowDeliverySchedule] = useState(false);
+  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
   const [selectedPdfForLabels, setSelectedPdfForLabels] = useState(null);
   const [showPlaceholderEdit, setShowPlaceholderEdit] = useState(false);
   const [selectedPlaceholder, setSelectedPlaceholder] = useState(null);
@@ -402,30 +404,40 @@ function HomePage() {
   };
 
   const handleCancelEdit = () => {
-    if (hasUnsavedChanges) {
-      if (!confirm('You have unsaved changes. Are you sure you want to discard them?')) {
-        return;
+    const performCancel = () => {
+      // Release edit lock
+      sendWebSocketMessage({
+        type: 'edit_lock_released',
+        data: { sessionId }
+      });
+      console.log('[Edit Lock] Released lock (cancelled)');
+
+      // Clear inactivity timer
+      if (inactivityTimerRef.current) {
+        clearInterval(inactivityTimerRef.current);
+        inactivityTimerRef.current = null;
       }
+
+      // Discard changes and exit edit mode
+      setEditMode(false);
+      setHasUnsavedChanges(false);
+      setWorkingPdfs([]);
+      setWorkingPendingPdfs([]);
+    };
+
+    if (hasUnsavedChanges) {
+      setConfirmDialog({
+        isOpen: true,
+        title: 'Discard Changes',
+        message: 'You have unsaved changes. Are you sure you want to discard them?',
+        onConfirm: () => {
+          setConfirmDialog({ isOpen: false, title: '', message: '', onConfirm: null });
+          performCancel();
+        }
+      });
+    } else {
+      performCancel();
     }
-
-    // Release edit lock
-    sendWebSocketMessage({
-      type: 'edit_lock_released',
-      data: { sessionId }
-    });
-    console.log('[Edit Lock] Released lock (cancelled)');
-
-    // Clear inactivity timer
-    if (inactivityTimerRef.current) {
-      clearInterval(inactivityTimerRef.current);
-      inactivityTimerRef.current = null;
-    }
-
-    // Discard changes and exit edit mode
-    setEditMode(false);
-    setHasUnsavedChanges(false);
-    setWorkingPdfs([]);
-    setWorkingPendingPdfs([]);
   };
 
   const handleToggleEditMode = async () => {
@@ -564,38 +576,42 @@ function HomePage() {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!confirm('Are you sure you want to delete this PDF?')) {
-      return;
-    }
+  const handleDelete = (id) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Delete PDF',
+      message: 'Are you sure you want to delete this PDF?',
+      onConfirm: async () => {
+        setConfirmDialog({ isOpen: false, title: '', message: '', onConfirm: null });
+        try {
+          // Check if this is a pending PDF before deleting
+          const isPendingPdf = workingPendingPdfs.some(pdf => pdf && pdf.id === id);
 
-    try {
-      // Check if this is a pending PDF before deleting
-      const isPendingPdf = workingPendingPdfs.some(pdf => pdf && pdf.id === id);
+          await pdfAPI.delete(id);
 
-      await pdfAPI.delete(id);
+          if (editMode) {
+            setWorkingPdfs(workingPdfs.filter((pdf) => pdf && pdf.id !== id));
+            setWorkingPendingPdfs(workingPendingPdfs.filter((pdf) => pdf && pdf.id !== id));
 
-      if (editMode) {
-        setWorkingPdfs(workingPdfs.filter((pdf) => pdf && pdf.id !== id));
-        setWorkingPendingPdfs(workingPendingPdfs.filter((pdf) => pdf && pdf.id !== id));
-
-        // Also update main state for pending PDFs to keep in sync
-        if (isPendingPdf) {
-          setPendingPdfs(pendingPdfs.filter((pdf) => pdf && pdf.id !== id));
-          // Pending PDF deletes are independent - don't mark as having unsaved changes
-        } else {
-          // Board PDF deletes require clicking "Save" to update positions
-          setHasUnsavedChanges(true);
-          trackActivity();
+            // Also update main state for pending PDFs to keep in sync
+            if (isPendingPdf) {
+              setPendingPdfs(pendingPdfs.filter((pdf) => pdf && pdf.id !== id));
+              // Pending PDF deletes are independent - don't mark as having unsaved changes
+            } else {
+              // Board PDF deletes require clicking "Save" to update positions
+              setHasUnsavedChanges(true);
+              trackActivity();
+            }
+          } else {
+            setPdfs(pdfs.filter((pdf) => pdf && pdf.id !== id));
+            setPendingPdfs(pendingPdfs.filter((pdf) => pdf && pdf.id !== id));
+          }
+        } catch (error) {
+          console.error('Error deleting PDF:', error);
+          alert('Failed to delete PDF');
         }
-      } else {
-        setPdfs(pdfs.filter((pdf) => pdf && pdf.id !== id));
-        setPendingPdfs(pendingPdfs.filter((pdf) => pdf && pdf.id !== id));
       }
-    } catch (error) {
-      console.error('Error deleting PDF:', error);
-      alert('Failed to delete PDF');
-    }
+    });
   };
 
   const handleUploadSuccess = async (uploadedPdf) => {
@@ -774,14 +790,18 @@ function HomePage() {
   const handleMoveAllPdfsToBoard = () => {
     if (workingPendingPdfs.length === 0) return;
 
-    if (!confirm(`Add all ${workingPendingPdfs.length} pending PDFs to the board?`)) {
-      return;
-    }
-
-    const movedPdfs = workingPendingPdfs.filter(pdf => pdf).map(pdf => ({ ...pdf, is_pending: 0 }));
-    setWorkingPdfs([...workingPdfs, ...movedPdfs]);
-    setWorkingPendingPdfs([]);
-    setHasUnsavedChanges(true);
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Move All to Board',
+      message: `Add all ${workingPendingPdfs.length} pending PDFs to the board?`,
+      onConfirm: () => {
+        setConfirmDialog({ isOpen: false, title: '', message: '', onConfirm: null });
+        const movedPdfs = workingPendingPdfs.filter(pdf => pdf).map(pdf => ({ ...pdf, is_pending: 0 }));
+        setWorkingPdfs([...workingPdfs, ...movedPdfs]);
+        setWorkingPendingPdfs([]);
+        setHasUnsavedChanges(true);
+      }
+    });
   };
 
   const handleMovePdfToPending = (pdfId) => {
@@ -1513,6 +1533,16 @@ function HomePage() {
         />
       )}
 
+      {/* Confirmation Dialog */}
+      <ConfirmModal
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() => setConfirmDialog({ isOpen: false, title: '', message: '', onConfirm: null })}
+        confirmText="Confirm"
+        confirmStyle="danger"
+      />
     </div>
   );
 }

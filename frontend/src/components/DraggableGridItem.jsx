@@ -133,7 +133,10 @@ function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10
         showSlotMenu === index ? (
           <div className={`absolute inset-0 bg-white dark:bg-gray-800 rounded-lg shadow-lg z-20 flex flex-col items-stretch justify-center p-4 gap-2 ${!isTransitioning ? 'transition-colors' : ''}`}>
             <button
-              onClick={() => onAddPlaceholder && onAddPlaceholder(index)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onAddPlaceholder && onAddPlaceholder(index);
+              }}
               className={`flex items-center justify-center gap-2 p-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 ${!isTransitioning ? 'transition-colors' : ''}`}
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -142,7 +145,10 @@ function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10
               <span className="text-sm font-medium">Placeholder</span>
             </button>
             <button
-              onClick={() => onUploadToSlot && onUploadToSlot(index)}
+              onClick={(e) => {
+                e.stopPropagation();
+                onUploadToSlot && onUploadToSlot(index);
+              }}
               className={`flex items-center justify-center gap-2 p-3 bg-green-600 text-white rounded-lg hover:bg-green-700 ${!isTransitioning ? 'transition-colors' : ''}`}
             >
               <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -151,7 +157,10 @@ function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10
               <span className="text-sm font-medium">Upload PDF</span>
             </button>
             <button
-              onClick={onSlotMenuClose}
+              onClick={(e) => {
+                e.stopPropagation();
+                onSlotMenuClose && onSlotMenuClose();
+              }}
               className={`p-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 ${!isTransitioning ? 'transition-colors' : ''} text-sm`}
             >
               Cancel
@@ -159,7 +168,10 @@ function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10
           </div>
         ) : (
           <button
-            onClick={() => onSlotMenuOpen && onSlotMenuOpen(index)}
+            onClick={(e) => {
+              e.stopPropagation();
+              onSlotMenuOpen && onSlotMenuOpen(index);
+            }}
             className={`flex flex-col items-center justify-center gap-2 p-4 hover:bg-gray-300 dark:hover:bg-gray-600 ${!isTransitioning ? 'transition-colors' : ''} w-full h-full rounded-lg`}
           >
             <svg

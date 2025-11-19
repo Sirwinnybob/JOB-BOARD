@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useDarkMode } from '../contexts/DarkModeContext';
+import ConfirmModal from './ConfirmModal';
 
 function DeliveryScheduleModal({ onClose, isAdmin }) {
   const { darkMode } = useDarkMode();
@@ -7,6 +8,7 @@ function DeliveryScheduleModal({ onClose, isAdmin }) {
   const [loading, setLoading] = useState(true);
   const [editingSlot, setEditingSlot] = useState(null);
   const [editForm, setEditForm] = useState({ jobs: [] });
+  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
 
   const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
   const dayLabels = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
@@ -99,74 +101,82 @@ function DeliveryScheduleModal({ onClose, isAdmin }) {
     navigator.clipboard.writeText(address);
   };
 
-  const handleResetAll = async () => {
-    if (!confirm('Are you sure you want to clear the entire delivery schedule? This cannot be undone.')) {
-      return;
-    }
+  const handleResetAll = () => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Reset Delivery Schedule',
+      message: 'Are you sure you want to clear the entire delivery schedule? This cannot be undone.',
+      onConfirm: async () => {
+        setConfirmDialog({ isOpen: false, title: '', message: '', onConfirm: null });
+        try {
+          const token = localStorage.getItem('token');
+          const headers = {
+            'Content-Type': 'application/json'
+          };
 
-    try {
-      const token = localStorage.getItem('token');
-      const headers = {
-        'Content-Type': 'application/json'
-      };
+          if (token) {
+            headers.Authorization = `Bearer ${token}`;
+          }
 
-      if (token) {
-        headers.Authorization = `Bearer ${token}`;
+          const response = await fetch('/api/delivery-schedule/reset', {
+            method: 'POST',
+            headers
+          });
+
+          if (response.ok) {
+            const updated = await response.json();
+            setSchedule(updated.schedule || {});
+          } else {
+            console.error('Failed to reset delivery schedule:', response.status, response.statusText);
+          }
+        } catch (error) {
+          console.error('Failed to reset delivery schedule:', error);
+        }
       }
-
-      const response = await fetch('/api/delivery-schedule/reset', {
-        method: 'POST',
-        headers
-      });
-
-      if (response.ok) {
-        const updated = await response.json();
-        setSchedule(updated.schedule || {});
-      } else {
-        console.error('Failed to reset delivery schedule:', response.status, response.statusText);
-      }
-    } catch (error) {
-      console.error('Failed to reset delivery schedule:', error);
-    }
+    });
   };
 
-  const handleDeleteJob = async (day, period, jobIndex) => {
-    if (!confirm('Are you sure you want to delete this delivery entry?')) {
-      return;
-    }
+  const handleDeleteJob = (day, period, jobIndex) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Delete Delivery Entry',
+      message: 'Are you sure you want to delete this delivery entry?',
+      onConfirm: async () => {
+        setConfirmDialog({ isOpen: false, title: '', message: '', onConfirm: null });
+        try {
+          const slotKey = `${day}_${period}`;
+          const slotData = schedule[slotKey] || { jobs: [] };
+          const updatedJobs = slotData.jobs.filter((_, i) => i !== jobIndex);
 
-    try {
-      const slotKey = `${day}_${period}`;
-      const slotData = schedule[slotKey] || { jobs: [] };
-      const updatedJobs = slotData.jobs.filter((_, i) => i !== jobIndex);
+          const token = localStorage.getItem('token');
+          const headers = {
+            'Content-Type': 'application/json'
+          };
 
-      const token = localStorage.getItem('token');
-      const headers = {
-        'Content-Type': 'application/json'
-      };
+          if (token) {
+            headers.Authorization = `Bearer ${token}`;
+          }
 
-      if (token) {
-        headers.Authorization = `Bearer ${token}`;
+          const response = await fetch('/api/delivery-schedule', {
+            method: 'PUT',
+            headers,
+            body: JSON.stringify({
+              slot: slotKey,
+              data: { jobs: updatedJobs }
+            })
+          });
+
+          if (response.ok) {
+            const updated = await response.json();
+            setSchedule(updated.schedule);
+          } else {
+            console.error('Failed to delete job:', response.status, response.statusText);
+          }
+        } catch (error) {
+          console.error('Failed to delete job:', error);
+        }
       }
-
-      const response = await fetch('/api/delivery-schedule', {
-        method: 'PUT',
-        headers,
-        body: JSON.stringify({
-          slot: slotKey,
-          data: { jobs: updatedJobs }
-        })
-      });
-
-      if (response.ok) {
-        const updated = await response.json();
-        setSchedule(updated.schedule);
-      } else {
-        console.error('Failed to delete job:', response.status, response.statusText);
-      }
-    } catch (error) {
-      console.error('Failed to delete job:', error);
-    }
+    });
   };
 
   return (
@@ -367,6 +377,17 @@ function DeliveryScheduleModal({ onClose, isAdmin }) {
           )}
         </div>
       </div>
+
+      {/* Confirmation Dialog */}
+      <ConfirmModal
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() => setConfirmDialog({ isOpen: false, title: '', message: '', onConfirm: null })}
+        confirmText="Delete"
+        confirmStyle="danger"
+      />
     </div>
   );
 }

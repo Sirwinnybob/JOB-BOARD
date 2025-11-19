@@ -76,7 +76,8 @@ function DraggableCoverSheetCard({
       updates.construction_method = pdf.construction_method;
     } else {
       updates.job_number = pdf.job_number;
-      updates.construction_method = editValue;
+      // If editValue is "Custom...", keep it empty to trigger text input on next edit
+      updates.construction_method = editValue === 'Custom...' ? '' : editValue;
     }
 
     // Only update local state - don't save to backend until Save button is pressed
@@ -118,7 +119,14 @@ function DraggableCoverSheetCard({
         'REMAKE': 'rgb(153, 27, 27)'         // darker red (red-800)
       };
       const colorMap = darkMode ? darkColorMap : lightColorMap;
-      baseStyle.backgroundColor = colorMap[pdf.construction_method] || 'white';
+
+      // If not in the predefined map, treat as custom (orange)
+      if (colorMap[pdf.construction_method]) {
+        baseStyle.backgroundColor = colorMap[pdf.construction_method];
+      } else {
+        // Custom construction method - use orange
+        baseStyle.backgroundColor = darkMode ? 'rgb(194, 120, 3)' : 'rgb(249, 115, 22)'; // orange-600 : orange-500
+      }
     }
 
     // Add color transition delay during theme transitions
@@ -209,25 +217,52 @@ function DraggableCoverSheetCard({
               </span>
             )}
             {editMode && editing === 'construction_method' ? (
-              <select
-                value={editValue}
-                onChange={(e) => setEditValue(e.target.value)}
-                onBlur={() => handleSaveEdit('construction_method')}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleSaveEdit('construction_method');
-                  if (e.key === 'Escape') handleCancelEdit();
-                }}
-                className="flex-1 px-1 py-0.5 border border-blue-500 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-xs focus:outline-none"
-                style={getColorTransitionStyle(['background-color', 'color', 'border-color'])}
-                autoFocus
-                onClick={(e) => e.stopPropagation()}
-              >
-                <option value="">—</option>
-                <option value="Frameless">Frameless</option>
-                <option value="Face Frame">Face Frame</option>
-                <option value="Both">Both</option>
-                <option value="REMAKE">REMAKE</option>
-              </select>
+              // Check if current value is a predefined type or custom
+              ['Frameless', 'Face Frame', 'Both', 'REMAKE', ''].includes(editValue) ? (
+                <select
+                  value={editValue}
+                  onChange={(e) => {
+                    if (e.target.value === 'Custom...') {
+                      setEditValue('');
+                      // Stay in edit mode but trigger re-render to show text input
+                    } else {
+                      setEditValue(e.target.value);
+                    }
+                  }}
+                  onBlur={() => handleSaveEdit('construction_method')}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleSaveEdit('construction_method');
+                    if (e.key === 'Escape') handleCancelEdit();
+                  }}
+                  className="flex-1 px-1 py-0.5 border border-blue-500 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-xs focus:outline-none"
+                  style={getColorTransitionStyle(['background-color', 'color', 'border-color'])}
+                  autoFocus
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <option value="">—</option>
+                  <option value="Frameless">Frameless</option>
+                  <option value="Face Frame">Face Frame</option>
+                  <option value="Both">Both</option>
+                  <option value="REMAKE">REMAKE</option>
+                  <option value="Custom...">Custom...</option>
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleSaveEdit('construction_method');
+                    if (e.key === 'Escape') handleCancelEdit();
+                  }}
+                  onBlur={() => handleSaveEdit('construction_method')}
+                  className="flex-1 px-1 py-0.5 border border-blue-500 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-xs focus:outline-none"
+                  style={getColorTransitionStyle(['background-color', 'color', 'border-color'])}
+                  placeholder="Enter custom type"
+                  autoFocus
+                  onClick={(e) => e.stopPropagation()}
+                />
+              )
             ) : (
               <>
                 <span

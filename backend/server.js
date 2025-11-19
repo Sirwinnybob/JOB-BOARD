@@ -417,6 +417,7 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
     // Get is_pending from request body (default to 1 if not provided)
     const isPending = req.body.is_pending !== undefined ? parseInt(req.body.is_pending) : 1;
     const targetPosition = req.body.position !== undefined ? parseInt(req.body.position) : null;
+    const skipOcr = req.body.skip_ocr === '1' || req.body.skip_ocr === 'true';
 
     // Generate thumbnail (fast)
     const thumbnailName = await generateThumbnail(pdfPath, thumbnailDir, baseFilename);
@@ -502,50 +503,56 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
           let ocrComplete = false;
           let darkModeComplete = false;
 
-          // OCR extraction
-          (async () => {
-            try {
-              console.log(`[OCR] Starting background extraction for PDF ${pdfId}...`);
+          // OCR extraction (skip if skip_ocr is true)
+          if (skipOcr) {
+            console.log(`[OCR] Skipping OCR extraction for PDF ${pdfId} (custom upload)`);
+            ocrComplete = true;
+            checkAndCleanup();
+          } else {
+            (async () => {
+              try {
+                console.log(`[OCR] Starting background extraction for PDF ${pdfId}...`);
 
-              // Use existing converted image (300 DPI) instead of converting again
-              const existingImagePath = path.join(thumbnailDir, `${imagesBase}-1.png`);
-              console.log(`[OCR] Using existing image at: ${existingImagePath}`);
+                // Use existing converted image (300 DPI) instead of converting again
+                const existingImagePath = path.join(thumbnailDir, `${imagesBase}-1.png`);
+                console.log(`[OCR] Using existing image at: ${existingImagePath}`);
 
-              const metadata = await extractMetadata(pdfPath, existingImagePath);
-              console.log(`[OCR] Complete for PDF ${pdfId}:`, metadata);
+                const metadata = await extractMetadata(pdfPath, existingImagePath);
+                console.log(`[OCR] Complete for PDF ${pdfId}:`, metadata);
 
-              // Update database with extracted metadata (only if not manually set)
-              db.run(
-                'UPDATE pdfs SET job_number = ?, construction_method = ? WHERE id = ? AND (job_number IS NULL OR job_number = \'\') AND (construction_method IS NULL OR construction_method = \'\')',
-                [metadata.job_number, metadata.construction_method, pdfId],
-                (updateErr) => {
-                  if (updateErr) {
-                    console.error('[OCR] Error updating metadata:', updateErr);
-                    return;
+                // Update database with extracted metadata (only if not manually set)
+                db.run(
+                  'UPDATE pdfs SET job_number = ?, construction_method = ? WHERE id = ? AND (job_number IS NULL OR job_number = \'\') AND (construction_method IS NULL OR construction_method = \'\')',
+                  [metadata.job_number, metadata.construction_method, pdfId],
+                  (updateErr) => {
+                    if (updateErr) {
+                      console.error('[OCR] Error updating metadata:', updateErr);
+                      return;
+                    }
+
+                    // Only broadcast if we actually updated something
+                    if (this.changes > 0) {
+                      // Broadcast metadata update to all clients
+                      broadcastUpdate('pdf_metadata_updated', {
+                        id: pdfId,
+                        job_number: metadata.job_number,
+                        construction_method: metadata.construction_method
+                      });
+
+                      console.log(`[OCR] Metadata updated for PDF ${pdfId}`);
+                    } else {
+                      console.log(`[OCR] Skipped update for PDF ${pdfId} (already has manual values)`);
+                    }
                   }
-
-                  // Only broadcast if we actually updated something
-                  if (this.changes > 0) {
-                    // Broadcast metadata update to all clients
-                    broadcastUpdate('pdf_metadata_updated', {
-                      id: pdfId,
-                      job_number: metadata.job_number,
-                      construction_method: metadata.construction_method
-                    });
-
-                    console.log(`[OCR] Metadata updated for PDF ${pdfId}`);
-                  } else {
-                    console.log(`[OCR] Skipped update for PDF ${pdfId} (already has manual values)`);
-                  }
-                }
-              );
-            } catch (extractErr) {
-              console.error(`[OCR] Error in background extraction for PDF ${pdfId}:`, extractErr);
-            } finally {
-              ocrComplete = true;
-              checkAndCleanup();
-            }
-          })();
+                );
+              } catch (extractErr) {
+                console.error(`[OCR] Error in background extraction for PDF ${pdfId}:`, extractErr);
+              } finally {
+                ocrComplete = true;
+                checkAndCleanup();
+              }
+            })();
+          }
 
           // Dark mode generation
           (async () => {

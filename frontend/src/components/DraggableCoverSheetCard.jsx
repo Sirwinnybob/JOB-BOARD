@@ -120,12 +120,12 @@ function DraggableCoverSheetCard({
       };
       const colorMap = darkMode ? darkColorMap : lightColorMap;
 
-      // If not in the predefined map, treat as custom (orange)
+      // If not in the predefined map, treat as custom (golden yellow)
       if (colorMap[pdf.construction_method]) {
         baseStyle.backgroundColor = colorMap[pdf.construction_method];
       } else {
-        // Custom construction method - use orange
-        baseStyle.backgroundColor = darkMode ? 'rgb(194, 120, 3)' : 'rgb(249, 115, 22)'; // orange-600 : orange-500
+        // Custom construction method - use golden yellow
+        baseStyle.backgroundColor = darkMode ? 'rgb(204, 165, 0)' : 'rgb(255, 206, 0)'; // darker golden : golden yellow
       }
     }
 

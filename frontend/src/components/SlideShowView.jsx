@@ -116,9 +116,14 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
     // Edge case: Clamp scale to reasonable bounds (0.01 to 1)
     const scale = Math.max(0.01, Math.min(1, Math.min(scaleX, scaleY)));
 
-    // Calculate the center of the clicked element
+    // Account for scroll offset when calculating origin center
+    // getBoundingClientRect is viewport-relative, but we need to account for any scroll changes
+    const currentScrollY = window.scrollY || window.pageYOffset;
+    const scrollYDelta = originRect.scrollY !== undefined ? currentScrollY - originRect.scrollY : 0;
+
+    // Calculate the center of the clicked element (adjusted for scroll changes)
     const originCenterX = originRect.left + (originRect.width / 2);
-    const originCenterY = originRect.top + (originRect.height / 2);
+    const originCenterY = originRect.top + (originRect.height / 2) - scrollYDelta;
 
     // Calculate the center of the SLIDESHOW CONTAINER (not full viewport)
     // Container is fixed with top-16 (64px) and bottom-0
@@ -156,7 +161,10 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
         viewportCenterY,
         headerOffset,
         containerHeight,
-        rawTranslateY: translateY
+        rawTranslateY: translateY,
+        scrollYDelta,
+        currentScrollY,
+        capturedScrollY: originRect.scrollY
       }
     });
   }, [originRect]);
@@ -400,6 +408,9 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
             opacity: 1;
             transform: scale(1) translate3d(0, 0, 0);
           }
+          50% {
+            opacity: 0.3;
+          }
           to {
             opacity: 0;
             transform: scale(0.85) translate3d(0, 0, 0);
@@ -428,6 +439,9 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
         from {
           opacity: 1;
           transform: translate3d(0, 0, 0) scale(1);
+        }
+        50% {
+          opacity: 0.3;
         }
         to {
           opacity: 0;

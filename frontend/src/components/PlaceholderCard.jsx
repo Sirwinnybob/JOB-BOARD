@@ -11,7 +11,9 @@ function PlaceholderCard({
   colorTransitionDelay,
   isMobile = false,
   isSelected = false,
+  isDimmed = false,
   onSelect,
+  onTapDestination,
 }) {
   const { darkMode, isTransitioning } = useDarkMode();
 
@@ -83,20 +85,29 @@ function PlaceholderCard({
 
   return (
     <div
+      onClick={(e) => {
+        // Tap-to-move: if something else is selected, call onTapDestination
+        if (editMode && onTapDestination && !isSelected) {
+          e.stopPropagation();
+          onTapDestination();
+        }
+      }}
       className={`relative w-full h-full rounded-lg shadow-md overflow-hidden ${!isTransitioning ? 'transition-all' : ''} ${
-        editMode ? 'cursor-move border-2 animate-border-pulse' : 'cursor-default border-2 border-dashed'
+        editMode ? 'cursor-pointer border-2 animate-border-pulse' : 'cursor-default border-2 border-dashed'
       } ${isDragging ? 'opacity-50' : ''} ${
-        isMobile && editMode && isSelected ? 'ring-4 ring-blue-500' : ''
+        isDimmed ? 'opacity-50' : ''
+      } ${
+        editMode && isSelected ? 'ring-4 ring-blue-500' : ''
       }`}
       style={getBackgroundStyle()}
     >
       {/* Placeholder Text */}
       <div className="w-full h-full flex items-center justify-center p-4">
         <p
-          className="font-bold text-center break-words leading-tight"
+          className="font-bold text-center break-words leading-tight whitespace-pre-wrap"
           style={{
             ...getTextStyle(),
-            fontSize: 'clamp(0.5rem, 3vw, 2.5rem)'
+            fontSize: 'clamp(0.4rem, 2vw, 1.5rem)'
           }}
         >
           {placeholder.placeholder_text || 'PLACEHOLDER'}

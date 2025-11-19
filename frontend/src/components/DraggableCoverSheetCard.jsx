@@ -14,7 +14,9 @@ function DraggableCoverSheetCard({
   isHighlighted = false,
   isMobile = false,
   isSelected = false,
+  isDimmed = false,
   onSelect,
+  onTapDestination,
 }) {
   const [editing, setEditing] = useState(null);
   const [editValue, setEditValue] = useState('');
@@ -102,11 +104,18 @@ function DraggableCoverSheetCard({
         ? 'rgb(55, 65, 81)' // dark:bg-gray-700
         : 'white';
     } else {
-      const colorMap = {
+      // Different colors for light and dark mode
+      const lightColorMap = {
         'Face Frame': 'rgb(150, 179, 82)',
         'Frameless': 'rgb(237, 146, 35)',
         'Both': 'rgb(0, 133, 138)'
       };
+      const darkColorMap = {
+        'Face Frame': 'rgb(90, 107, 49)',   // Darker green
+        'Frameless': 'rgb(142, 88, 21)',    // Darker orange
+        'Both': 'rgb(0, 80, 83)'            // Darker teal
+      };
+      const colorMap = darkMode ? darkColorMap : lightColorMap;
       baseStyle.backgroundColor = colorMap[pdf.construction_method] || 'white';
     }
 
@@ -258,10 +267,19 @@ function DraggableCoverSheetCard({
 
       {/* Cover Sheet Card */}
       <div
+        onClick={(e) => {
+          // Tap-to-move: if already selected or something else is selected, call onTapDestination
+          if (editMode && onTapDestination && !isSelected) {
+            e.stopPropagation();
+            onTapDestination();
+          }
+        }}
         className={`flex-1 relative bg-white dark:bg-gray-800 rounded-b-lg shadow-md overflow-hidden ${!isTransitioning ? 'transition-all' : ''} min-h-0 ${
-          editMode ? 'cursor-move border-2 animate-border-pulse' : 'cursor-default border border-gray-200 dark:border-gray-700'
-        } ${isDragging ? 'opacity-50' : ''} ${isHighlighted ? 'notification-glow' : ''} ${
-          isMobile && editMode && isSelected ? 'ring-4 ring-blue-500' : ''
+          editMode ? 'cursor-pointer border-2 animate-border-pulse' : 'cursor-default border border-gray-200 dark:border-gray-700'
+        } ${isDragging ? 'opacity-50' : ''} ${
+          isDimmed ? 'opacity-50' : ''
+        } ${isHighlighted ? 'notification-glow' : ''} ${
+          editMode && isSelected ? 'ring-4 ring-blue-500' : ''
         }`}
         style={getColorTransitionStyle(['background-color', 'border-color'])}
       >

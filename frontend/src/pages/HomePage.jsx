@@ -435,15 +435,15 @@ function HomePage() {
         try {
           const allPdfs = [];
 
-          // Board PDFs - ensure they're marked as not pending
-          workingPdfs.forEach((pdf, index) => {
-            if (pdf) {
-              allPdfs.push({
-                id: pdf.id,
-                position: index + 1,
-                is_pending: 0
-              });
-            }
+          // Board PDFs - compact by removing gaps (undefined/null entries)
+          // Filter out empty slots and assign sequential positions
+          const compactedBoardPdfs = workingPdfs.filter(pdf => pdf);
+          compactedBoardPdfs.forEach((pdf, index) => {
+            allPdfs.push({
+              id: pdf.id,
+              position: index + 1, // Sequential position starting from 1
+              is_pending: 0
+            });
           });
 
           // Pending PDFs - ensure they're marked as pending

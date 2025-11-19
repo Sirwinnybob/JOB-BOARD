@@ -1521,7 +1521,7 @@ function HomePage() {
             pdf={selectedPdf}
             onDelete={handleDelete}
             onLabelClick={selectedPdf.is_placeholder ? null : handleLabelClick}
-            onMoveToPending={selectedPdf.is_placeholder ? null : handleMoveToPending}
+            onMoveToPending={selectedPdf.is_placeholder ? null : handleMovePdfToPending}
             onEditPlaceholder={selectedPdf.is_placeholder ? handleEditPlaceholder : null}
             onClose={() => setSelectedMobileCardId(null)}
           />

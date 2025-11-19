@@ -221,6 +221,27 @@ db.serialize(() => {
     )
   `);
 
+  // Delivery Schedule table for weekly delivery planning
+  db.run(`
+    CREATE TABLE IF NOT EXISTS delivery_schedule (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      schedule_data TEXT NOT NULL,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `, (err) => {
+    if (err) {
+      console.error('Error creating delivery_schedule table:', err);
+      return;
+    }
+
+    // Initialize with empty schedule if no data exists
+    db.get('SELECT COUNT(*) as count FROM delivery_schedule', (err, row) => {
+      if (!err && row.count === 0) {
+        db.run('INSERT INTO delivery_schedule (schedule_data) VALUES (?)', [JSON.stringify({})]);
+      }
+    });
+  });
+
   // Create indexes for better query performance with multiple concurrent reads
   db.run(`CREATE INDEX IF NOT EXISTS idx_pdfs_position ON pdfs(position)`);
   db.run(`CREATE INDEX IF NOT EXISTS idx_pdf_labels_pdf_id ON pdf_labels(pdf_id)`);

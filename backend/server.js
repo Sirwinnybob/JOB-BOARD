@@ -1393,6 +1393,52 @@ app.delete('/api/ocr-test-image', authMiddleware, async (req, res) => {
   }
 });
 
+// Delivery Schedule endpoints
+app.get('/api/delivery-schedule', async (req, res) => {
+  db.get('SELECT schedule_data FROM delivery_schedule ORDER BY id DESC LIMIT 1', (err, row) => {
+    if (err) {
+      console.error('Error fetching delivery schedule:', err);
+      return res.status(500).json({ error: 'Failed to fetch delivery schedule' });
+    }
+
+    const scheduleData = row ? JSON.parse(row.schedule_data) : {};
+    res.json({ schedule: scheduleData });
+  });
+});
+
+app.put('/api/delivery-schedule', authenticateToken, async (req, res) => {
+  const { slot, data } = req.body;
+
+  if (!slot || !data) {
+    return res.status(400).json({ error: 'Slot and data are required' });
+  }
+
+  // Get current schedule
+  db.get('SELECT schedule_data FROM delivery_schedule ORDER BY id DESC LIMIT 1', (err, row) => {
+    if (err) {
+      console.error('Error fetching current schedule:', err);
+      return res.status(500).json({ error: 'Failed to fetch current schedule' });
+    }
+
+    const currentSchedule = row ? JSON.parse(row.schedule_data) : {};
+    currentSchedule[slot] = data;
+
+    // Update schedule
+    db.run(
+      'UPDATE delivery_schedule SET schedule_data = ?, updated_at = CURRENT_TIMESTAMP WHERE id = (SELECT MAX(id) FROM delivery_schedule)',
+      [JSON.stringify(currentSchedule)],
+      function(err) {
+        if (err) {
+          console.error('Error updating delivery schedule:', err);
+          return res.status(500).json({ error: 'Failed to update delivery schedule' });
+        }
+
+        res.json({ schedule: currentSchedule });
+      }
+    );
+  });
+});
+
 // Health check with database connectivity test
 app.get('/api/health', (req, res) => {
   // Quick database check

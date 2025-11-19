@@ -13,9 +13,9 @@ function MobileActionBar({ pdf, onDelete, onLabelClick, onMoveToPending, onEditP
 
   return (
     <div
-      className={`fixed top-20 left-0 right-0 z-50 mx-4 ${
+      className={`w-full ${
         darkMode ? 'bg-gray-800 border-gray-600' : 'bg-white border-gray-300'
-      } border-2 rounded-lg shadow-2xl p-3 transition-colors`}
+      } border-2 rounded-lg shadow-lg p-2 transition-colors`}
     >
       <div className="flex items-center justify-between gap-2">
         {/* Card title/info */}
@@ -38,7 +38,7 @@ function MobileActionBar({ pdf, onDelete, onLabelClick, onMoveToPending, onEditP
                     onEditPlaceholder(pdf);
                     onClose();
                   }}
-                  className="bg-blue-600 hover:bg-blue-700 text-white rounded-full w-10 h-10 flex items-center justify-center shadow-lg transition-colors"
+                  className="bg-blue-600 hover:bg-blue-700 text-white rounded-full w-9 h-9 flex items-center justify-center shadow-md transition-colors"
                   aria-label="Edit Placeholder"
                   title="Edit Placeholder"
                 >
@@ -67,7 +67,7 @@ function MobileActionBar({ pdf, onDelete, onLabelClick, onMoveToPending, onEditP
                     onLabelClick(pdf);
                     onClose();
                   }}
-                  className="bg-purple-600 hover:bg-purple-700 text-white rounded-full w-10 h-10 flex items-center justify-center shadow-lg transition-colors"
+                  className="bg-purple-600 hover:bg-purple-700 text-white rounded-full w-9 h-9 flex items-center justify-center shadow-md transition-colors"
                   aria-label="Manage Labels"
                   title="Manage Labels"
                 >
@@ -94,7 +94,7 @@ function MobileActionBar({ pdf, onDelete, onLabelClick, onMoveToPending, onEditP
                     onMoveToPending(pdf.id);
                     onClose();
                   }}
-                  className="bg-yellow-600 hover:bg-yellow-700 text-white rounded-full w-10 h-10 flex items-center justify-center shadow-lg transition-colors"
+                  className="bg-yellow-600 hover:bg-yellow-700 text-white rounded-full w-9 h-9 flex items-center justify-center shadow-md transition-colors"
                   aria-label="Move to Pending"
                   title="Move to Pending"
                 >
@@ -123,7 +123,7 @@ function MobileActionBar({ pdf, onDelete, onLabelClick, onMoveToPending, onEditP
                 onDelete(pdf.id);
                 onClose();
               }}
-              className="bg-red-600 hover:bg-red-700 text-white rounded-full w-10 h-10 flex items-center justify-center shadow-lg transition-colors"
+              className="bg-red-600 hover:bg-red-700 text-white rounded-full w-9 h-9 flex items-center justify-center shadow-md transition-colors"
               aria-label="Delete"
               title="Delete"
             >

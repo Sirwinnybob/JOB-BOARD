@@ -114,8 +114,8 @@ function PlaceholderCard({
         </p>
       </div>
 
-      {/* Edit and Delete buttons in edit mode - hidden on mobile unless selected */}
-      {editMode && !(isMobile && !isSelected) && (
+      {/* Edit and Delete buttons in edit mode - hidden on mobile */}
+      {editMode && !isMobile && (
         <>
           {/* Edit button */}
           <button

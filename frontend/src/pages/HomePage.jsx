@@ -13,7 +13,6 @@ import PlaceholderEditModal from '../components/PlaceholderEditModal';
 import AlertModal from '../components/AlertModal';
 import PendingSection from '../components/PendingSection';
 import DeliveryScheduleModal from '../components/DeliveryScheduleModal';
-import MobileActionBar from '../components/MobileActionBar';
 import useWebSocket from '../hooks/useWebSocket';
 import { useDarkMode } from '../contexts/DarkModeContext';
 import {
@@ -94,6 +93,20 @@ function HomePage() {
     };
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Request notification permission on mount for all users
+  useEffect(() => {
+    requestNotificationPermission()
+      .then(async (permission) => {
+        if (permission === 'granted') {
+          // Subscribe to push notifications for background delivery
+          await subscribeToPushNotifications();
+        }
+      })
+      .catch(err => {
+        console.error('Error requesting notification permission:', err);
+      });
   }, []);
 
   // Check authentication on mount
@@ -548,18 +561,6 @@ function HomePage() {
           handleCancelEdit();
         }
       }, 30000); // Check every 30 seconds
-
-      // Request notification permission for admins and subscribe to push
-      requestNotificationPermission()
-        .then(async (permission) => {
-          if (permission === 'granted') {
-            // Subscribe to push notifications for background delivery
-            await subscribeToPushNotifications();
-          }
-        })
-        .catch(err => {
-          console.error('Error requesting notification permission:', err);
-        });
     }
   };
 
@@ -1512,21 +1513,6 @@ function HomePage() {
         />
       )}
 
-      {/* Mobile Action Bar - shown when a card is selected on mobile in edit mode */}
-      {isMobile && editMode && selectedMobileCardId && (() => {
-        // Find the selected PDF from the working PDFs
-        const selectedPdf = workingPdfs.find(pdf => pdf && `pdf-${pdf.id}` === selectedMobileCardId);
-        return selectedPdf ? (
-          <MobileActionBar
-            pdf={selectedPdf}
-            onDelete={handleDelete}
-            onLabelClick={selectedPdf.is_placeholder ? null : handleLabelClick}
-            onMoveToPending={selectedPdf.is_placeholder ? null : handleMovePdfToPending}
-            onEditPlaceholder={selectedPdf.is_placeholder ? handleEditPlaceholder : null}
-            onClose={() => setSelectedMobileCardId(null)}
-          />
-        ) : null;
-      })()}
     </div>
   );
 }

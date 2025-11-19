@@ -1439,6 +1439,24 @@ app.put('/api/delivery-schedule', authMiddleware, async (req, res) => {
   });
 });
 
+app.post('/api/delivery-schedule/reset', authMiddleware, async (req, res) => {
+  // Reset the schedule to empty
+  const emptySchedule = {};
+
+  db.run(
+    'UPDATE delivery_schedule SET schedule_data = ?, updated_at = CURRENT_TIMESTAMP WHERE id = (SELECT MAX(id) FROM delivery_schedule)',
+    [JSON.stringify(emptySchedule)],
+    function(err) {
+      if (err) {
+        console.error('Error resetting delivery schedule:', err);
+        return res.status(500).json({ error: 'Failed to reset delivery schedule' });
+      }
+
+      res.json({ schedule: emptySchedule, message: 'Schedule reset successfully' });
+    }
+  );
+});
+
 // Health check with database connectivity test
 app.get('/api/health', (req, res) => {
   // Quick database check

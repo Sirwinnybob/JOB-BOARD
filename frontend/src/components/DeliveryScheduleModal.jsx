@@ -40,9 +40,18 @@ function DeliveryScheduleModal({ onClose, isAdmin }) {
 
   const handleSave = async () => {
     try {
+      const token = localStorage.getItem('token');
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
       const response = await fetch('/api/delivery-schedule', {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           slot: editingSlot,
           data: editForm
@@ -54,6 +63,8 @@ function DeliveryScheduleModal({ onClose, isAdmin }) {
         setSchedule(updated.schedule);
         setEditingSlot(null);
         setEditForm({ jobs: [] });
+      } else {
+        console.error('Failed to save delivery schedule:', response.status, response.statusText);
       }
     } catch (error) {
       console.error('Failed to save delivery schedule:', error);

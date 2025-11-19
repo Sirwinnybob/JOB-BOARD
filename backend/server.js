@@ -477,23 +477,25 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
 
         const pdfId = this.lastID;
 
-        // Broadcast update to all clients
-        broadcastUpdate('pdf_uploaded', {
-          id: pdfId,
-          filename: null,
-          original_name: originalName,
-          thumbnail: thumbnailName,
-          position: newPosition,
-          is_pending: isPending,
-          page_count: pageCount,
-          images_base: imagesBase,
-          dark_mode_images_base: null, // Will be generated in background
-          job_number: null,
-          construction_method: null
-        });
-
-        // If uploaded to pending, send notification to admins
+        // Only broadcast immediately for pending uploads
+        // Board uploads (isPending === 0) should not broadcast until Save is clicked
         if (isPending === 1) {
+          // Broadcast update to all clients
+          broadcastUpdate('pdf_uploaded', {
+            id: pdfId,
+            filename: null,
+            original_name: originalName,
+            thumbnail: thumbnailName,
+            position: newPosition,
+            is_pending: isPending,
+            page_count: pageCount,
+            images_base: imagesBase,
+            dark_mode_images_base: null, // Will be generated in background
+            job_number: null,
+            construction_method: null
+          });
+
+          // Send notification to admins for pending uploads
           broadcastUpdate('job_uploaded_to_pending', {
             id: pdfId,
             original_name: originalName

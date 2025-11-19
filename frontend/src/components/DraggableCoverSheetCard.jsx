@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useDarkMode } from '../contexts/DarkModeContext';
 
 function DraggableCoverSheetCard({
@@ -21,6 +21,7 @@ function DraggableCoverSheetCard({
   const [editing, setEditing] = useState(null);
   const [editValue, setEditValue] = useState('');
   const { darkMode, isTransitioning } = useDarkMode();
+  const switchingToCustomRef = useRef(false);
 
   // Delayed dark mode for this specific card (updates at item's color transition time)
   const [delayedDarkMode, setDelayedDarkMode] = useState(darkMode);
@@ -224,13 +225,21 @@ function DraggableCoverSheetCard({
                   value={editValue}
                   onChange={(e) => {
                     if (e.target.value === 'Custom...') {
+                      switchingToCustomRef.current = true; // Prevent blur from saving
                       setEditValue(' '); // Space triggers text input (not in predefined list)
                       // Stay in edit mode but trigger re-render to show text input
                     } else {
                       setEditValue(e.target.value);
                     }
                   }}
-                  onBlur={() => handleSaveEdit('construction_method')}
+                  onBlur={() => {
+                    // Don't save if we just selected Custom (switching to text input)
+                    if (switchingToCustomRef.current) {
+                      switchingToCustomRef.current = false;
+                      return;
+                    }
+                    handleSaveEdit('construction_method');
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') handleSaveEdit('construction_method');
                     if (e.key === 'Escape') handleCancelEdit();

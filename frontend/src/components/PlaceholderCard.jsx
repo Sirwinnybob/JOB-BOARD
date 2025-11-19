@@ -88,8 +88,11 @@ function PlaceholderCard({
       {/* Placeholder Text */}
       <div className="w-full h-full flex items-center justify-center p-4">
         <p
-          className="text-4xl font-bold text-center break-words leading-tight"
-          style={getTextStyle()}
+          className="font-bold text-center break-words leading-tight"
+          style={{
+            ...getTextStyle(),
+            fontSize: 'clamp(0.75rem, 4vw, 2.5rem)'
+          }}
         >
           {placeholder.placeholder_text || 'PLACEHOLDER'}
         </p>

@@ -76,7 +76,7 @@ function PublicPlaceholder({ placeholder, colorTransitionDelay, onClick }) {
           className="font-bold text-center break-words leading-tight w-full"
           style={{
             ...getTextStyle(),
-            fontSize: 'clamp(1rem, 5vw, 3rem)'
+            fontSize: 'clamp(0.75rem, 4vw, 3rem)'
           }}
         >
           {placeholder.placeholder_text || 'PLACEHOLDER'}

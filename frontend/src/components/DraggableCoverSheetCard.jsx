@@ -311,7 +311,7 @@ function DraggableCoverSheetCard({
           {pdf.labels.map((label) => (
             <span
               key={label.id}
-              className="px-1.5 py-0.5 text-[10px] sm:text-xs font-bold text-white rounded shadow-lg"
+              className="px-1 py-0.5 text-[8px] sm:text-xs font-bold text-white rounded shadow-lg"
               style={{ backgroundColor: label.color }}
             >
               {label.name}

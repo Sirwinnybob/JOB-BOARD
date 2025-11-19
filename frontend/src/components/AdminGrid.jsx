@@ -1,5 +1,6 @@
 import React from 'react';
 import DraggableGridItem from './DraggableGridItem';
+import MobileActionBar from './MobileActionBar';
 
 function AdminGrid({ pdfs, rows, cols, aspectWidth, aspectHeight, editMode, onReorder, onDelete, onLabelClick, onMetadataUpdate, onSlotMenuOpen, showSlotMenu, onSlotMenuClose, onAddPlaceholder, onUploadToSlot, onMoveToPending, onEditPlaceholder, isTransitioning, isMobile, selectedMobileCardId, onMobileCardSelect, onMobileTapToMove }) {
   const totalSlots = rows * cols;
@@ -13,12 +14,31 @@ function AdminGrid({ pdfs, rows, cols, aspectWidth, aspectHeight, editMode, onRe
 
   console.log('[AdminGrid] Render with isTransitioning:', isTransitioning);
 
+  // Find the selected PDF and its index for mobile action bar positioning
+  const selectedPdf = selectedMobileCardId ? pdfs.find(pdf => pdf && `pdf-${pdf.id}` === selectedMobileCardId) : null;
+  const selectedIndex = selectedMobileCardId ? pdfs.findIndex(pdf => pdf && `pdf-${pdf.id}` === selectedMobileCardId) : -1;
+
   return (
-    <div
-      className="grid gap-2 sm:gap-4 w-full"
-      style={gridStyle}
-    >
-      {Array.from({ length: totalSlots }).map((_, index) => {
+    <div className="relative">
+      {/* Mobile Action Bar - positioned above the grid */}
+      {isMobile && editMode && selectedPdf && (
+        <div className="mb-2">
+          <MobileActionBar
+            pdf={selectedPdf}
+            onDelete={onDelete}
+            onLabelClick={selectedPdf.is_placeholder ? null : onLabelClick}
+            onMoveToPending={selectedPdf.is_placeholder ? null : onMoveToPending}
+            onEditPlaceholder={selectedPdf.is_placeholder ? onEditPlaceholder : null}
+            onClose={() => onMobileCardSelect(null)}
+          />
+        </div>
+      )}
+
+      <div
+        className="grid gap-2 sm:gap-4 w-full"
+        style={gridStyle}
+      >
+        {Array.from({ length: totalSlots }).map((_, index) => {
         const pdf = pdfs[index];
         // With View Transitions API: circular reveal animates 0-0.8s
         // Grid items start fading in sync, cascading from top-left
@@ -64,6 +84,7 @@ function AdminGrid({ pdfs, rows, cols, aspectWidth, aspectHeight, editMode, onRe
           />
         );
       })}
+      </div>
     </div>
   );
 }

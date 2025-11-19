@@ -343,8 +343,8 @@ function DraggableCoverSheetCard({
         </div>
       )}
 
-      {/* Label management button in edit mode - hidden on mobile unless selected */}
-      {editMode && onLabelClick && !isDragging && !(isMobile && !isSelected) && (
+      {/* Label management button in edit mode - hidden on mobile */}
+      {editMode && onLabelClick && !isDragging && !isMobile && (
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -370,8 +370,8 @@ function DraggableCoverSheetCard({
         </button>
       )}
 
-      {/* Action buttons in edit mode - hidden on mobile unless selected */}
-      {editMode && !(isMobile && !isSelected) && (
+      {/* Action buttons in edit mode - hidden on mobile */}
+      {editMode && !isMobile && (
         <>
           {/* Move to Pending button */}
           {onMoveToPending && (

@@ -1016,32 +1016,43 @@ function HomePage() {
           const foundCard = document.querySelector(`[data-pdf-id="${targetPdf.id}"]`);
 
           if (foundCard) {
-            // Check if the card is significantly off-screen
+            // Check if the card is significantly off-screen or partially obscured
             const rect = foundCard.getBoundingClientRect();
             const viewportHeight = window.innerHeight;
-            const isOffScreen = rect.bottom < 0 || rect.top > viewportHeight;
 
-            if (isOffScreen) {
-              // Card is off-screen - scroll it into view first
-              console.log('[HomePage] Toggle exit: current item is off-screen, scrolling into view');
+            // Calculate card center and visibility
+            const cardCenterY = rect.top + (rect.height / 2);
+            const cardCenterX = rect.left + (rect.width / 2);
+            const isCompletelyOffScreen = rect.bottom < 0 || rect.top > viewportHeight;
+            const isCenterOffScreen = cardCenterY < 0 || cardCenterY > viewportHeight;
+            const visibleHeight = Math.min(rect.bottom, viewportHeight) - Math.max(rect.top, 0);
+            const visibilityRatio = visibleHeight / rect.height;
+            const isPartiallyObscured = visibilityRatio < 0.8;
+            const needsScrolling = isCompletelyOffScreen || isCenterOffScreen || isPartiallyObscured;
+
+            if (needsScrolling) {
+              // Card needs to be centered - scroll it into view first
+              console.log('[HomePage] Toggle exit: current item needs centering, scrolling into view');
               foundCard.scrollIntoView({ behavior: 'auto', block: 'center', inline: 'center' });
 
-              // Wait for scroll, then capture rect
+              // Wait for scroll to complete, then capture rect
               requestAnimationFrame(() => {
-                const newRect = foundCard.getBoundingClientRect();
-                setOriginRect({
-                  top: newRect.top,
-                  left: newRect.left,
-                  width: newRect.width,
-                  height: newRect.height,
-                  scrollX: window.scrollX || window.pageXOffset,
-                  scrollY: window.scrollY || window.pageYOffset, // Use CURRENT scroll after scrollIntoView
+                requestAnimationFrame(() => {
+                  const newRect = foundCard.getBoundingClientRect();
+                  setOriginRect({
+                    top: newRect.top,
+                    left: newRect.left,
+                    width: newRect.width,
+                    height: newRect.height,
+                    scrollX: window.scrollX || window.pageXOffset,
+                    scrollY: window.scrollY || window.pageYOffset,
+                  });
+                  console.log('[HomePage] Captured rect after scroll for toggle (index', currentSlideshowIndex, '):', newRect);
+                  setIsClosingSlideshow(true);
                 });
-                console.log('[HomePage] Captured rect after scroll for toggle (index', currentSlideshowIndex, '):', newRect);
-                setIsClosingSlideshow(true);
               });
             } else {
-              // Card is on-screen - use its natural position with CURRENT scroll
+              // Card is fully visible - use its natural position
               const currentScrollY = window.scrollY || window.pageYOffset;
               setOriginRect({
                 top: rect.top,
@@ -1049,7 +1060,7 @@ function HomePage() {
                 width: rect.width,
                 height: rect.height,
                 scrollX: window.scrollX || window.pageXOffset,
-                scrollY: currentScrollY, // Always use current scroll for accurate positioning
+                scrollY: currentScrollY,
               });
               console.log('[HomePage] Captured rect for toggle exit (index', currentSlideshowIndex, '):', rect);
               setIsClosingSlideshow(true);
@@ -1113,33 +1124,50 @@ function HomePage() {
           const foundCard = document.querySelector(`[data-pdf-id="${currentPdf.id}"]`);
 
         if (foundCard) {
-          // Check if the card is significantly off-screen
+          // Check if the card is significantly off-screen or partially obscured
           const rect = foundCard.getBoundingClientRect();
           const viewportHeight = window.innerHeight;
-          const isOffScreen = rect.bottom < 0 || rect.top > viewportHeight;
 
-          if (isOffScreen) {
-            // Card is off-screen - scroll it into view first
-            console.log('[HomePage] Current item is off-screen, scrolling into view');
+          // Calculate card center position
+          const cardCenterY = rect.top + (rect.height / 2);
+          const cardCenterX = rect.left + (rect.width / 2);
+
+          // Consider off-screen if:
+          // 1. Completely above or below viewport
+          // 2. Center is outside viewport (partially obscured)
+          // 3. Less than 80% of the card is visible
+          const isCompletelyOffScreen = rect.bottom < 0 || rect.top > viewportHeight;
+          const isCenterOffScreen = cardCenterY < 0 || cardCenterY > viewportHeight;
+          const visibleHeight = Math.min(rect.bottom, viewportHeight) - Math.max(rect.top, 0);
+          const visibilityRatio = visibleHeight / rect.height;
+          const isPartiallyObscured = visibilityRatio < 0.8;
+
+          const needsScrolling = isCompletelyOffScreen || isCenterOffScreen || isPartiallyObscured;
+
+          if (needsScrolling) {
+            // Card needs to be centered - scroll it into view first
+            console.log('[HomePage] Current item needs centering (offscreen or obscured), scrolling into view');
             foundCard.scrollIntoView({ behavior: 'auto', block: 'center', inline: 'center' });
 
-            // Wait for scroll, then capture rect
+            // Wait for scroll to complete, then capture rect
             requestAnimationFrame(() => {
-              const newRect = foundCard.getBoundingClientRect();
-              const updatedOriginRect = {
-                top: newRect.top,
-                left: newRect.left,
-                width: newRect.width,
-                height: newRect.height,
-                scrollX: window.scrollX || window.pageXOffset,
-                scrollY: window.scrollY || window.pageYOffset, // Use CURRENT scroll after scrollIntoView
-              };
-              setOriginRect(updatedOriginRect);
-              console.log('[HomePage] Captured rect after scroll (index', currentSlideshowIndex, '):', updatedOriginRect);
-              setIsClosingSlideshow(true);
+              requestAnimationFrame(() => {
+                const newRect = foundCard.getBoundingClientRect();
+                const updatedOriginRect = {
+                  top: newRect.top,
+                  left: newRect.left,
+                  width: newRect.width,
+                  height: newRect.height,
+                  scrollX: window.scrollX || window.pageXOffset,
+                  scrollY: window.scrollY || window.pageYOffset,
+                };
+                setOriginRect(updatedOriginRect);
+                console.log('[HomePage] Captured rect after scroll (index', currentSlideshowIndex, '):', updatedOriginRect);
+                setIsClosingSlideshow(true);
+              });
             });
           } else {
-            // Card is on-screen - use its natural position with CURRENT scroll
+            // Card is fully visible - use its natural position
             const currentScrollY = window.scrollY || window.pageYOffset;
             const updatedOriginRect = {
               top: rect.top,
@@ -1147,7 +1175,7 @@ function HomePage() {
               width: rect.width,
               height: rect.height,
               scrollX: window.scrollX || window.pageXOffset,
-              scrollY: currentScrollY, // Always use current scroll for accurate positioning
+              scrollY: currentScrollY,
             };
             setOriginRect(updatedOriginRect);
             console.log('[HomePage] Captured rect for current slideshow item (index', currentSlideshowIndex, '):', updatedOriginRect);

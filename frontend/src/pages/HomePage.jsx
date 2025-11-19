@@ -1527,6 +1527,7 @@ function HomePage() {
                       onAnimationComplete={handleSlideshowAnimationComplete}
                       originRect={originRect}
                       onIndexChange={setCurrentSlideshowIndex}
+                      currentSlideshowIndex={currentSlideshowIndex}
                       aspectWidth={settings.aspect_ratio_width}
                       aspectHeight={settings.aspect_ratio_height}
                     />

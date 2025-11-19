@@ -1,7 +1,7 @@
 import React, { useRef, useState, useEffect, useLayoutEffect, useCallback, useMemo } from 'react';
 import { useDarkMode } from '../contexts/DarkModeContext';
 
-function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick = false, isClosing = false, onAnimationComplete = null, originRect = null, onIndexChange = null, aspectWidth = 11, aspectHeight = 10 }) {
+function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick = false, isClosing = false, onAnimationComplete = null, originRect = null, onIndexChange = null, currentSlideshowIndex = 0, aspectWidth = 11, aspectHeight = 10 }) {
   const scrollContainerRef = useRef(null);
   const containerRef = useRef(null);
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
@@ -227,9 +227,29 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
     if (isClosing) {
       console.log('%c[SlideShowView] Closing animation started', 'background: #dc2626; color: white; padding: 4px 8px; border-radius: 3px; font-weight: bold;');
 
-      // Don't try to scroll before animation - currentIndex state can be stale
-      // The container is already showing approximately the right content
-      // Just start the animation immediately
+      // CRITICAL: Scroll to the current slideshow item BEFORE animation
+      // Use currentSlideshowIndex from HomePage (accurate) not local currentIndex (can be stale)
+      const container = scrollContainerRef.current;
+      if (container) {
+        const slideWidthPercent = isMobilePortrait ? 1.0 : 0.6;
+        const leftSpacerPercent = isMobilePortrait ? 0 : 0.2;
+        const slideWidth = container.offsetWidth * slideWidthPercent;
+        const leftSpacer = container.offsetWidth * leftSpacerPercent;
+        const targetScroll = leftSpacer + (currentSlideshowIndex * slideWidth);
+
+        // Disable scroll snap temporarily to ensure exact positioning
+        const originalScrollSnapType = container.style.scrollSnapType;
+        container.style.scrollSnapType = 'none';
+        container.scrollLeft = targetScroll;
+        console.log(`[SlideShowView] Pre-close scroll to index ${currentSlideshowIndex}: ${targetScroll.toFixed(2)}px`);
+
+        // Re-enable scroll snap after positioning
+        requestAnimationFrame(() => {
+          container.style.scrollSnapType = originalScrollSnapType;
+        });
+      }
+
+      // Start animation after ensuring correct slide is visible
       requestAnimationFrame(() => {
         setAnimationState('zoom-out');
       });
@@ -241,7 +261,7 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
       }, 400); // Match animation duration
       return () => clearTimeout(timer);
     }
-  }, [isClosing, onAnimationComplete]);
+  }, [isClosing, onAnimationComplete, currentSlideshowIndex, isMobilePortrait]);
 
   useEffect(() => {
     const container = scrollContainerRef.current;

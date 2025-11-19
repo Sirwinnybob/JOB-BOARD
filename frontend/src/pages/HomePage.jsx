@@ -234,6 +234,18 @@ function HomePage() {
     } else if (message.type === 'job_activated') {
       // Notify when a job is moved from pending to active board
       showNewJobNotification(message.data?.id);
+    } else if (message.type === 'job_uploaded_to_pending') {
+      // Notify admins when a job is uploaded to pending
+      if (isAuthenticated) {
+        const fileName = message.data?.original_name || 'New Job';
+        if ('Notification' in window && Notification.permission === 'granted') {
+          new Notification('New Pending Job', {
+            body: `${fileName} uploaded to pending`,
+            icon: '/logo192.png',
+            tag: `pending-job-${message.data?.id}`
+          });
+        }
+      }
     } else if (message.type === 'pdfs_reordered') {
       showJobsMovedNotification();
     } else if (message.type === 'custom_alert') {

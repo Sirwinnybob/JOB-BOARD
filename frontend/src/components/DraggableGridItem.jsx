@@ -58,7 +58,11 @@ function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10
       >
         <div
           ref={setDragRef}
-          style={style}
+          style={{
+            ...style,
+            zIndex: isDragging ? 9999 : undefined,
+            position: isDragging ? 'relative' : undefined,
+          }}
           {...attributes}
           {...listeners}
           className={`w-full h-full ${isDragging ? 'opacity-40' : ''}`}

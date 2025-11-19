@@ -875,11 +875,39 @@ function HomePage() {
         return;
       }
 
-      // iOS-style shift behavior: remove from source, insert at destination
-      // This makes items shift to fill the gap, rather than just swapping
       const newPdfs = [...workingPdfs];
-      const [movedItem] = newPdfs.splice(sourceIndex, 1); // Remove from source
-      newPdfs.splice(destIndex, 0, movedItem); // Insert at destination
+      const movedItem = newPdfs[sourceIndex];
+
+      // Check if destination is empty or occupied
+      if (!newPdfs[destIndex]) {
+        // Destination is empty - simple move, leaving source empty
+        newPdfs[destIndex] = movedItem;
+        newPdfs[sourceIndex] = undefined;
+      } else {
+        // Destination is occupied - iPhone-style behavior: insert and shift all items right
+        // Remove item from source first
+        newPdfs[sourceIndex] = undefined;
+
+        // Insert item at destination, pushing everything else right
+        // We need to shift all items from destIndex onwards to the right by one
+        const itemsToShift = [];
+        for (let i = destIndex; i < newPdfs.length; i++) {
+          itemsToShift.push(newPdfs[i]);
+        }
+
+        // Place moved item at destination
+        newPdfs[destIndex] = movedItem;
+
+        // Shift the displaced items to the right
+        for (let i = 0; i < itemsToShift.length; i++) {
+          newPdfs[destIndex + 1 + i] = itemsToShift[i];
+        }
+
+        // If we need to extend the array
+        if (destIndex + 1 + itemsToShift.length > newPdfs.length) {
+          newPdfs.length = destIndex + 1 + itemsToShift.length;
+        }
+      }
 
       setWorkingPdfs(newPdfs);
       setHasUnsavedChanges(true);
@@ -943,10 +971,38 @@ function HomePage() {
       return;
     }
 
-    // Use iOS-style shift behavior: remove from source, insert at destination
     const newPdfs = [...workingPdfs];
-    const [movedItem] = newPdfs.splice(sourceIndex, 1); // Remove from source
-    newPdfs.splice(targetIndex, 0, movedItem); // Insert at destination
+    const movedItem = newPdfs[sourceIndex];
+
+    // Check if destination is empty or occupied
+    if (!newPdfs[targetIndex]) {
+      // Destination is empty - simple move, leaving source empty
+      newPdfs[targetIndex] = movedItem;
+      newPdfs[sourceIndex] = undefined;
+    } else {
+      // Destination is occupied - iPhone-style behavior: insert and shift all items right
+      // Remove item from source first
+      newPdfs[sourceIndex] = undefined;
+
+      // Insert item at destination, pushing everything else right
+      const itemsToShift = [];
+      for (let i = targetIndex; i < newPdfs.length; i++) {
+        itemsToShift.push(newPdfs[i]);
+      }
+
+      // Place moved item at destination
+      newPdfs[targetIndex] = movedItem;
+
+      // Shift the displaced items to the right
+      for (let i = 0; i < itemsToShift.length; i++) {
+        newPdfs[targetIndex + 1 + i] = itemsToShift[i];
+      }
+
+      // If we need to extend the array
+      if (targetIndex + 1 + itemsToShift.length > newPdfs.length) {
+        newPdfs.length = targetIndex + 1 + itemsToShift.length;
+      }
+    }
 
     setWorkingPdfs(newPdfs);
     setHasUnsavedChanges(true);

@@ -191,7 +191,18 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
   useEffect(() => {
     if (isClosing) {
       console.log('%c[SlideShowView] Closing animation started', 'background: #dc2626; color: white; padding: 4px 8px; border-radius: 3px; font-weight: bold;');
-      setAnimationState('zoom-out');
+
+      // IMPORTANT: Scroll to current index immediately before animation
+      // This ensures the currently visible item is properly centered
+      scrollToIndex(currentIndex, true); // immediate = true for instant scroll
+
+      // Wait for scroll to complete before starting animation
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setAnimationState('zoom-out');
+        });
+      });
+
       const timer = setTimeout(() => {
         if (onAnimationComplete) {
           onAnimationComplete();
@@ -199,7 +210,7 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
       }, 400); // Match animation duration
       return () => clearTimeout(timer);
     }
-  }, [isClosing, onAnimationComplete]);
+  }, [isClosing, onAnimationComplete, currentIndex, scrollToIndex]);
 
   useEffect(() => {
     const container = scrollContainerRef.current;
@@ -235,7 +246,7 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
     }
   }, [currentIndex, onIndexChange]);
 
-  const scrollToIndex = (index, immediate = false) => {
+  const scrollToIndex = useCallback((index, immediate = false) => {
     const container = scrollContainerRef.current;
     if (container) {
       // Mobile portrait: 100% width, no spacers. Landscape/desktop: 60% width with 20% spacers
@@ -243,12 +254,21 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
       const leftSpacerPercent = isMobilePortrait ? 0 : 0.2;
       const slideWidth = container.offsetWidth * slideWidthPercent;
       const leftSpacer = container.offsetWidth * leftSpacerPercent;
-      container.scrollTo({
-        left: leftSpacer + (index * slideWidth),
-        behavior: immediate ? 'auto' : 'smooth'
-      });
+      const targetScroll = leftSpacer + (index * slideWidth);
+      console.log(`[SlideShowView] Scrolling to index ${index}, targetScroll: ${targetScroll.toFixed(2)}px, current: ${container.scrollLeft.toFixed(2)}px`);
+
+      if (immediate) {
+        // For immediate scrolls (like before close animation), set scrollLeft directly
+        container.scrollLeft = targetScroll;
+        console.log(`[SlideShowView] Scroll completed immediately, new scrollLeft: ${container.scrollLeft.toFixed(2)}px`);
+      } else {
+        container.scrollTo({
+          left: targetScroll,
+          behavior: 'smooth'
+        });
+      }
     }
-  };
+  }, [isMobilePortrait]);
 
   const handlePrevious = () => {
     if (currentIndex > 0) {

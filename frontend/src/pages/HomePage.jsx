@@ -1016,44 +1016,49 @@ function HomePage() {
           const foundCard = document.querySelector(`[data-pdf-id="${targetPdf.id}"]`);
 
           if (foundCard) {
-            // Check if the card is significantly off-screen or partially obscured
-            const rect = foundCard.getBoundingClientRect();
+            // Calculate slideshow container center (matches SlideShowView calculation)
             const viewportHeight = window.innerHeight;
+            const slideshowHeaderOffset = 64; // top-16 in pixels
+            const slideshowCenterY = slideshowHeaderOffset + ((viewportHeight - slideshowHeaderOffset) / 2);
 
-            // Calculate card center and visibility
-            const cardCenterY = rect.top + (rect.height / 2);
-            const cardCenterX = rect.left + (rect.width / 2);
-            const isCompletelyOffScreen = rect.bottom < 0 || rect.top > viewportHeight;
-            const isCenterOffScreen = cardCenterY < 0 || cardCenterY > viewportHeight;
-            const visibleHeight = Math.min(rect.bottom, viewportHeight) - Math.max(rect.top, 0);
-            const visibilityRatio = visibleHeight / rect.height;
-            const isPartiallyObscured = visibilityRatio < 0.8;
-            const needsScrolling = isCompletelyOffScreen || isCenterOffScreen || isPartiallyObscured;
+            // Get card's current position
+            const rect = foundCard.getBoundingClientRect();
+            const currentScrollY = window.scrollY || window.pageYOffset;
 
-            if (needsScrolling) {
-              // Card needs to be centered - scroll it into view first
-              console.log('[HomePage] Toggle exit: current item needs centering, scrolling into view');
-              foundCard.scrollIntoView({ behavior: 'auto', block: 'center', inline: 'center' });
+            // Calculate card's center in page coordinates
+            const cardPageY = rect.top + currentScrollY;
+            const cardCenterPageY = cardPageY + (rect.height / 2);
+
+            // Calculate scroll position that aligns card center with slideshow center
+            const targetScrollY = cardCenterPageY - slideshowCenterY;
+
+            // Check if we need to scroll
+            const scrollDelta = Math.abs(currentScrollY - targetScrollY);
+
+            if (scrollDelta > 5) {
+              // Need to scroll to align centers
+              console.log(`[HomePage] Toggle exit: aligning card center with slideshow center (scroll ${currentScrollY.toFixed(1)} -> ${targetScrollY.toFixed(1)})`);
+              window.scrollTo({ top: targetScrollY, behavior: 'auto' });
 
               // Wait for scroll to complete, then capture rect
               requestAnimationFrame(() => {
                 requestAnimationFrame(() => {
                   const newRect = foundCard.getBoundingClientRect();
+                  const finalScrollY = window.scrollY || window.pageYOffset;
                   setOriginRect({
                     top: newRect.top,
                     left: newRect.left,
                     width: newRect.width,
                     height: newRect.height,
                     scrollX: window.scrollX || window.pageXOffset,
-                    scrollY: window.scrollY || window.pageYOffset,
+                    scrollY: finalScrollY,
                   });
-                  console.log('[HomePage] Captured rect after scroll for toggle (index', currentSlideshowIndex, '):', newRect);
+                  console.log('[HomePage] Toggle captured rect after alignment (index', currentSlideshowIndex, '):', newRect);
                   setIsClosingSlideshow(true);
                 });
               });
             } else {
-              // Card is fully visible - use its natural position
-              const currentScrollY = window.scrollY || window.pageYOffset;
+              // Already aligned - capture rect immediately
               setOriginRect({
                 top: rect.top,
                 left: rect.left,
@@ -1062,7 +1067,7 @@ function HomePage() {
                 scrollX: window.scrollX || window.pageXOffset,
                 scrollY: currentScrollY,
               });
-              console.log('[HomePage] Captured rect for toggle exit (index', currentSlideshowIndex, '):', rect);
+              console.log('[HomePage] Toggle card already aligned, captured rect (index', currentSlideshowIndex, '):', rect);
               setIsClosingSlideshow(true);
             }
           } else {
@@ -1124,51 +1129,50 @@ function HomePage() {
           const foundCard = document.querySelector(`[data-pdf-id="${currentPdf.id}"]`);
 
         if (foundCard) {
-          // Check if the card is significantly off-screen or partially obscured
-          const rect = foundCard.getBoundingClientRect();
+          // Calculate slideshow container center (matches SlideShowView calculation)
           const viewportHeight = window.innerHeight;
+          const slideshowHeaderOffset = 64; // top-16 in pixels
+          const slideshowCenterY = slideshowHeaderOffset + ((viewportHeight - slideshowHeaderOffset) / 2);
 
-          // Calculate card center position
-          const cardCenterY = rect.top + (rect.height / 2);
-          const cardCenterX = rect.left + (rect.width / 2);
+          // Get card's current position
+          const rect = foundCard.getBoundingClientRect();
+          const currentScrollY = window.scrollY || window.pageYOffset;
 
-          // Consider off-screen if:
-          // 1. Completely above or below viewport
-          // 2. Center is outside viewport (partially obscured)
-          // 3. Less than 80% of the card is visible
-          const isCompletelyOffScreen = rect.bottom < 0 || rect.top > viewportHeight;
-          const isCenterOffScreen = cardCenterY < 0 || cardCenterY > viewportHeight;
-          const visibleHeight = Math.min(rect.bottom, viewportHeight) - Math.max(rect.top, 0);
-          const visibilityRatio = visibleHeight / rect.height;
-          const isPartiallyObscured = visibilityRatio < 0.8;
+          // Calculate card's center in page coordinates
+          const cardPageY = rect.top + currentScrollY;
+          const cardCenterPageY = cardPageY + (rect.height / 2);
 
-          const needsScrolling = isCompletelyOffScreen || isCenterOffScreen || isPartiallyObscured;
+          // Calculate scroll position that aligns card center with slideshow center
+          const targetScrollY = cardCenterPageY - slideshowCenterY;
 
-          if (needsScrolling) {
-            // Card needs to be centered - scroll it into view first
-            console.log('[HomePage] Current item needs centering (offscreen or obscured), scrolling into view');
-            foundCard.scrollIntoView({ behavior: 'auto', block: 'center', inline: 'center' });
+          // Check if we need to scroll
+          const scrollDelta = Math.abs(currentScrollY - targetScrollY);
+
+          if (scrollDelta > 5) {
+            // Need to scroll to align centers
+            console.log(`[HomePage] Aligning card center with slideshow center (scroll ${currentScrollY.toFixed(1)} -> ${targetScrollY.toFixed(1)})`);
+            window.scrollTo({ top: targetScrollY, behavior: 'auto' });
 
             // Wait for scroll to complete, then capture rect
             requestAnimationFrame(() => {
               requestAnimationFrame(() => {
                 const newRect = foundCard.getBoundingClientRect();
+                const finalScrollY = window.scrollY || window.pageYOffset;
                 const updatedOriginRect = {
                   top: newRect.top,
                   left: newRect.left,
                   width: newRect.width,
                   height: newRect.height,
                   scrollX: window.scrollX || window.pageXOffset,
-                  scrollY: window.scrollY || window.pageYOffset,
+                  scrollY: finalScrollY,
                 };
                 setOriginRect(updatedOriginRect);
-                console.log('[HomePage] Captured rect after scroll (index', currentSlideshowIndex, '):', updatedOriginRect);
+                console.log('[HomePage] Captured rect after alignment (index', currentSlideshowIndex, '):', updatedOriginRect);
                 setIsClosingSlideshow(true);
               });
             });
           } else {
-            // Card is fully visible - use its natural position
-            const currentScrollY = window.scrollY || window.pageYOffset;
+            // Already aligned - capture rect immediately
             const updatedOriginRect = {
               top: rect.top,
               left: rect.left,
@@ -1178,7 +1182,7 @@ function HomePage() {
               scrollY: currentScrollY,
             };
             setOriginRect(updatedOriginRect);
-            console.log('[HomePage] Captured rect for current slideshow item (index', currentSlideshowIndex, '):', updatedOriginRect);
+            console.log('[HomePage] Card already aligned, captured rect (index', currentSlideshowIndex, '):', updatedOriginRect);
             setIsClosingSlideshow(true);
           }
         } else {

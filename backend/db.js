@@ -216,10 +216,21 @@ db.serialize(() => {
       keys_p256dh TEXT NOT NULL,
       keys_auth TEXT NOT NULL,
       user_agent TEXT,
+      is_admin INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       last_used_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
+
+  // Add is_admin column to existing table (migration)
+  db.run(`
+    ALTER TABLE push_subscriptions ADD COLUMN is_admin INTEGER DEFAULT 0
+  `, (err) => {
+    // Ignore error if column already exists
+    if (err && !err.message.includes('duplicate column name')) {
+      console.error('Error adding is_admin column to push_subscriptions:', err);
+    }
+  });
 
   // Delivery Schedule table for weekly delivery planning
   db.run(`

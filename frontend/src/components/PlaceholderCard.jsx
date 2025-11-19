@@ -91,7 +91,7 @@ function PlaceholderCard({
           className="font-bold text-center break-words leading-tight"
           style={{
             ...getTextStyle(),
-            fontSize: 'clamp(0.75rem, 4vw, 2.5rem)'
+            fontSize: 'clamp(0.5rem, 3vw, 2.5rem)'
           }}
         >
           {placeholder.placeholder_text || 'PLACEHOLDER'}

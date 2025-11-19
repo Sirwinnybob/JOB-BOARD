@@ -1016,42 +1016,58 @@ function HomePage() {
           const foundCard = document.querySelector(`[data-pdf-id="${targetPdf.id}"]`);
 
           if (foundCard) {
-            // Check if the card is significantly off-screen
-            const rect = foundCard.getBoundingClientRect();
+            // Calculate slideshow container center (matches SlideShowView calculation)
             const viewportHeight = window.innerHeight;
-            const isOffScreen = rect.bottom < 0 || rect.top > viewportHeight;
+            const slideshowHeaderOffset = 64; // top-16 in pixels
+            const slideshowCenterY = slideshowHeaderOffset + ((viewportHeight - slideshowHeaderOffset) / 2);
 
-            if (isOffScreen) {
-              // Card is off-screen - scroll it into view first
-              console.log('[HomePage] Toggle exit: current item is off-screen, scrolling into view');
-              foundCard.scrollIntoView({ behavior: 'auto', block: 'center', inline: 'center' });
+            // Get card's current position
+            const rect = foundCard.getBoundingClientRect();
+            const currentScrollY = window.scrollY || window.pageYOffset;
 
-              // Wait for scroll, then capture rect
+            // Calculate card's center in page coordinates
+            const cardPageY = rect.top + currentScrollY;
+            const cardCenterPageY = cardPageY + (rect.height / 2);
+
+            // Calculate scroll position that aligns card center with slideshow center
+            const targetScrollY = cardCenterPageY - slideshowCenterY;
+
+            // Check if we need to scroll
+            const scrollDelta = Math.abs(currentScrollY - targetScrollY);
+
+            if (scrollDelta > 5) {
+              // Need to scroll to align centers
+              console.log(`[HomePage] Toggle exit: aligning card center with slideshow center (scroll ${currentScrollY.toFixed(1)} -> ${targetScrollY.toFixed(1)})`);
+              window.scrollTo({ top: targetScrollY, behavior: 'auto' });
+
+              // Wait for scroll to complete, then capture rect
               requestAnimationFrame(() => {
-                const newRect = foundCard.getBoundingClientRect();
-                setOriginRect({
-                  top: newRect.top,
-                  left: newRect.left,
-                  width: newRect.width,
-                  height: newRect.height,
-                  scrollX: window.scrollX || window.pageXOffset,
-                  scrollY: window.scrollY || window.pageYOffset, // Use CURRENT scroll after scrollIntoView
+                requestAnimationFrame(() => {
+                  const newRect = foundCard.getBoundingClientRect();
+                  const finalScrollY = window.scrollY || window.pageYOffset;
+                  setOriginRect({
+                    top: newRect.top,
+                    left: newRect.left,
+                    width: newRect.width,
+                    height: newRect.height,
+                    scrollX: window.scrollX || window.pageXOffset,
+                    scrollY: finalScrollY,
+                  });
+                  console.log('[HomePage] Toggle captured rect after alignment (index', currentSlideshowIndex, '):', newRect);
+                  setIsClosingSlideshow(true);
                 });
-                console.log('[HomePage] Captured rect after scroll for toggle (index', currentSlideshowIndex, '):', newRect);
-                setIsClosingSlideshow(true);
               });
             } else {
-              // Card is on-screen - use its natural position with CURRENT scroll
-              const currentScrollY = window.scrollY || window.pageYOffset;
+              // Already aligned - capture rect immediately
               setOriginRect({
                 top: rect.top,
                 left: rect.left,
                 width: rect.width,
                 height: rect.height,
                 scrollX: window.scrollX || window.pageXOffset,
-                scrollY: currentScrollY, // Always use current scroll for accurate positioning
+                scrollY: currentScrollY,
               });
-              console.log('[HomePage] Captured rect for toggle exit (index', currentSlideshowIndex, '):', rect);
+              console.log('[HomePage] Toggle card already aligned, captured rect (index', currentSlideshowIndex, '):', rect);
               setIsClosingSlideshow(true);
             }
           } else {
@@ -1113,44 +1129,60 @@ function HomePage() {
           const foundCard = document.querySelector(`[data-pdf-id="${currentPdf.id}"]`);
 
         if (foundCard) {
-          // Check if the card is significantly off-screen
-          const rect = foundCard.getBoundingClientRect();
+          // Calculate slideshow container center (matches SlideShowView calculation)
           const viewportHeight = window.innerHeight;
-          const isOffScreen = rect.bottom < 0 || rect.top > viewportHeight;
+          const slideshowHeaderOffset = 64; // top-16 in pixels
+          const slideshowCenterY = slideshowHeaderOffset + ((viewportHeight - slideshowHeaderOffset) / 2);
 
-          if (isOffScreen) {
-            // Card is off-screen - scroll it into view first
-            console.log('[HomePage] Current item is off-screen, scrolling into view');
-            foundCard.scrollIntoView({ behavior: 'auto', block: 'center', inline: 'center' });
+          // Get card's current position
+          const rect = foundCard.getBoundingClientRect();
+          const currentScrollY = window.scrollY || window.pageYOffset;
 
-            // Wait for scroll, then capture rect
+          // Calculate card's center in page coordinates
+          const cardPageY = rect.top + currentScrollY;
+          const cardCenterPageY = cardPageY + (rect.height / 2);
+
+          // Calculate scroll position that aligns card center with slideshow center
+          const targetScrollY = cardCenterPageY - slideshowCenterY;
+
+          // Check if we need to scroll
+          const scrollDelta = Math.abs(currentScrollY - targetScrollY);
+
+          if (scrollDelta > 5) {
+            // Need to scroll to align centers
+            console.log(`[HomePage] Aligning card center with slideshow center (scroll ${currentScrollY.toFixed(1)} -> ${targetScrollY.toFixed(1)})`);
+            window.scrollTo({ top: targetScrollY, behavior: 'auto' });
+
+            // Wait for scroll to complete, then capture rect
             requestAnimationFrame(() => {
-              const newRect = foundCard.getBoundingClientRect();
-              const updatedOriginRect = {
-                top: newRect.top,
-                left: newRect.left,
-                width: newRect.width,
-                height: newRect.height,
-                scrollX: window.scrollX || window.pageXOffset,
-                scrollY: window.scrollY || window.pageYOffset, // Use CURRENT scroll after scrollIntoView
-              };
-              setOriginRect(updatedOriginRect);
-              console.log('[HomePage] Captured rect after scroll (index', currentSlideshowIndex, '):', updatedOriginRect);
-              setIsClosingSlideshow(true);
+              requestAnimationFrame(() => {
+                const newRect = foundCard.getBoundingClientRect();
+                const finalScrollY = window.scrollY || window.pageYOffset;
+                const updatedOriginRect = {
+                  top: newRect.top,
+                  left: newRect.left,
+                  width: newRect.width,
+                  height: newRect.height,
+                  scrollX: window.scrollX || window.pageXOffset,
+                  scrollY: finalScrollY,
+                };
+                setOriginRect(updatedOriginRect);
+                console.log('[HomePage] Captured rect after alignment (index', currentSlideshowIndex, '):', updatedOriginRect);
+                setIsClosingSlideshow(true);
+              });
             });
           } else {
-            // Card is on-screen - use its natural position with CURRENT scroll
-            const currentScrollY = window.scrollY || window.pageYOffset;
+            // Already aligned - capture rect immediately
             const updatedOriginRect = {
               top: rect.top,
               left: rect.left,
               width: rect.width,
               height: rect.height,
               scrollX: window.scrollX || window.pageXOffset,
-              scrollY: currentScrollY, // Always use current scroll for accurate positioning
+              scrollY: currentScrollY,
             };
             setOriginRect(updatedOriginRect);
-            console.log('[HomePage] Captured rect for current slideshow item (index', currentSlideshowIndex, '):', updatedOriginRect);
+            console.log('[HomePage] Card already aligned, captured rect (index', currentSlideshowIndex, '):', updatedOriginRect);
             setIsClosingSlideshow(true);
           }
         } else {

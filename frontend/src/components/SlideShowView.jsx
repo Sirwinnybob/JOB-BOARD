@@ -223,8 +223,10 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
   }, [isMobilePortrait]);
 
   // Handle zoom-out animation when closing
+  const hasStartedClosingRef = useRef(false);
   useEffect(() => {
-    if (isClosing) {
+    if (isClosing && !hasStartedClosingRef.current) {
+      hasStartedClosingRef.current = true;
       console.log('%c[SlideShowView] Closing animation started', 'background: #dc2626; color: white; padding: 4px 8px; border-radius: 3px; font-weight: bold;');
 
       // CRITICAL: Scroll to the current slideshow item BEFORE animation
@@ -260,6 +262,11 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
         }
       }, 400); // Match animation duration
       return () => clearTimeout(timer);
+    }
+
+    // Reset the ref when not closing anymore
+    if (!isClosing) {
+      hasStartedClosingRef.current = false;
     }
   }, [isClosing, onAnimationComplete, currentSlideshowIndex, isMobilePortrait]);
 

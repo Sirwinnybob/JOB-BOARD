@@ -131,8 +131,9 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
     }
 
     // Calculate translation needed to move container center TO grid item center
-    // For closing animation, adjust by horizontal scroll offset so the visible slide (not container center) aligns with grid
-    const translateX = (originCenterX - viewportCenterX) + horizontalScrollOffset;
+    // For closing animation, SUBTRACT horizontal scroll offset so the visible slide (not container center) aligns with grid
+    // If slide is 768px to the RIGHT of container center, we need to move container 768px to the LEFT (subtract offset)
+    const translateX = (originCenterX - viewportCenterX) - horizontalScrollOffset;
     const translateY = originCenterY - viewportCenterY;
 
     // Edge case: Clamp translations to prevent extreme off-screen animations

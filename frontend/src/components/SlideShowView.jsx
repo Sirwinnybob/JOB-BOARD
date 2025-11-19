@@ -114,26 +114,10 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
     const viewportCenterX = viewportWidth / 2;
     const viewportCenterY = headerOffset + (containerHeight / 2); // Center of container, not viewport
 
-    // CRITICAL: Account for horizontal scroll offset within the slideshow
-    // The outer container is fixed and centered, but the slides are scrolled horizontally inside
-    // We need to offset the transform by where the current slide is positioned within the container
-    let horizontalScrollOffset = 0;
-    if (scrollContainerRef.current && isClosing) {
-      const scrollLeft = scrollContainerRef.current.scrollLeft;
-      const containerWidth = viewportWidth;
-      // The visible slide's center is scrollLeft + (slideWidth / 2) from the container's left edge
-      // Offset from container center is: (scrollLeft + slideWidth/2) - (containerWidth/2)
-      const slideWidthPercent = isMobilePortrait ? 1.0 : 0.6;
-      const slideWidth = containerWidth * slideWidthPercent;
-      const slideCenterFromLeft = scrollLeft + (slideWidth / 2);
-      horizontalScrollOffset = slideCenterFromLeft - (containerWidth / 2);
-      console.log(`[SlideShowView] Horizontal scroll compensation: scrollLeft=${scrollLeft.toFixed(2)}px, offset=${horizontalScrollOffset.toFixed(2)}px`);
-    }
-
     // Calculate translation needed to move container center TO grid item center
-    // For closing animation, SUBTRACT horizontal scroll offset so the visible slide (not container center) aligns with grid
-    // If slide is 768px to the RIGHT of container center, we need to move container 768px to the LEFT (subtract offset)
-    const translateX = (originCenterX - viewportCenterX) - horizontalScrollOffset;
+    // Opening animation works perfectly without horizontal scroll compensation
+    // Closing should be the exact reverse - no compensation needed
+    const translateX = originCenterX - viewportCenterX;
     const translateY = originCenterY - viewportCenterY;
 
     // Edge case: Clamp translations to prevent extreme off-screen animations
@@ -173,7 +157,7 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
         height: originRect.height + 'px'
       }
     });
-  }, [originRect, isClosing, isMobilePortrait]);
+  }, [originRect]);
 
   useLayoutEffect(() => {
     calculateTransform();

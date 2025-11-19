@@ -141,7 +141,7 @@ wss.on('close', () => {
 });
 
 // Optimized broadcast function to send updates to all connected clients via WebSocket and Push
-async function broadcastUpdate(type, data = {}) {
+async function broadcastUpdate(type, data = {}, adminOnly = false) {
   const message = JSON.stringify({ type, data, timestamp: Date.now() });
   let wsSuccessCount = 0;
   let wsFailCount = 0;
@@ -162,18 +162,23 @@ async function broadcastUpdate(type, data = {}) {
   console.log(`Broadcast: ${type} (WS: ${wsSuccessCount} sent, ${wsFailCount} failed)`);
 
   // Send Push notifications for important events
-  const pushNotificationTypes = ['pdf_uploaded', 'job_activated', 'pdfs_reordered', 'custom_alert'];
+  const pushNotificationTypes = ['pdf_uploaded', 'job_uploaded_to_pending', 'job_activated', 'pdfs_reordered', 'custom_alert'];
   if (pushNotificationTypes.includes(type)) {
-    sendPushNotifications(type, data).catch(err => {
+    sendPushNotifications(type, data, adminOnly).catch(err => {
       console.error('Error sending push notifications:', err.message);
     });
   }
 }
 
 // Send push notifications to all subscribed clients
-async function sendPushNotifications(type, data) {
+async function sendPushNotifications(type, data, adminOnly = false) {
   return new Promise((resolve, reject) => {
-    db.all('SELECT * FROM push_subscriptions', [], async (err, subscriptions) => {
+    // Filter query based on admin status
+    const query = adminOnly
+      ? 'SELECT * FROM push_subscriptions WHERE is_admin = 1'
+      : 'SELECT * FROM push_subscriptions';
+
+    db.all(query, [], async (err, subscriptions) => {
       if (err) {
         console.error('Error fetching push subscriptions:', err);
         return reject(err);
@@ -193,6 +198,10 @@ async function sendPushNotifications(type, data) {
         title = 'Job Board Update';
         body = 'NEW JOB';
         tag = 'new-job';
+      } else if (type === 'job_uploaded_to_pending') {
+        title = 'Admin Notification';
+        body = 'NEW PENDING JOB';
+        tag = 'pending-job';
       } else if (type === 'pdfs_reordered') {
         title = 'Job Board Update';
         body = 'JOB(S) MOVED';
@@ -480,26 +489,36 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
         // Only broadcast immediately for pending uploads
         // Board uploads (isPending === 0) should not broadcast until Save is clicked
         if (isPending === 1) {
-          // Broadcast update to all clients
-          broadcastUpdate('pdf_uploaded', {
-            id: pdfId,
-            filename: null,
-            original_name: originalName,
-            thumbnail: thumbnailName,
-            position: newPosition,
-            is_pending: isPending,
-            page_count: pageCount,
-            images_base: imagesBase,
-            dark_mode_images_base: null, // Will be generated in background
-            job_number: null,
-            construction_method: null
+          // Broadcast WebSocket update to all clients (no push notification)
+          // This updates the UI but doesn't send notifications
+          const message = JSON.stringify({
+            type: 'pdf_uploaded',
+            data: {
+              id: pdfId,
+              filename: null,
+              original_name: originalName,
+              thumbnail: thumbnailName,
+              position: newPosition,
+              is_pending: isPending,
+              page_count: pageCount,
+              images_base: imagesBase,
+              dark_mode_images_base: null,
+              job_number: null,
+              construction_method: null
+            },
+            timestamp: Date.now()
+          });
+          wss.clients.forEach((client) => {
+            if (client.readyState === WebSocket.OPEN) {
+              client.send(message);
+            }
           });
 
-          // Send notification to admins for pending uploads
+          // Send push notification ONLY to admins for pending uploads
           broadcastUpdate('job_uploaded_to_pending', {
             id: pdfId,
             original_name: originalName
-          });
+          }, true); // adminOnly = true
         }
 
         // Send immediate response to client (fast upload)
@@ -1105,23 +1124,39 @@ app.post('/api/push/subscribe', async (req, res) => {
     const { endpoint, keys } = subscription;
     const userAgent = req.headers['user-agent'] || 'Unknown';
 
-    // Insert or update subscription
+    // Determine if user is admin by checking for valid auth token
+    let isAdmin = 0;
+    try {
+      const token = req.headers.authorization?.split(' ')[1];
+      if (token) {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        if (decoded && decoded.username) {
+          isAdmin = 1;
+        }
+      }
+    } catch (authErr) {
+      // No valid token = non-admin viewer
+      isAdmin = 0;
+    }
+
+    // Insert or update subscription with admin status
     db.run(
-      `INSERT INTO push_subscriptions (endpoint, keys_p256dh, keys_auth, user_agent)
-       VALUES (?, ?, ?, ?)
+      `INSERT INTO push_subscriptions (endpoint, keys_p256dh, keys_auth, user_agent, is_admin)
+       VALUES (?, ?, ?, ?, ?)
        ON CONFLICT(endpoint) DO UPDATE SET
          keys_p256dh = excluded.keys_p256dh,
          keys_auth = excluded.keys_auth,
          user_agent = excluded.user_agent,
+         is_admin = excluded.is_admin,
          last_used_at = CURRENT_TIMESTAMP`,
-      [endpoint, keys.p256dh, keys.auth, userAgent],
+      [endpoint, keys.p256dh, keys.auth, userAgent, isAdmin],
       (err) => {
         if (err) {
           console.error('Error saving push subscription:', err);
           return res.status(500).json({ error: 'Failed to save subscription' });
         }
 
-        console.log('✅ Push subscription saved:', endpoint.substring(0, 50) + '...');
+        console.log(`✅ Push subscription saved (${isAdmin ? 'Admin' : 'Viewer'}):`, endpoint.substring(0, 50) + '...');
         res.json({ success: true });
       }
     );

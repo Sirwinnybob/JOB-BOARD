@@ -99,14 +99,98 @@ function DeliveryScheduleModal({ onClose, isAdmin }) {
     navigator.clipboard.writeText(address);
   };
 
+  const handleResetAll = async () => {
+    if (!confirm('Are you sure you want to clear the entire delivery schedule? This cannot be undone.')) {
+      return;
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
+      const response = await fetch('/api/delivery-schedule/reset', {
+        method: 'POST',
+        headers
+      });
+
+      if (response.ok) {
+        const updated = await response.json();
+        setSchedule(updated.schedule || {});
+      } else {
+        console.error('Failed to reset delivery schedule:', response.status, response.statusText);
+      }
+    } catch (error) {
+      console.error('Failed to reset delivery schedule:', error);
+    }
+  };
+
+  const handleDeleteJob = async (day, period, jobIndex) => {
+    if (!confirm('Are you sure you want to delete this delivery entry?')) {
+      return;
+    }
+
+    try {
+      const slotKey = `${day}_${period}`;
+      const slotData = schedule[slotKey] || { jobs: [] };
+      const updatedJobs = slotData.jobs.filter((_, i) => i !== jobIndex);
+
+      const token = localStorage.getItem('token');
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
+      const response = await fetch('/api/delivery-schedule', {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({
+          slot: slotKey,
+          data: { jobs: updatedJobs }
+        })
+      });
+
+      if (response.ok) {
+        const updated = await response.json();
+        setSchedule(updated.schedule);
+      } else {
+        console.error('Failed to delete job:', response.status, response.statusText);
+      }
+    } catch (error) {
+      console.error('Failed to delete job:', error);
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-xl max-w-7xl w-full max-h-[90vh] overflow-hidden transition-colors`}>
         {/* Header */}
         <div className={`${darkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-100 border-gray-200'} px-6 py-4 border-b flex justify-between items-center transition-colors`}>
-          <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'} transition-colors`}>
-            This Week's Delivery Schedule
-          </h2>
+          <div className="flex items-center gap-4">
+            <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'} transition-colors`}>
+              This Week's Delivery Schedule
+            </h2>
+            {isAdmin && (
+              <button
+                onClick={handleResetAll}
+                className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded text-sm font-medium transition-colors"
+                title="Clear all schedule entries"
+              >
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                <span className="hidden sm:inline">Reset All</span>
+              </button>
+            )}
+          </div>
           <button
             onClick={onClose}
             className={`${darkMode ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:text-gray-900'} transition-colors`}
@@ -226,31 +310,44 @@ function DeliveryScheduleModal({ onClose, isAdmin }) {
                                         {job.description}
                                       </div>
                                     </div>
-                                    {job.address && (
-                                      <div className="flex gap-1">
-                                        <a
-                                          href={job.address.startsWith('http') ? job.address : `https://maps.google.com/?q=${encodeURIComponent(job.address)}`}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className={`${darkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'} transition-colors`}
-                                          title="Open in maps"
-                                        >
-                                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-                                          </svg>
-                                        </a>
+                                    <div className="flex gap-1">
+                                      {job.address && (
+                                        <>
+                                          <a
+                                            href={job.address.startsWith('http') ? job.address : `https://maps.google.com/?q=${encodeURIComponent(job.address)}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className={`${darkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'} transition-colors`}
+                                            title="Open in maps"
+                                          >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                            </svg>
+                                          </a>
+                                          <button
+                                            onClick={() => copyAddress(job.address)}
+                                            className={`${darkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-600 hover:text-gray-700'} transition-colors`}
+                                            title="Copy address"
+                                          >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                            </svg>
+                                          </button>
+                                        </>
+                                      )}
+                                      {isAdmin && (
                                         <button
-                                          onClick={() => copyAddress(job.address)}
-                                          className={`${darkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-600 hover:text-gray-700'} transition-colors`}
-                                          title="Copy address"
+                                          onClick={() => handleDeleteJob(day, period, index)}
+                                          className="text-red-500 hover:text-red-600 transition-colors"
+                                          title="Delete this entry"
                                         >
                                           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                           </svg>
                                         </button>
-                                      </div>
-                                    )}
+                                      )}
+                                    </div>
                                   </div>
                                 </div>
                               ))

@@ -1449,7 +1449,10 @@ function HomePage() {
                 <div
                   className={viewMode === 'slideshow' && !isClosingSlideshow ? 'opacity-0 pointer-events-none' : 'opacity-100'}
                   style={{
-                    transition: isClosingSlideshow ? 'none' : 'opacity 0.3s ease-in-out'
+                    transition: isClosingSlideshow ? 'none' : 'opacity 0.3s ease-in-out',
+                    // Hardware acceleration for smoother opacity transitions
+                    transform: 'translate3d(0, 0, 0)',
+                    willChange: viewMode === 'slideshow' ? 'opacity' : 'auto',
                   }}
                 >
                   {gridContent()}

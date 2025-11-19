@@ -114,9 +114,25 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
     const viewportCenterX = viewportWidth / 2;
     const viewportCenterY = headerOffset + (containerHeight / 2); // Center of container, not viewport
 
+    // CRITICAL: Account for horizontal scroll offset within the slideshow
+    // The outer container is fixed and centered, but the slides are scrolled horizontally inside
+    // We need to offset the transform by where the current slide is positioned within the container
+    let horizontalScrollOffset = 0;
+    if (scrollContainerRef.current && isClosing) {
+      const scrollLeft = scrollContainerRef.current.scrollLeft;
+      const containerWidth = viewportWidth;
+      // The visible slide's center is scrollLeft + (slideWidth / 2) from the container's left edge
+      // Offset from container center is: (scrollLeft + slideWidth/2) - (containerWidth/2)
+      const slideWidthPercent = isMobilePortrait ? 1.0 : 0.6;
+      const slideWidth = containerWidth * slideWidthPercent;
+      const slideCenterFromLeft = scrollLeft + (slideWidth / 2);
+      horizontalScrollOffset = slideCenterFromLeft - (containerWidth / 2);
+      console.log(`[SlideShowView] Horizontal scroll compensation: scrollLeft=${scrollLeft.toFixed(2)}px, offset=${horizontalScrollOffset.toFixed(2)}px`);
+    }
+
     // Calculate translation needed to move container center TO grid item center
-    // (This positions the fullscreen container to appear at the grid item location)
-    const translateX = originCenterX - viewportCenterX;
+    // For closing animation, adjust by horizontal scroll offset so the visible slide (not container center) aligns with grid
+    const translateX = (originCenterX - viewportCenterX) + horizontalScrollOffset;
     const translateY = originCenterY - viewportCenterY;
 
     // Edge case: Clamp translations to prevent extreme off-screen animations
@@ -156,7 +172,7 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
         height: originRect.height + 'px'
       }
     });
-  }, [originRect]);
+  }, [originRect, isClosing, isMobilePortrait]);
 
   useLayoutEffect(() => {
     calculateTransform();

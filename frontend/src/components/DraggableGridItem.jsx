@@ -3,7 +3,7 @@ import { useDraggable, useDroppable } from '@dnd-kit/core';
 import DraggableCoverSheetCard from './DraggableCoverSheetCard';
 import PlaceholderCard from './PlaceholderCard';
 
-function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10, editMode, onDelete, onLabelClick, onMoveToPending, onMetadataUpdate, onSlotMenuOpen, showSlotMenu, onSlotMenuClose, onAddPlaceholder, onUploadToSlot, onEditPlaceholder, isTransitioning, animationDelay, isMobile, isSelected, onSelect }) {
+function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10, editMode, onDelete, onLabelClick, onMoveToPending, onMetadataUpdate, onSlotMenuOpen, showSlotMenu, onSlotMenuClose, onAddPlaceholder, onUploadToSlot, onEditPlaceholder, isTransitioning, animationDelay, isMobile, isSelected, isDimmed, onSelect, onTapDestination }) {
   // Log animation timing for first few items
   React.useEffect(() => {
     if (isTransitioning && index < 3) {
@@ -74,7 +74,9 @@ function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10
               colorTransitionDelay={colorTransitionDelay}
               isMobile={isMobile}
               isSelected={isSelected}
+              isDimmed={isDimmed}
               onSelect={onSelect}
+              onTapDestination={onTapDestination}
             />
           ) : (
             <DraggableCoverSheetCard
@@ -89,7 +91,9 @@ function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10
               colorTransitionDelay={colorTransitionDelay}
               isMobile={isMobile}
               isSelected={isSelected}
+              isDimmed={isDimmed}
               onSelect={onSelect}
+              onTapDestination={onTapDestination}
             />
           )}
         </div>
@@ -105,9 +109,17 @@ function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10
   return (
     <div
       ref={setDropRef}
+      onClick={() => {
+        // Allow tapping empty slot to move selected card there
+        if (onTapDestination) {
+          onTapDestination();
+        }
+      }}
       className={`bg-gray-200 dark:bg-gray-700 rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center relative group ${!isTransitioning ? 'transition-colors' : ''} ${
         isOver ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-900/20' : ''
-      } ${isTransitioning ? 'animate-theme-item' : ''}`}
+      } ${isTransitioning ? 'animate-theme-item' : ''} ${
+        isDimmed ? 'opacity-50' : ''
+      }`}
       style={{
         aspectRatio: `${aspectWidth} / ${aspectHeight}`,
         animationDelay: animationDelay,

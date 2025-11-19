@@ -70,19 +70,21 @@ function HomePage() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const navigate = useNavigate();
 
-  // Configure drag sensors - both mouse/pointer and touch
+  // Configure drag sensors - only use touch sensor on desktop
+  // On mobile in edit mode, we use tap-to-select and tap-to-move instead
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
         distance: 8, // 8px movement required to start drag
       },
     }),
-    useSensor(TouchSensor, {
+    // Only enable touch drag on desktop, not on mobile
+    ...(!isMobile ? [useSensor(TouchSensor, {
       activationConstraint: {
         delay: 250, // 250ms delay before drag starts on touch
         tolerance: 5, // 5px tolerance for movement during delay
       },
-    })
+    })] : [])
   );
 
   // Track mobile screen size
@@ -892,6 +894,32 @@ function HomePage() {
     setActiveDragId(null);
   };
 
+  // Tap-to-move: when a card is selected, tapping another slot moves it there
+  // Works on mobile, tablet, and desktop when in edit mode
+  const handleMobileTapToMove = (targetIndex) => {
+    if (!editMode || !selectedMobileCardId) {
+      return;
+    }
+
+    // Find the source index of the selected card
+    const sourceIndex = workingPdfs.findIndex(pdf => pdf && `pdf-${pdf.id}` === selectedMobileCardId);
+
+    if (sourceIndex === -1 || sourceIndex === targetIndex) {
+      // Deselect if tapping the same card
+      setSelectedMobileCardId(null);
+      return;
+    }
+
+    // Use iOS-style shift behavior: remove from source, insert at destination
+    const newPdfs = [...workingPdfs];
+    const [movedItem] = newPdfs.splice(sourceIndex, 1); // Remove from source
+    newPdfs.splice(targetIndex, 0, movedItem); // Insert at destination
+
+    setWorkingPdfs(newPdfs);
+    setHasUnsavedChanges(true);
+    setSelectedMobileCardId(null); // Deselect after moving
+  };
+
   const handlePdfClick = (pdf, event) => {
     // Only allow slideshow in non-edit mode
     if (editMode) return;
@@ -1101,6 +1129,7 @@ function HomePage() {
           isMobile={isMobile}
           selectedMobileCardId={selectedMobileCardId}
           onMobileCardSelect={setSelectedMobileCardId}
+          onMobileTapToMove={handleMobileTapToMove}
         />
       );
     }
@@ -1490,7 +1519,7 @@ function HomePage() {
         return selectedPdf ? (
           <MobileActionBar
             pdf={selectedPdf}
-            onDelete={handleDeletePdf}
+            onDelete={handleDelete}
             onLabelClick={selectedPdf.is_placeholder ? null : handleLabelClick}
             onMoveToPending={selectedPdf.is_placeholder ? null : handleMoveToPending}
             onEditPlaceholder={selectedPdf.is_placeholder ? handleEditPlaceholder : null}

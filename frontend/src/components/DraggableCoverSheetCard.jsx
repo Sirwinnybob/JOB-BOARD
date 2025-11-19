@@ -14,7 +14,9 @@ function DraggableCoverSheetCard({
   isHighlighted = false,
   isMobile = false,
   isSelected = false,
+  isDimmed = false,
   onSelect,
+  onTapDestination,
 }) {
   const [editing, setEditing] = useState(null);
   const [editValue, setEditValue] = useState('');
@@ -258,10 +260,19 @@ function DraggableCoverSheetCard({
 
       {/* Cover Sheet Card */}
       <div
+        onClick={(e) => {
+          // Tap-to-move: if already selected or something else is selected, call onTapDestination
+          if (editMode && onTapDestination && !isSelected) {
+            e.stopPropagation();
+            onTapDestination();
+          }
+        }}
         className={`flex-1 relative bg-white dark:bg-gray-800 rounded-b-lg shadow-md overflow-hidden ${!isTransitioning ? 'transition-all' : ''} min-h-0 ${
-          editMode ? 'cursor-move border-2 animate-border-pulse' : 'cursor-default border border-gray-200 dark:border-gray-700'
-        } ${isDragging ? 'opacity-50' : ''} ${isHighlighted ? 'notification-glow' : ''} ${
-          isMobile && editMode && isSelected ? 'ring-4 ring-blue-500' : ''
+          editMode ? 'cursor-pointer border-2 animate-border-pulse' : 'cursor-default border border-gray-200 dark:border-gray-700'
+        } ${isDragging ? 'opacity-50' : ''} ${
+          isDimmed ? 'opacity-50' : ''
+        } ${isHighlighted ? 'notification-glow' : ''} ${
+          editMode && isSelected ? 'ring-4 ring-blue-500' : ''
         }`}
         style={getColorTransitionStyle(['background-color', 'border-color'])}
       >

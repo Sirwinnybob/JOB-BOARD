@@ -72,12 +72,13 @@ function DraggableCoverSheetCard({
   const handleSaveEdit = (field) => {
     const updates = {};
     if (field === 'job_number') {
-      updates.job_number = editValue;
+      updates.job_number = editValue.trim();
       updates.construction_method = pdf.construction_method;
     } else {
       updates.job_number = pdf.job_number;
-      // If editValue is "Custom...", keep it empty to trigger text input on next edit
-      updates.construction_method = editValue === 'Custom...' ? '' : editValue;
+      // Trim whitespace and save (empty if just whitespace)
+      const trimmedValue = editValue.trim();
+      updates.construction_method = trimmedValue;
     }
 
     // Only update local state - don't save to backend until Save button is pressed
@@ -223,7 +224,7 @@ function DraggableCoverSheetCard({
                   value={editValue}
                   onChange={(e) => {
                     if (e.target.value === 'Custom...') {
-                      setEditValue('');
+                      setEditValue(' '); // Space triggers text input (not in predefined list)
                       // Stay in edit mode but trigger re-render to show text input
                     } else {
                       setEditValue(e.target.value);
@@ -249,13 +250,20 @@ function DraggableCoverSheetCard({
               ) : (
                 <input
                   type="text"
-                  value={editValue}
+                  value={editValue.trim()}
                   onChange={(e) => setEditValue(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') handleSaveEdit('construction_method');
                     if (e.key === 'Escape') handleCancelEdit();
                   }}
                   onBlur={() => handleSaveEdit('construction_method')}
+                  onFocus={(e) => {
+                    // Clear whitespace-only values on focus
+                    if (editValue.trim() === '') {
+                      setEditValue('');
+                      e.target.value = '';
+                    }
+                  }}
                   className="flex-1 px-1 py-0.5 border border-blue-500 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-xs focus:outline-none"
                   style={getColorTransitionStyle(['background-color', 'color', 'border-color'])}
                   placeholder="Enter custom type"

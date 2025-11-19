@@ -94,11 +94,14 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
     const originCenterX = originRect.left + (originRect.width / 2);
     const originCenterY = originRect.top + (originRect.height / 2);
 
-    // Calculate the center of the viewport
+    // Calculate the center of the SLIDESHOW CONTAINER (not full viewport)
+    // Container is fixed with top-16 (64px) and bottom-0
+    const headerOffset = 64; // 4rem = 64px
+    const containerHeight = viewportHeight - headerOffset;
     const viewportCenterX = viewportWidth / 2;
-    const viewportCenterY = viewportHeight / 2;
+    const viewportCenterY = headerOffset + (containerHeight / 2); // Center of container, not viewport
 
-    // Calculate translation needed to move viewport center TO grid item center
+    // Calculate translation needed to move container center TO grid item center
     // (This positions the fullscreen container to appear at the grid item location)
     const translateX = originCenterX - viewportCenterX;
     const translateY = originCenterY - viewportCenterY;

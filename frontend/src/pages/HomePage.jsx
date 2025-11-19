@@ -999,25 +999,35 @@ function HomePage() {
         const foundCard = document.querySelector(`[data-pdf-id="${currentPdf.id}"]`);
 
         if (foundCard) {
-          const rect = foundCard.getBoundingClientRect();
-          const updatedOriginRect = {
-            top: rect.top,
-            left: rect.left,
-            width: rect.width,
-            height: rect.height,
-            scrollX: window.scrollX || window.pageXOffset,
-            scrollY: window.scrollY || window.pageYOffset,
-          };
-          setOriginRect(updatedOriginRect);
-          console.log('[HomePage] Captured origin rect for current item:', updatedOriginRect);
+          // Scroll the card into view first (centered if possible)
+          foundCard.scrollIntoView({ behavior: 'auto', block: 'center', inline: 'center' });
+
+          // Wait a frame for scroll to complete, then capture rect
+          requestAnimationFrame(() => {
+            const rect = foundCard.getBoundingClientRect();
+            const updatedOriginRect = {
+              top: rect.top,
+              left: rect.left,
+              width: rect.width,
+              height: rect.height,
+              scrollX: window.scrollX || window.pageXOffset,
+              scrollY: window.scrollY || window.pageYOffset,
+            };
+            setOriginRect(updatedOriginRect);
+            console.log('[HomePage] Captured origin rect for current item:', updatedOriginRect);
+
+            // Start close animation after rect is captured
+            setIsClosingSlideshow(true);
+          });
         } else {
           console.warn('[HomePage] Could not find current PDF in grid, using fallback close animation');
           setOriginRect(null);
+          setIsClosingSlideshow(true);
         }
       });
+    } else {
+      setIsClosingSlideshow(true);
     }
-
-    setIsClosingSlideshow(true);
   };
 
   const handleSlideshowAnimationComplete = () => {

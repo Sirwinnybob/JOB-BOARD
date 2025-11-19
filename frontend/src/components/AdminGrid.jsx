@@ -54,6 +54,7 @@ function AdminGrid({ pdfs, rows, cols, aspectWidth, aspectHeight, editMode, onRe
 
         const isSelected = pdf && `pdf-${pdf.id}` === selectedMobileCardId;
         const isDimmed = selectedMobileCardId && !isSelected; // Dim unselected cards when something is selected
+        const inMoveMode = !!selectedMobileCardId; // Track if we're in move mode (a card is selected)
 
         return (
           <DraggableGridItem
@@ -79,6 +80,7 @@ function AdminGrid({ pdfs, rows, cols, aspectWidth, aspectHeight, editMode, onRe
             isMobile={isMobile}
             isSelected={isSelected}
             isDimmed={isDimmed}
+            inMoveMode={inMoveMode}
             onSelect={() => pdf && onMobileCardSelect(`pdf-${pdf.id}`)}
             onTapDestination={() => onMobileTapToMove && onMobileTapToMove(index)}
           />

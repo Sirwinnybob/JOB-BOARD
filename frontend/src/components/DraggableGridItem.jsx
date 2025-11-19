@@ -3,7 +3,7 @@ import { useDraggable, useDroppable } from '@dnd-kit/core';
 import DraggableCoverSheetCard from './DraggableCoverSheetCard';
 import PlaceholderCard from './PlaceholderCard';
 
-function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10, editMode, onDelete, onLabelClick, onMoveToPending, onMetadataUpdate, onSlotMenuOpen, showSlotMenu, onSlotMenuClose, onAddPlaceholder, onUploadToSlot, onEditPlaceholder, isTransitioning, animationDelay, isMobile, isSelected, isDimmed, onSelect, onTapDestination }) {
+function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10, editMode, onDelete, onLabelClick, onMoveToPending, onMetadataUpdate, onSlotMenuOpen, showSlotMenu, onSlotMenuClose, onAddPlaceholder, onUploadToSlot, onEditPlaceholder, isTransitioning, animationDelay, isMobile, isSelected, isDimmed, inMoveMode, onSelect, onTapDestination }) {
   // Log animation timing for first few items
   React.useEffect(() => {
     if (isTransitioning && index < 3) {
@@ -50,7 +50,7 @@ function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10
     return (
       <div
         ref={setDropRef}
-        className={`flex flex-col ${isOver ? 'ring-2 ring-blue-500' : ''} ${isTransitioning ? 'animate-theme-item' : ''}`}
+        className={`flex flex-col ${isOver ? 'ring-2 ring-blue-500' : ''} ${isTransitioning ? 'animate-theme-item' : ''} ${inMoveMode && !isSelected ? 'cursor-pointer animate-slot-shine' : ''}`}
         style={{
           aspectRatio: `${aspectWidth} / ${aspectHeight}`,
           animationDelay: animationDelay,
@@ -111,7 +111,7 @@ function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10
       ref={setDropRef}
       onClick={() => {
         // Allow tapping empty slot to move selected card there
-        if (onTapDestination) {
+        if (inMoveMode && onTapDestination) {
           onTapDestination();
         }
       }}
@@ -119,7 +119,7 @@ function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10
         isOver ? 'ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-900/20' : ''
       } ${isTransitioning ? 'animate-theme-item' : ''} ${
         isDimmed ? 'opacity-50' : ''
-      }`}
+      } ${inMoveMode ? 'cursor-pointer animate-slot-shine' : ''}`}
       style={{
         aspectRatio: `${aspectWidth} / ${aspectHeight}`,
         animationDelay: animationDelay,
@@ -129,7 +129,7 @@ function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10
         })
       }}
     >
-      {editMode ? (
+      {editMode && !inMoveMode ? (
         showSlotMenu === index ? (
           <div className={`absolute inset-0 bg-white dark:bg-gray-800 rounded-lg shadow-lg z-20 flex flex-col items-stretch justify-center p-4 gap-2 ${!isTransitioning ? 'transition-colors' : ''}`}>
             <button

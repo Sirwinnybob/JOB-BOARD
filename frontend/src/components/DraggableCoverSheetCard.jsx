@@ -258,12 +258,6 @@ function DraggableCoverSheetCard({
 
       {/* Cover Sheet Card */}
       <div
-        onClick={(e) => {
-          if (isMobile && editMode && onSelect) {
-            e.stopPropagation();
-            onSelect();
-          }
-        }}
         className={`flex-1 relative bg-white dark:bg-gray-800 rounded-b-lg shadow-md overflow-hidden ${!isTransitioning ? 'transition-all' : ''} min-h-0 ${
           editMode ? 'cursor-move border-2 animate-border-pulse' : 'cursor-default border border-gray-200 dark:border-gray-700'
         } ${isDragging ? 'opacity-50' : ''} ${isHighlighted ? 'notification-glow' : ''} ${
@@ -407,9 +401,20 @@ function DraggableCoverSheetCard({
         </>
       )}
 
-      {/* Drag indicator */}
+      {/* Drag indicator / Mobile select button */}
       {editMode && !isDragging && (
-        <div className="absolute top-1 left-1 sm:top-2 sm:left-2 bg-blue-600 text-white rounded-full w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center shadow-lg">
+        <div
+          onClick={(e) => {
+            if (isMobile && onSelect) {
+              e.stopPropagation();
+              e.preventDefault();
+              onSelect();
+            }
+          }}
+          className={`absolute top-1 left-1 sm:top-2 sm:left-2 bg-blue-600 text-white rounded-full w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center shadow-lg ${
+            isMobile && isSelected ? 'bg-blue-700 ring-2 ring-white' : ''
+          }`}
+        >
           <svg
             className="w-3 h-3 sm:w-5 sm:h-5"
             fill="none"

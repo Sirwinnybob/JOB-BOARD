@@ -840,12 +840,11 @@ function HomePage() {
         return;
       }
 
+      // iOS-style shift behavior: remove from source, insert at destination
+      // This makes items shift to fill the gap, rather than just swapping
       const newPdfs = [...workingPdfs];
-      const sourcePdfItem = newPdfs[sourceIndex];
-      const destPdfItem = newPdfs[destIndex];
-
-      newPdfs[destIndex] = sourcePdfItem;
-      newPdfs[sourceIndex] = destPdfItem;
+      const [movedItem] = newPdfs.splice(sourceIndex, 1); // Remove from source
+      newPdfs.splice(destIndex, 0, movedItem); // Insert at destination
 
       setWorkingPdfs(newPdfs);
       setHasUnsavedChanges(true);

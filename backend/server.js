@@ -423,8 +423,9 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
     const thumbnailName = await generateThumbnail(pdfPath, thumbnailDir, baseFilename);
 
     // Generate full PDF images for viewing (light mode only - fast)
+    // For custom uploads, use lower DPI to reduce file size and improve performance
     const imagesBase = `${baseFilename}-pages`;
-    const { pageCount } = await generatePdfImages(pdfPath, thumbnailDir, imagesBase);
+    const { pageCount } = await generatePdfImages(pdfPath, thumbnailDir, imagesBase, skipOcr);
 
     // Keep PDF for background processing (dark mode and OCR)
     // Will be deleted after background processing completes
@@ -566,39 +567,45 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
             })();
           }
 
-          // Dark mode generation
-          (async () => {
-            try {
-              const darkModeBaseFilename = await generateDarkModeImages(pdfPath, thumbnailDir, imagesBase);
+          // Dark mode generation (skip for custom uploads)
+          if (skipOcr) {
+            console.log(`[Dark Mode] Skipping dark mode generation for PDF ${pdfId} (custom upload)`);
+            darkModeComplete = true;
+            checkAndCleanup();
+          } else {
+            (async () => {
+              try {
+                const darkModeBaseFilename = await generateDarkModeImages(pdfPath, thumbnailDir, imagesBase);
 
-              if (darkModeBaseFilename) {
-                // Update database with dark mode image path
-                db.run(
-                  'UPDATE pdfs SET dark_mode_images_base = ? WHERE id = ?',
-                  [darkModeBaseFilename, pdfId],
-                  (updateErr) => {
-                    if (updateErr) {
-                      console.error('[Dark Mode] Error updating database:', updateErr);
-                      return;
+                if (darkModeBaseFilename) {
+                  // Update database with dark mode image path
+                  db.run(
+                    'UPDATE pdfs SET dark_mode_images_base = ? WHERE id = ?',
+                    [darkModeBaseFilename, pdfId],
+                    (updateErr) => {
+                      if (updateErr) {
+                        console.error('[Dark Mode] Error updating database:', updateErr);
+                        return;
+                      }
+
+                      // Broadcast dark mode update to all clients
+                      broadcastUpdate('pdf_dark_mode_ready', {
+                        id: pdfId,
+                        dark_mode_images_base: darkModeBaseFilename
+                      });
+
+                      console.log(`[Dark Mode] Database updated for PDF ${pdfId}`);
                     }
-
-                    // Broadcast dark mode update to all clients
-                    broadcastUpdate('pdf_dark_mode_ready', {
-                      id: pdfId,
-                      dark_mode_images_base: darkModeBaseFilename
-                    });
-
-                    console.log(`[Dark Mode] Database updated for PDF ${pdfId}`);
-                  }
-                );
+                  );
+                }
+              } catch (darkModeErr) {
+                console.error(`[Dark Mode] Error in background generation for PDF ${pdfId}:`, darkModeErr);
+              } finally {
+                darkModeComplete = true;
+                checkAndCleanup();
               }
-            } catch (darkModeErr) {
-              console.error(`[Dark Mode] Error in background generation for PDF ${pdfId}:`, darkModeErr);
-            } finally {
-              darkModeComplete = true;
-              checkAndCleanup();
-            }
-          })();
+            })();
+          }
         });
       }
     );

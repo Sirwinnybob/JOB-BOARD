@@ -84,13 +84,23 @@ export function DarkModeProvider({ children }) {
     // View Transitions API uses separate animations for new and old views
     if (newDarkMode) {
       // Going TO dark mode: animate the NEW dark view expanding
+      console.log('[DarkMode] Setting dark mode animations: new=circle-expand, old=none');
       document.documentElement.style.setProperty('--transition-name-new', 'circle-expand');
       document.documentElement.style.setProperty('--transition-name-old', 'none');
     } else {
       // Going TO light mode: animate the OLD dark view retracting
+      console.log('[DarkMode] Setting light mode animations: new=none, old=circle-retract');
       document.documentElement.style.setProperty('--transition-name-new', 'none');
       document.documentElement.style.setProperty('--transition-name-old', 'circle-retract');
     }
+
+    console.log('[DarkMode] CSS Variables:', {
+      x: document.documentElement.style.getPropertyValue('--theme-toggle-x'),
+      y: document.documentElement.style.getPropertyValue('--theme-toggle-y'),
+      radius: document.documentElement.style.getPropertyValue('--theme-toggle-radius'),
+      newAnim: document.documentElement.style.getPropertyValue('--transition-name-new'),
+      oldAnim: document.documentElement.style.getPropertyValue('--transition-name-old')
+    });
 
     // Check if View Transitions API is supported
     if (!document.startViewTransition) {

@@ -1488,21 +1488,14 @@ function HomePage() {
         // Find the selected PDF from the working PDFs
         const selectedPdf = workingPdfs.find(pdf => pdf && `pdf-${pdf.id}` === selectedMobileCardId);
         return selectedPdf ? (
-          <>
-            {/* Backdrop to deselect when tapping outside */}
-            <div
-              className="fixed inset-0 bg-black/20 z-40"
-              onClick={() => setSelectedMobileCardId(null)}
-            />
-            <MobileActionBar
-              pdf={selectedPdf}
-              onDelete={handleDeletePdf}
-              onLabelClick={selectedPdf.is_placeholder ? null : handleLabelClick}
-              onMoveToPending={selectedPdf.is_placeholder ? null : handleMoveToPending}
-              onEditPlaceholder={selectedPdf.is_placeholder ? handleEditPlaceholder : null}
-              onClose={() => setSelectedMobileCardId(null)}
-            />
-          </>
+          <MobileActionBar
+            pdf={selectedPdf}
+            onDelete={handleDeletePdf}
+            onLabelClick={selectedPdf.is_placeholder ? null : handleLabelClick}
+            onMoveToPending={selectedPdf.is_placeholder ? null : handleMoveToPending}
+            onEditPlaceholder={selectedPdf.is_placeholder ? handleEditPlaceholder : null}
+            onClose={() => setSelectedMobileCardId(null)}
+          />
         ) : null;
       })()}
     </div>

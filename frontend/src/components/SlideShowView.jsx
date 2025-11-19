@@ -339,7 +339,8 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
   }
 
   // Always use fullscreen styling but start below header
-  const containerClass = "fixed left-0 right-0 bottom-0 top-16 bg-white dark:bg-black z-50 transition-colors";
+  // Using h-[calc(100vh-4rem)] to explicitly set height (4rem = top-16)
+  const containerClass = "fixed left-0 right-0 bottom-0 top-16 h-[calc(100vh-4rem)] bg-white dark:bg-black z-50 transition-colors";
   const containerStyle = {};
 
   // Generate dynamic CSS animations based on originRect

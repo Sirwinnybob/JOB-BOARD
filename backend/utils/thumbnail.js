@@ -66,11 +66,12 @@ async function generateThumbnail(pdfPath, outputDir, baseFilename) {
   }
 }
 
-async function generatePdfImages(pdfPath, outputDir, baseFilename) {
+async function generatePdfImages(pdfPath, outputDir, baseFilename, isCustomUpload = false) {
   try {
     console.log(`Generating PDF images for: ${pdfPath}`);
     console.log(`Output directory: ${outputDir}`);
     console.log(`Base filename: ${baseFilename}`);
+    console.log(`Is custom upload: ${isCustomUpload}`);
 
     // First, get the page count
     const pageCountCommand = `pdfinfo "${pdfPath}" | grep Pages: | awk '{print $2}'`;
@@ -85,12 +86,14 @@ async function generatePdfImages(pdfPath, outputDir, baseFilename) {
 
     // Generate high-resolution image for FIRST PAGE ONLY from original PDF
     // -png: output as PNG
-    // -r 300: resolution 300 DPI for high-quality images
+    // For custom uploads: use 100 DPI (lower quality, faster, smaller files)
+    // For job sheets: use 300 DPI (high quality for OCR and viewing)
     // -f 1 -l 1: first page to last page (page 1 only)
     // -singlefile: don't add page numbers to filename
+    const dpi = isCustomUpload ? 100 : 300;
     const outputBase = path.join(outputDir, baseFilename);
-    const command = `pdftocairo -png -f 1 -l 1 -singlefile -r 300 "${pdfPath}" "${outputBase}"`;
-    console.log(`Running pdftocairo command (first page only): ${command}`);
+    const command = `pdftocairo -png -f 1 -l 1 -singlefile -r ${dpi} "${pdfPath}" "${outputBase}"`;
+    console.log(`Running pdftocairo command (first page only, ${dpi} DPI): ${command}`);
 
     const { stdout, stderr } = await execAsync(command);
     if (stdout) console.log(`pdftocairo stdout: ${stdout}`);

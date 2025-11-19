@@ -38,19 +38,45 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
   useEffect(() => {
     // Find the last non-placeholder PDF (most recent upload)
     const referencePdf = [...displayPdfs].reverse().find(pdf => !pdf.is_placeholder);
-    if (!referencePdf) return;
+
+    console.log('[SlideShowView] Reference dimensions calculation:', {
+      displayPdfsCount: displayPdfs.length,
+      placeholderCount: displayPdfs.filter(p => p.is_placeholder).length,
+      referencePdfFound: !!referencePdf,
+      referencePdfId: referencePdf?.id
+    });
+
+    if (!referencePdf) {
+      console.warn('[SlideShowView] No reference PDF found - all PDFs are placeholders!');
+      return;
+    }
 
     const isDarkMode = darkMode || (document.documentElement.classList.contains('dark') && !darkMode);
     const imagesBase = (isDarkMode && referencePdf.dark_mode_images_base) ? referencePdf.dark_mode_images_base : referencePdf.images_base;
     const imageSrc = imagesBase ? `/thumbnails/${imagesBase}-1.png` : `/thumbnails/${referencePdf.thumbnail}`;
 
+    console.log('[SlideShowView] Loading reference image:', {
+      isDarkMode,
+      imagesBase,
+      imageSrc,
+      referencePdf: {
+        id: referencePdf.id,
+        original_name: referencePdf.original_name
+      }
+    });
+
     const img = new Image();
     img.onload = () => {
-      setReferenceImageDimensions({
+      const dimensions = {
         width: img.naturalWidth,
         height: img.naturalHeight,
         aspectRatio: img.naturalWidth / img.naturalHeight
-      });
+      };
+      console.log('[SlideShowView] Reference image loaded:', dimensions);
+      setReferenceImageDimensions(dimensions);
+    };
+    img.onerror = (e) => {
+      console.error('[SlideShowView] Failed to load reference image:', imageSrc, e);
     };
     img.src = imageSrc;
   }, [displayPdfs, darkMode]);
@@ -468,32 +494,46 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
               {/* Image Container - flex-1 to fill available height */}
               <div className="relative flex-1 max-w-6xl w-full mx-auto flex items-center justify-center overflow-hidden">
                 {pdf.is_placeholder ? (
-                  <div className="relative max-w-full max-h-full">
-                    {/* Invisible reference image to establish exact size */}
-                    {referenceImageDimensions && (
-                      <div
-                        className="max-w-full max-h-full"
-                        style={{
-                          aspectRatio: referenceImageDimensions.aspectRatio,
-                          width: '100%',
-                          visibility: 'hidden'
-                        }}
-                      />
-                    )}
-                    {/* Placeholder content overlay */}
-                    <div
-                      className={`${referenceImageDimensions ? 'absolute inset-0' : 'max-w-full max-h-full'} bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-lg shadow-md border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center p-4 sm:p-6 md:p-8 transition-colors`}
-                      style={{
-                        aspectRatio: !referenceImageDimensions
-                          ? `${aspectWidth} / ${aspectHeight}`
-                          : undefined
-                      }}
-                    >
-                      <p className="text-gray-600 dark:text-gray-400 font-bold text-center break-words leading-tight whitespace-pre-wrap transition-colors" style={{ fontSize: isMobilePortrait ? 'clamp(0.6rem, 4vw, 2rem)' : 'clamp(0.8rem, 2.5vw, 2.5rem)' }}>
-                        {pdf.placeholder_text || 'PLACEHOLDER'}
-                      </p>
-                    </div>
-                  </div>
+                  (() => {
+                    // Log placeholder rendering details
+                    console.log(`[SlideShowView] Rendering placeholder ${index}:`, {
+                      placeholderId: pdf.id,
+                      placeholderText: pdf.placeholder_text,
+                      referenceImageDimensions,
+                      hasReferenceDimensions: !!referenceImageDimensions,
+                      fallbackAspect: `${aspectWidth} / ${aspectHeight}`,
+                      positioning: referenceImageDimensions ? 'absolute (using reference)' : 'relative (fallback)'
+                    });
+
+                    return (
+                      <div className="relative max-w-full max-h-full">
+                        {/* Invisible reference image to establish exact size */}
+                        {referenceImageDimensions && (
+                          <div
+                            className="max-w-full max-h-full"
+                            style={{
+                              aspectRatio: referenceImageDimensions.aspectRatio,
+                              width: '100%',
+                              visibility: 'hidden'
+                            }}
+                          />
+                        )}
+                        {/* Placeholder content overlay */}
+                        <div
+                          className={`${referenceImageDimensions ? 'absolute inset-0' : 'max-w-full max-h-full'} bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-lg shadow-md border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center p-4 sm:p-6 md:p-8 transition-colors`}
+                          style={{
+                            aspectRatio: !referenceImageDimensions
+                              ? `${aspectWidth} / ${aspectHeight}`
+                              : undefined
+                          }}
+                        >
+                          <p className="text-gray-600 dark:text-gray-400 font-bold text-center break-words leading-tight whitespace-pre-wrap transition-colors" style={{ fontSize: isMobilePortrait ? 'clamp(0.6rem, 4vw, 2rem)' : 'clamp(0.8rem, 2.5vw, 2.5rem)' }}>
+                            {pdf.placeholder_text || 'PLACEHOLDER'}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })()
                 ) : (
                   <img
                     key={`${pdf.id}-${isDarkMode ? 'dark' : 'light'}`}

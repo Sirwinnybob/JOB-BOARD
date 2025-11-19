@@ -473,6 +473,14 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
           construction_method: null
         });
 
+        // If uploaded to pending, send notification to admins
+        if (isPending === 1) {
+          broadcastUpdate('job_uploaded_to_pending', {
+            id: pdfId,
+            original_name: originalName
+          });
+        }
+
         // Send immediate response to client (fast upload)
         res.json({
           id: pdfId,

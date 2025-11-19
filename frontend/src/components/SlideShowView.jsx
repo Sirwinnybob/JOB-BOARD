@@ -39,13 +39,6 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
     // Find the last non-placeholder PDF (most recent upload)
     const referencePdf = [...displayPdfs].reverse().find(pdf => !pdf.is_placeholder);
 
-    console.log('[SlideShowView] Reference dimensions calculation:', {
-      displayPdfsCount: displayPdfs.length,
-      placeholderCount: displayPdfs.filter(p => p.is_placeholder).length,
-      referencePdfFound: !!referencePdf,
-      referencePdfId: referencePdf?.id
-    });
-
     if (!referencePdf) {
       console.warn('[SlideShowView] No reference PDF found - all PDFs are placeholders!');
       return;
@@ -55,16 +48,6 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
     const imagesBase = (isDarkMode && referencePdf.dark_mode_images_base) ? referencePdf.dark_mode_images_base : referencePdf.images_base;
     const imageSrc = imagesBase ? `/thumbnails/${imagesBase}-1.png` : `/thumbnails/${referencePdf.thumbnail}`;
 
-    console.log('[SlideShowView] Loading reference image:', {
-      isDarkMode,
-      imagesBase,
-      imageSrc,
-      referencePdf: {
-        id: referencePdf.id,
-        original_name: referencePdf.original_name
-      }
-    });
-
     const img = new Image();
     img.onload = () => {
       const dimensions = {
@@ -72,7 +55,6 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
         height: img.naturalHeight,
         aspectRatio: img.naturalWidth / img.naturalHeight
       };
-      console.log('[SlideShowView] Reference image loaded:', dimensions);
       setReferenceImageDimensions(dimensions);
     };
     img.onerror = (e) => {
@@ -150,21 +132,28 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
       originY: originCenterY,
     });
 
-    console.log('[SlideShowView] Calculated animation transform:', {
-      scale,
-      translateX: clampedTranslateX,
-      translateY: clampedTranslateY,
-      originRect,
-      viewport: { width: viewportWidth, height: viewportHeight },
-      debug: {
-        originCenterY,
-        viewportCenterY,
-        headerOffset,
-        containerHeight,
-        rawTranslateY: translateY,
-        scrollYDelta,
-        currentScrollY,
-        capturedScrollY: originRect.scrollY
+    console.log('%c[SlideShowView] Animation Transform ' + (isClosing ? '(CLOSING)' : '(OPENING)'), 'background: #2563eb; color: white; padding: 4px 8px; border-radius: 3px; font-weight: bold;', {
+      'Animation Target': {
+        translateX: clampedTranslateX.toFixed(2) + 'px',
+        translateY: clampedTranslateY.toFixed(2) + 'px',
+        scale: scale.toFixed(4)
+      },
+      'Scroll Adjustment': {
+        scrollYDelta: scrollYDelta + 'px',
+        currentScrollY: currentScrollY + 'px',
+        capturedScrollY: originRect.scrollY + 'px',
+        adjustment: scrollYDelta !== 0 ? '⚠️ ADJUSTED' : '✓ No adjustment needed'
+      },
+      'Position Calculation': {
+        originCenterY: originCenterY.toFixed(2) + 'px',
+        viewportCenterY: viewportCenterY.toFixed(2) + 'px',
+        difference: (originCenterY - viewportCenterY).toFixed(2) + 'px'
+      },
+      'Origin Rect': {
+        top: originRect.top + 'px',
+        left: originRect.left + 'px',
+        width: originRect.width + 'px',
+        height: originRect.height + 'px'
       }
     });
   }, [originRect]);
@@ -191,9 +180,7 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
   // Turn off zoom-in animation after it completes
   useEffect(() => {
     if (animationState === 'zoom-in') {
-      console.log('[SlideShowView] Starting zoom-in animation');
       const timer = setTimeout(() => {
-        console.log('[SlideShowView] Zoom-in animation completed, setting to none');
         setAnimationState('none');
       }, 400); // Match animation duration
       return () => clearTimeout(timer);
@@ -203,18 +190,14 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
   // Handle zoom-out animation when closing
   useEffect(() => {
     if (isClosing) {
-      console.log('[SlideShowView] isClosing=true, starting zoom-out animation');
+      console.log('%c[SlideShowView] Closing animation started', 'background: #dc2626; color: white; padding: 4px 8px; border-radius: 3px; font-weight: bold;');
       setAnimationState('zoom-out');
       const timer = setTimeout(() => {
-        console.log('[SlideShowView] Zoom-out animation completed, calling onAnimationComplete');
         if (onAnimationComplete) {
           onAnimationComplete();
         }
       }, 400); // Match animation duration
-      return () => {
-        console.log('[SlideShowView] Cleaning up zoom-out timer');
-        clearTimeout(timer);
-      };
+      return () => clearTimeout(timer);
     }
   }, [isClosing, onAnimationComplete]);
 
@@ -296,35 +279,9 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
 
   // Scroll to initial index when component mounts (useLayoutEffect runs before paint)
   useLayoutEffect(() => {
-    console.log('[SlideShowView] Initial scroll DEBUG:');
-    console.log('  - initialIndex:', initialIndex);
-    console.log('  - displayPdfs.length:', displayPdfs.length);
-    console.log('  - displayPdfs:', displayPdfs.map(p => ({ id: p.id, is_placeholder: p.is_placeholder })));
-
     const container = scrollContainerRef.current;
-    const outerContainer = containerRef.current;
-
-    if (outerContainer) {
-      console.log('  - Outer container dimensions:', {
-        offsetWidth: outerContainer.offsetWidth,
-        offsetHeight: outerContainer.offsetHeight,
-        clientWidth: outerContainer.clientWidth,
-        clientHeight: outerContainer.clientHeight,
-        scrollHeight: outerContainer.scrollHeight,
-        className: outerContainer.className,
-        computedTop: window.getComputedStyle(outerContainer).top
-      });
-    }
 
     if (container && initialIndex >= 0 && initialIndex < displayPdfs.length) {
-      console.log('  - Scroll container dimensions:', {
-        offsetWidth: container.offsetWidth,
-        offsetHeight: container.offsetHeight,
-        scrollWidth: container.scrollWidth,
-        scrollHeight: container.scrollHeight,
-        className: container.className
-      });
-
       // Mobile portrait: 100% width, no spacers. Landscape/desktop: 60% width with 20% spacers
       const slideWidthPercent = isMobilePortrait ? 1.0 : 0.6;
       const leftSpacerPercent = isMobilePortrait ? 0 : 0.2;
@@ -332,13 +289,7 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
       const slideWidth = container.offsetWidth * slideWidthPercent;
       const leftSpacer = container.offsetWidth * leftSpacerPercent;
       const scrollPosition = leftSpacer + (initialIndex * slideWidth);
-      console.log('  - isMobilePortrait:', isMobilePortrait);
-      console.log('  - container.offsetWidth:', container.offsetWidth);
-      console.log('  - slideWidth:', slideWidth);
-      console.log('  - leftSpacer:', leftSpacer);
-      console.log('  - Calculated scroll position:', scrollPosition);
       container.scrollLeft = scrollPosition;
-      console.log('  - Actual scrollLeft after setting:', container.scrollLeft);
 
       // Set currentIndex immediately to match initialIndex
       setCurrentIndex(initialIndex);
@@ -408,8 +359,8 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
             opacity: 1;
             transform: scale(1) translate3d(0, 0, 0);
           }
-          50% {
-            opacity: 0.3;
+          30% {
+            opacity: 0.15;
           }
           to {
             opacity: 0;
@@ -440,8 +391,8 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
           opacity: 1;
           transform: translate3d(0, 0, 0) scale(1);
         }
-        50% {
-          opacity: 0.3;
+        30% {
+          opacity: 0.15;
         }
         to {
           opacity: 0;

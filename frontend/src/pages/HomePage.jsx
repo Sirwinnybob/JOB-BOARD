@@ -1282,9 +1282,12 @@ function HomePage() {
       <main
         className={viewMode === 'grid' ? 'max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 relative z-10' : 'w-full relative z-10'}
         style={{
-          transform: 'translateZ(0)',
-          backfaceVisibility: 'hidden',
-          WebkitBackfaceVisibility: 'hidden'
+          // Only apply transform in grid mode - transform creates stacking context that breaks position:fixed in slideshow
+          ...(viewMode === 'grid' && {
+            transform: 'translateZ(0)',
+            backfaceVisibility: 'hidden',
+            WebkitBackfaceVisibility: 'hidden'
+          })
         }}
       >
         {isAuthenticated && editMode ? (

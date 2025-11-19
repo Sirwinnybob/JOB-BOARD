@@ -339,7 +339,8 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
   }
 
   // Always use fullscreen styling but start below header
-  const containerClass = "fixed left-0 right-0 bottom-0 top-16 bg-white dark:bg-black z-50 transition-colors";
+  // Using inset-x-0 top-16 bottom-0 to start below header while remaining fullscreen
+  const containerClass = "fixed inset-x-0 top-16 bottom-0 bg-white dark:bg-black z-50 transition-colors";
   const containerStyle = {};
 
   // Generate dynamic CSS animations based on originRect

@@ -359,9 +359,6 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
             opacity: 1;
             transform: scale(1) translate3d(0, 0, 0);
           }
-          30% {
-            opacity: 0.15;
-          }
           to {
             opacity: 0;
             transform: scale(0.85) translate3d(0, 0, 0);
@@ -391,11 +388,8 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
           opacity: 1;
           transform: translate3d(0, 0, 0) scale(1);
         }
-        30% {
-          opacity: 0.15;
-        }
         to {
-          opacity: 0;
+          opacity: 0.3;
           transform: translate3d(${translateX}px, ${translateY}px, 0) scale(${scale});
         }
       }
@@ -412,7 +406,7 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
             will-change: transform, opacity;
           }
           .zoom-out-animation {
-            animation: zoomOut 0.4s cubic-bezier(0.7, 0, 0.84, 0);
+            animation: zoomOut 0.4s cubic-bezier(0.16, 1, 0.3, 1);
             will-change: transform, opacity;
           }
           .animate-fade-in {

@@ -60,7 +60,6 @@ function HomePage() {
   });
   const [isClosingSlideshow, setIsClosingSlideshow] = useState(false);
   const [originRect, setOriginRect] = useState(null);
-  const [openingScrollPosition, setOpeningScrollPosition] = useState(null); // Store original opening scroll
   const [currentSlideshowIndex, setCurrentSlideshowIndex] = useState(0);
   const [pullToRefresh, setPullToRefresh] = useState({ pulling: false, distance: 0, refreshing: false });
   const [editLock, setEditLock] = useState(null); // { lockedBy: sessionId, lockedAt: timestamp }
@@ -986,9 +985,8 @@ function HomePage() {
         height: rect.height,
         // Store viewport scroll position for edge case handling
         scrollX: window.scrollX || window.pageXOffset,
-        scrollY: openingScrollY, // This is the original opening scroll
+        scrollY: openingScrollY, // Capture current scroll position
       });
-      setOpeningScrollPosition(openingScrollY); // Store separately to preserve for closing
       console.log('[HomePage] Captured origin rect:', rect);
     }
 
@@ -1003,38 +1001,67 @@ function HomePage() {
   const toggleViewMode = () => {
     console.log('[HomePage] toggleViewMode called, current viewMode:', viewMode);
     if (viewMode === 'slideshow') {
-      // Exiting slideshow - switch to grid immediately, capture rect, then animate
+      // Exiting slideshow - find current item's card
       console.log('[HomePage] Exiting slideshow via toggle');
       setViewMode('grid');
       localStorage.setItem('viewMode', 'grid');
 
-      // Use filtered pdfs (no nulls/undefined) for consistent indexing with SlideShowView
+      // Use filtered pdfs for consistent indexing
       const displayPdfs = pdfs.filter(p => p);
       const targetPdf = displayPdfs[currentSlideshowIndex];
+
       if (targetPdf) {
-        // Wait for grid to be rendered, then find the card
+        // Wait for grid to be rendered, then find the card for the CURRENTLY VIEWED PDF
         requestAnimationFrame(() => {
-          // Find the card by data-pdf-id attribute
           const foundCard = document.querySelector(`[data-pdf-id="${targetPdf.id}"]`);
 
           if (foundCard) {
+            // Check if the card is significantly off-screen
             const rect = foundCard.getBoundingClientRect();
-            setOriginRect({
-              top: rect.top,
-              left: rect.left,
-              width: rect.width,
-              height: rect.height,
-              scrollX: window.scrollX || window.pageXOffset,
-              // Use the original opening scroll position for scroll compensation
-              scrollY: openingScrollPosition !== null ? openingScrollPosition : (window.scrollY || window.pageYOffset),
-            });
-            console.log('[HomePage] Captured origin rect for toggle exit:', rect);
+            const viewportHeight = window.innerHeight;
+            const isOffScreen = rect.bottom < 0 || rect.top > viewportHeight;
+
+            if (isOffScreen) {
+              // Card is off-screen - scroll it into view first
+              console.log('[HomePage] Toggle exit: current item is off-screen, scrolling into view');
+              foundCard.scrollIntoView({ behavior: 'auto', block: 'center', inline: 'center' });
+
+              // Wait for scroll, then capture rect
+              requestAnimationFrame(() => {
+                const newRect = foundCard.getBoundingClientRect();
+                setOriginRect({
+                  top: newRect.top,
+                  left: newRect.left,
+                  width: newRect.width,
+                  height: newRect.height,
+                  scrollX: window.scrollX || window.pageXOffset,
+                  scrollY: window.scrollY || window.pageYOffset, // Use CURRENT scroll after scrollIntoView
+                });
+                console.log('[HomePage] Captured rect after scroll for toggle (index', currentSlideshowIndex, '):', newRect);
+                setIsClosingSlideshow(true);
+              });
+            } else {
+              // Card is on-screen - use its natural position with CURRENT scroll
+              const currentScrollY = window.scrollY || window.pageYOffset;
+              setOriginRect({
+                top: rect.top,
+                left: rect.left,
+                width: rect.width,
+                height: rect.height,
+                scrollX: window.scrollX || window.pageXOffset,
+                scrollY: currentScrollY, // Always use current scroll for accurate positioning
+              });
+              console.log('[HomePage] Captured rect for toggle exit (index', currentSlideshowIndex, '):', rect);
+              setIsClosingSlideshow(true);
+            }
           } else {
             console.warn('[HomePage] Could not find card for toggle exit, using fallback');
+            setIsClosingSlideshow(true);
           }
         });
+      } else {
+        setIsClosingSlideshow(true);
       }
-      setIsClosingSlideshow(true);
     } else {
       // Entering slideshow - capture first item's rect before switching
       console.log('[HomePage] Entering slideshow via toggle, capturing first item rect');
@@ -1053,7 +1080,6 @@ function HomePage() {
             scrollX: window.scrollX || window.pageXOffset,
             scrollY: openingScrollY,
           });
-          setOpeningScrollPosition(openingScrollY); // Store for later scroll compensation
           console.log('[HomePage] Captured origin rect for toggle entry:', rect);
         }
       }
@@ -1079,34 +1105,52 @@ function HomePage() {
     console.log('[HomePage] Current slideshow index:', currentSlideshowIndex, 'PDF:', currentPdf);
 
     if (currentPdf) {
-      // Wait for grid to render, then find the card for the currently viewed PDF
+      // Wait for grid to render, then find the card for the CURRENTLY VIEWED PDF
       requestAnimationFrame(() => {
         // Find the card by data-pdf-id attribute
         const foundCard = document.querySelector(`[data-pdf-id="${currentPdf.id}"]`);
 
         if (foundCard) {
-          // Scroll the card into view first (centered if possible)
-          foundCard.scrollIntoView({ behavior: 'auto', block: 'center', inline: 'center' });
+          // Check if the card is significantly off-screen
+          const rect = foundCard.getBoundingClientRect();
+          const viewportHeight = window.innerHeight;
+          const isOffScreen = rect.bottom < 0 || rect.top > viewportHeight;
 
-          // Wait a frame for scroll to complete, then capture rect
-          requestAnimationFrame(() => {
-            const rect = foundCard.getBoundingClientRect();
+          if (isOffScreen) {
+            // Card is off-screen - scroll it into view first
+            console.log('[HomePage] Current item is off-screen, scrolling into view');
+            foundCard.scrollIntoView({ behavior: 'auto', block: 'center', inline: 'center' });
+
+            // Wait for scroll, then capture rect
+            requestAnimationFrame(() => {
+              const newRect = foundCard.getBoundingClientRect();
+              const updatedOriginRect = {
+                top: newRect.top,
+                left: newRect.left,
+                width: newRect.width,
+                height: newRect.height,
+                scrollX: window.scrollX || window.pageXOffset,
+                scrollY: window.scrollY || window.pageYOffset, // Use CURRENT scroll after scrollIntoView
+              };
+              setOriginRect(updatedOriginRect);
+              console.log('[HomePage] Captured rect after scroll (index', currentSlideshowIndex, '):', updatedOriginRect);
+              setIsClosingSlideshow(true);
+            });
+          } else {
+            // Card is on-screen - use its natural position with CURRENT scroll
+            const currentScrollY = window.scrollY || window.pageYOffset;
             const updatedOriginRect = {
               top: rect.top,
               left: rect.left,
               width: rect.width,
               height: rect.height,
               scrollX: window.scrollX || window.pageXOffset,
-              // IMPORTANT: Use the ORIGINAL opening scroll position, not current scroll
-              // This allows scroll compensation to work correctly even though we scrolled via scrollIntoView
-              scrollY: openingScrollPosition !== null ? openingScrollPosition : (window.scrollY || window.pageYOffset),
+              scrollY: currentScrollY, // Always use current scroll for accurate positioning
             };
             setOriginRect(updatedOriginRect);
-            console.log('[HomePage] Captured origin rect for current item:', updatedOriginRect);
-
-            // Start close animation after rect is captured
+            console.log('[HomePage] Captured rect for current slideshow item (index', currentSlideshowIndex, '):', updatedOriginRect);
             setIsClosingSlideshow(true);
-          });
+          }
         } else {
           console.warn('[HomePage] Could not find current PDF in grid, using fallback close animation');
           setOriginRect(null);
@@ -1125,7 +1169,6 @@ function HomePage() {
     setSelectedPdf(null);
     setIsClosingSlideshow(false);
     setOriginRect(null); // Clear origin rect after animation
-    setOpeningScrollPosition(null); // Clear stored opening scroll
   };
 
   if (loading) {

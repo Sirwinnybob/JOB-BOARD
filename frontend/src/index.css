@@ -18,7 +18,6 @@ body {
 /* View Transitions API - Circular Reveal with Direction */
 ::view-transition-old(root),
 ::view-transition-new(root) {
-  animation: none;
   mix-blend-mode: normal;
 }
 
@@ -27,6 +26,7 @@ body {
   animation-name: var(--transition-name-new, none);
   animation-duration: 0.8s;
   animation-timing-function: cubic-bezier(0.4, 0.0, 0.2, 1);
+  animation-fill-mode: both;
 }
 
 /* Retracting to light mode - animate the OLD dark theme retracting */
@@ -34,6 +34,7 @@ body {
   animation-name: var(--transition-name-old, none);
   animation-duration: 0.8s;
   animation-timing-function: cubic-bezier(0.4, 0.0, 0.2, 1);
+  animation-fill-mode: both;
 }
 
 @keyframes circle-expand {

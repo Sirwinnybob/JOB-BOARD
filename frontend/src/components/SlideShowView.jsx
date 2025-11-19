@@ -258,7 +258,29 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
     console.log('  - displayPdfs:', displayPdfs.map(p => ({ id: p.id, is_placeholder: p.is_placeholder })));
 
     const container = scrollContainerRef.current;
+    const outerContainer = containerRef.current;
+
+    if (outerContainer) {
+      console.log('  - Outer container dimensions:', {
+        offsetWidth: outerContainer.offsetWidth,
+        offsetHeight: outerContainer.offsetHeight,
+        clientWidth: outerContainer.clientWidth,
+        clientHeight: outerContainer.clientHeight,
+        scrollHeight: outerContainer.scrollHeight,
+        className: outerContainer.className,
+        computedTop: window.getComputedStyle(outerContainer).top
+      });
+    }
+
     if (container && initialIndex >= 0 && initialIndex < displayPdfs.length) {
+      console.log('  - Scroll container dimensions:', {
+        offsetWidth: container.offsetWidth,
+        offsetHeight: container.offsetHeight,
+        scrollWidth: container.scrollWidth,
+        scrollHeight: container.scrollHeight,
+        className: container.className
+      });
+
       // Mobile portrait: 100% width, no spacers. Landscape/desktop: 60% width with 20% spacers
       const slideWidthPercent = isMobilePortrait ? 1.0 : 0.6;
       const leftSpacerPercent = isMobilePortrait ? 0 : 0.2;

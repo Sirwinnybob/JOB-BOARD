@@ -503,6 +503,18 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
           let ocrComplete = false;
           let darkModeComplete = false;
 
+          // Cleanup function - delete PDF after both tasks complete
+          const checkAndCleanup = async () => {
+            if (ocrComplete && darkModeComplete) {
+              try {
+                await fs.unlink(pdfPath);
+                console.log(`[Cleanup] Deleted original PDF file: ${filename}`);
+              } catch (unlinkErr) {
+                console.error('[Cleanup] Error deleting PDF file:', unlinkErr);
+              }
+            }
+          };
+
           // OCR extraction (skip if skip_ocr is true)
           if (skipOcr) {
             console.log(`[OCR] Skipping OCR extraction for PDF ${pdfId} (custom upload)`);
@@ -587,18 +599,6 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
               checkAndCleanup();
             }
           })();
-
-          // Cleanup function - delete PDF after both tasks complete
-          const checkAndCleanup = async () => {
-            if (ocrComplete && darkModeComplete) {
-              try {
-                await fs.unlink(pdfPath);
-                console.log(`[Cleanup] Deleted original PDF file: ${filename}`);
-              } catch (unlinkErr) {
-                console.error('[Cleanup] Error deleting PDF file:', unlinkErr);
-              }
-            }
-          };
         });
       }
     );

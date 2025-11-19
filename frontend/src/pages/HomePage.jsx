@@ -60,6 +60,7 @@ function HomePage() {
   });
   const [isClosingSlideshow, setIsClosingSlideshow] = useState(false);
   const [originRect, setOriginRect] = useState(null);
+  const [openingScrollPosition, setOpeningScrollPosition] = useState(null); // Store original opening scroll
   const [currentSlideshowIndex, setCurrentSlideshowIndex] = useState(0);
   const [pullToRefresh, setPullToRefresh] = useState({ pulling: false, distance: 0, refreshing: false });
   const [editLock, setEditLock] = useState(null); // { lockedBy: sessionId, lockedAt: timestamp }
@@ -977,6 +978,7 @@ function HomePage() {
 
     if (target) {
       const rect = target.getBoundingClientRect();
+      const openingScrollY = window.scrollY || window.pageYOffset;
       setOriginRect({
         top: rect.top,
         left: rect.left,
@@ -984,8 +986,9 @@ function HomePage() {
         height: rect.height,
         // Store viewport scroll position for edge case handling
         scrollX: window.scrollX || window.pageXOffset,
-        scrollY: window.scrollY || window.pageYOffset,
+        scrollY: openingScrollY, // This is the original opening scroll
       });
+      setOpeningScrollPosition(openingScrollY); // Store separately to preserve for closing
       console.log('[HomePage] Captured origin rect:', rect);
     }
 
@@ -1022,7 +1025,8 @@ function HomePage() {
               width: rect.width,
               height: rect.height,
               scrollX: window.scrollX || window.pageXOffset,
-              scrollY: window.scrollY || window.pageYOffset,
+              // Use the original opening scroll position for scroll compensation
+              scrollY: openingScrollPosition !== null ? openingScrollPosition : (window.scrollY || window.pageYOffset),
             });
             console.log('[HomePage] Captured origin rect for toggle exit:', rect);
           } else {
@@ -1040,14 +1044,16 @@ function HomePage() {
         if (cards.length > 0) {
           const firstCard = cards[0];
           const rect = firstCard.getBoundingClientRect();
+          const openingScrollY = window.scrollY || window.pageYOffset;
           setOriginRect({
             top: rect.top,
             left: rect.left,
             width: rect.width,
             height: rect.height,
             scrollX: window.scrollX || window.pageXOffset,
-            scrollY: window.scrollY || window.pageYOffset,
+            scrollY: openingScrollY,
           });
+          setOpeningScrollPosition(openingScrollY); // Store for later scroll compensation
           console.log('[HomePage] Captured origin rect for toggle entry:', rect);
         }
       }
@@ -1091,7 +1097,9 @@ function HomePage() {
               width: rect.width,
               height: rect.height,
               scrollX: window.scrollX || window.pageXOffset,
-              scrollY: window.scrollY || window.pageYOffset,
+              // IMPORTANT: Use the ORIGINAL opening scroll position, not current scroll
+              // This allows scroll compensation to work correctly even though we scrolled via scrollIntoView
+              scrollY: openingScrollPosition !== null ? openingScrollPosition : (window.scrollY || window.pageYOffset),
             };
             setOriginRect(updatedOriginRect);
             console.log('[HomePage] Captured origin rect for current item:', updatedOriginRect);
@@ -1117,6 +1125,7 @@ function HomePage() {
     setSelectedPdf(null);
     setIsClosingSlideshow(false);
     setOriginRect(null); // Clear origin rect after animation
+    setOpeningScrollPosition(null); // Clear stored opening scroll
   };
 
   if (loading) {

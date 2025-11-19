@@ -9,6 +9,9 @@ function PlaceholderCard({
   isDragging,
   onEdit,
   colorTransitionDelay,
+  isMobile = false,
+  isSelected = false,
+  onSelect,
 }) {
   const { darkMode, isTransitioning } = useDarkMode();
 
@@ -80,9 +83,17 @@ function PlaceholderCard({
 
   return (
     <div
+      onClick={(e) => {
+        if (isMobile && editMode && onSelect) {
+          e.stopPropagation();
+          onSelect();
+        }
+      }}
       className={`relative w-full h-full rounded-lg shadow-md overflow-hidden ${!isTransitioning ? 'transition-all' : ''} ${
         editMode ? 'cursor-move border-2 animate-border-pulse' : 'cursor-default border-2 border-dashed'
-      } ${isDragging ? 'opacity-50' : ''}`}
+      } ${isDragging ? 'opacity-50' : ''} ${
+        isMobile && editMode && isSelected ? 'ring-4 ring-blue-500' : ''
+      }`}
       style={getBackgroundStyle()}
     >
       {/* Placeholder Text */}
@@ -98,17 +109,17 @@ function PlaceholderCard({
         </p>
       </div>
 
-      {/* Edit and Delete buttons in edit mode */}
-      {editMode && (
+      {/* Edit and Delete buttons in edit mode - hidden on mobile unless selected */}
+      {editMode && !(isMobile && !isSelected) && (
         <>
           {/* Edit button */}
           <button
             onClick={() => onEdit && onEdit(placeholder)}
-            className={`absolute top-2 right-12 bg-blue-600 hover:bg-blue-700 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg ${!isTransitioning ? 'transition-colors' : ''} z-10`}
+            className={`absolute top-1 right-8 sm:top-2 sm:right-12 bg-blue-600 hover:bg-blue-700 text-white rounded-full w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center shadow-lg ${!isTransitioning ? 'transition-colors' : ''} z-10`}
             aria-label="Edit"
           >
             <svg
-              className="w-5 h-5"
+              className="w-3 h-3 sm:w-5 sm:h-5"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -125,11 +136,11 @@ function PlaceholderCard({
           {/* Delete button */}
           <button
             onClick={() => onDelete(placeholder.id)}
-            className={`absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg ${!isTransitioning ? 'transition-colors' : ''} z-10`}
+            className={`absolute top-1 right-1 sm:top-2 sm:right-2 bg-red-600 hover:bg-red-700 text-white rounded-full w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center shadow-lg ${!isTransitioning ? 'transition-colors' : ''} z-10`}
             aria-label="Delete"
           >
             <svg
-              className="w-5 h-5"
+              className="w-3 h-3 sm:w-5 sm:h-5"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -147,9 +158,9 @@ function PlaceholderCard({
 
       {/* Drag indicator */}
       {editMode && !isDragging && (
-        <div className="absolute top-2 left-2 bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg">
+        <div className="absolute top-1 left-1 sm:top-2 sm:left-2 bg-blue-600 text-white rounded-full w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center shadow-lg">
           <svg
-            className="w-5 h-5"
+            className="w-3 h-3 sm:w-5 sm:h-5"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"

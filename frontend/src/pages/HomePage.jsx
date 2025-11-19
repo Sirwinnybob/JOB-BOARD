@@ -1003,38 +1003,19 @@ function HomePage() {
   const toggleViewMode = () => {
     console.log('[HomePage] toggleViewMode called, current viewMode:', viewMode);
     if (viewMode === 'slideshow') {
-      // Exiting slideshow - switch to grid immediately, capture rect, then animate
+      // Exiting slideshow - use original opening rect
       console.log('[HomePage] Exiting slideshow via toggle');
       setViewMode('grid');
       localStorage.setItem('viewMode', 'grid');
 
-      // Use filtered pdfs (no nulls/undefined) for consistent indexing with SlideShowView
-      const displayPdfs = pdfs.filter(p => p);
-      const targetPdf = displayPdfs[currentSlideshowIndex];
-      if (targetPdf) {
-        // Wait for grid to be rendered, then find the card
-        requestAnimationFrame(() => {
-          // Find the card by data-pdf-id attribute
-          const foundCard = document.querySelector(`[data-pdf-id="${targetPdf.id}"]`);
+      // Use the original opening rect captured when entering slideshow
+      // Do NOT re-capture - that would give us a different position!
+      console.log('[HomePage] Using original opening rect for toggle exit');
 
-          if (foundCard) {
-            const rect = foundCard.getBoundingClientRect();
-            setOriginRect({
-              top: rect.top,
-              left: rect.left,
-              width: rect.width,
-              height: rect.height,
-              scrollX: window.scrollX || window.pageXOffset,
-              // Use the original opening scroll position for scroll compensation
-              scrollY: openingScrollPosition !== null ? openingScrollPosition : (window.scrollY || window.pageYOffset),
-            });
-            console.log('[HomePage] Captured origin rect for toggle exit:', rect);
-          } else {
-            console.warn('[HomePage] Could not find card for toggle exit, using fallback');
-          }
-        });
-      }
-      setIsClosingSlideshow(true);
+      // Wait for grid to render, then start animation
+      requestAnimationFrame(() => {
+        setIsClosingSlideshow(true);
+      });
     } else {
       // Entering slideshow - capture first item's rect before switching
       console.log('[HomePage] Entering slideshow via toggle, capturing first item rect');
@@ -1078,44 +1059,15 @@ function HomePage() {
     const currentPdf = displayPdfs[currentSlideshowIndex];
     console.log('[HomePage] Current slideshow index:', currentSlideshowIndex, 'PDF:', currentPdf);
 
-    if (currentPdf) {
-      // Wait for grid to render, then find the card for the currently viewed PDF
-      requestAnimationFrame(() => {
-        // Find the card by data-pdf-id attribute
-        const foundCard = document.querySelector(`[data-pdf-id="${currentPdf.id}"]`);
+    // IMPORTANT: Use the ORIGINAL opening rect captured on click
+    // Do NOT re-capture or call scrollIntoView - that changes the element position!
+    // The opening rect has the natural grid position we need to animate back to
+    console.log('[HomePage] Using original opening rect for close animation:', originRect);
 
-        if (foundCard) {
-          // Scroll the card into view first (centered if possible)
-          foundCard.scrollIntoView({ behavior: 'auto', block: 'center', inline: 'center' });
-
-          // Wait a frame for scroll to complete, then capture rect
-          requestAnimationFrame(() => {
-            const rect = foundCard.getBoundingClientRect();
-            const updatedOriginRect = {
-              top: rect.top,
-              left: rect.left,
-              width: rect.width,
-              height: rect.height,
-              scrollX: window.scrollX || window.pageXOffset,
-              // IMPORTANT: Use the ORIGINAL opening scroll position, not current scroll
-              // This allows scroll compensation to work correctly even though we scrolled via scrollIntoView
-              scrollY: openingScrollPosition !== null ? openingScrollPosition : (window.scrollY || window.pageYOffset),
-            };
-            setOriginRect(updatedOriginRect);
-            console.log('[HomePage] Captured origin rect for current item:', updatedOriginRect);
-
-            // Start close animation after rect is captured
-            setIsClosingSlideshow(true);
-          });
-        } else {
-          console.warn('[HomePage] Could not find current PDF in grid, using fallback close animation');
-          setOriginRect(null);
-          setIsClosingSlideshow(true);
-        }
-      });
-    } else {
+    // Wait for grid to render, then start animation
+    requestAnimationFrame(() => {
       setIsClosingSlideshow(true);
-    }
+    });
   };
 
   const handleSlideshowAnimationComplete = () => {

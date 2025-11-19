@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState } from 'react';
 import { useDarkMode } from '../contexts/DarkModeContext';
 
 function DraggableCoverSheetCard({
@@ -21,7 +21,6 @@ function DraggableCoverSheetCard({
   const [editing, setEditing] = useState(null);
   const [editValue, setEditValue] = useState('');
   const { darkMode, isTransitioning } = useDarkMode();
-  const switchingToCustomRef = useRef(false);
 
   // Delayed dark mode for this specific card (updates at item's color transition time)
   const [delayedDarkMode, setDelayedDarkMode] = useState(darkMode);
@@ -219,67 +218,41 @@ function DraggableCoverSheetCard({
               </span>
             )}
             {editMode && editing === 'construction_method' ? (
-              // Check if current value is a predefined type or custom
-              ['Frameless', 'Face Frame', 'Both', 'REMAKE', ''].includes(editValue) ? (
-                <select
-                  value={editValue}
-                  onChange={(e) => {
-                    if (e.target.value === 'Custom...') {
-                      switchingToCustomRef.current = true; // Prevent blur from saving
-                      setEditValue(' '); // Space triggers text input (not in predefined list)
-                      // Stay in edit mode but trigger re-render to show text input
-                    } else {
-                      setEditValue(e.target.value);
-                    }
-                  }}
-                  onBlur={() => {
-                    // Don't save if we just selected Custom (switching to text input)
-                    if (switchingToCustomRef.current) {
-                      switchingToCustomRef.current = false;
-                      return;
-                    }
-                    handleSaveEdit('construction_method');
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleSaveEdit('construction_method');
-                    if (e.key === 'Escape') handleCancelEdit();
-                  }}
-                  className="flex-1 px-1 py-0.5 border border-blue-500 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-xs focus:outline-none"
-                  style={getColorTransitionStyle(['background-color', 'color', 'border-color'])}
-                  autoFocus
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <option value="">—</option>
-                  <option value="Frameless">Frameless</option>
-                  <option value="Face Frame">Face Frame</option>
-                  <option value="Both">Both</option>
-                  <option value="REMAKE">REMAKE</option>
-                  <option value="Custom...">Custom...</option>
-                </select>
-              ) : (
+              // Show both text input and dropdown when editing
+              <div className="flex flex-col gap-1">
                 <input
                   type="text"
-                  value={editValue.trim()}
+                  value={editValue}
                   onChange={(e) => setEditValue(e.target.value)}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') handleSaveEdit('construction_method');
                     if (e.key === 'Escape') handleCancelEdit();
                   }}
                   onBlur={() => handleSaveEdit('construction_method')}
-                  onFocus={(e) => {
-                    // Clear whitespace-only values on focus
-                    if (editValue.trim() === '') {
-                      setEditValue('');
-                      e.target.value = '';
+                  className="flex-1 px-1 py-0.5 border border-blue-500 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-xs focus:outline-none"
+                  style={getColorTransitionStyle(['background-color', 'color', 'border-color'])}
+                  placeholder="Type or select below"
+                  autoFocus
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <select
+                  value={['Frameless', 'Face Frame', 'Both', 'REMAKE'].includes(editValue) ? editValue : ''}
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      setEditValue(e.target.value);
                     }
                   }}
                   className="flex-1 px-1 py-0.5 border border-blue-500 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-xs focus:outline-none"
                   style={getColorTransitionStyle(['background-color', 'color', 'border-color'])}
-                  placeholder="Enter custom type"
-                  autoFocus
                   onClick={(e) => e.stopPropagation()}
-                />
-              )
+                >
+                  <option value="">Select preset...</option>
+                  <option value="Frameless">Frameless</option>
+                  <option value="Face Frame">Face Frame</option>
+                  <option value="Both">Both</option>
+                  <option value="REMAKE">REMAKE</option>
+                </select>
+              </div>
             ) : (
               <>
                 <span
@@ -295,9 +268,9 @@ function DraggableCoverSheetCard({
                     editMode ? 'cursor-pointer hover:bg-black/10' : 'cursor-default'
                   }`}
                   style={getColorTransitionStyle(['color'])}
-                  title={editMode ? (pdf.construction_method || 'Click to select type') : pdf.construction_method}
+                  title={editMode ? (pdf.construction_method || 'Click to select type') : (pdf.construction_method || 'Custom')}
                 >
-                  {pdf.construction_method || '—'}
+                  {pdf.construction_method || 'Custom'}
                 </span>
                 <span
                   onClick={(e) => {
@@ -312,9 +285,9 @@ function DraggableCoverSheetCard({
                     editMode ? 'cursor-pointer hover:bg-black/10' : 'cursor-default'
                   }`}
                   style={getColorTransitionStyle(['color'])}
-                  title={editMode ? (pdf.construction_method || 'Click to select type') : pdf.construction_method}
+                  title={editMode ? (pdf.construction_method || 'Click to select type') : (pdf.construction_method || 'Custom')}
                 >
-                  {pdf.construction_method === 'Face Frame' ? 'FF' : pdf.construction_method === 'Frameless' ? 'FL' : pdf.construction_method || '—'}
+                  {pdf.construction_method === 'Face Frame' ? 'FF' : pdf.construction_method === 'Frameless' ? 'FL' : pdf.construction_method || 'Custom'}
                 </span>
               </>
             )}

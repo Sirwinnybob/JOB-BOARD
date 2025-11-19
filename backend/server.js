@@ -584,14 +584,26 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
 
                     // Only broadcast if we actually updated something
                     if (this.changes > 0) {
-                      // Broadcast metadata update to all clients
-                      broadcastUpdate('pdf_metadata_updated', {
-                        id: pdfId,
-                        job_number: metadata.job_number,
-                        construction_method: metadata.construction_method
-                      });
+                      // Check if this is a pending job before broadcasting
+                      // Board jobs (isPending = 0) should not broadcast until Save is clicked
+                      db.get('SELECT is_pending FROM pdfs WHERE id = ?', [pdfId], (err, row) => {
+                        if (err) {
+                          console.error('[OCR] Error checking is_pending:', err);
+                          return;
+                        }
 
-                      console.log(`[OCR] Metadata updated for PDF ${pdfId}`);
+                        if (row && row.is_pending === 1) {
+                          // Only broadcast for pending jobs
+                          broadcastUpdate('pdf_metadata_updated', {
+                            id: pdfId,
+                            job_number: metadata.job_number,
+                            construction_method: metadata.construction_method
+                          });
+                          console.log(`[OCR] Metadata updated and broadcast for pending PDF ${pdfId}`);
+                        } else {
+                          console.log(`[OCR] Metadata updated for board PDF ${pdfId} (no broadcast until save)`);
+                        }
+                      });
                     } else {
                       console.log(`[OCR] Skipped update for PDF ${pdfId} (already has manual values)`);
                     }
@@ -627,10 +639,24 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
                         return;
                       }
 
-                      // Broadcast dark mode update to all clients
-                      broadcastUpdate('pdf_dark_mode_ready', {
-                        id: pdfId,
-                        dark_mode_images_base: darkModeBaseFilename
+                      // Check if this is a pending job before broadcasting
+                      // Board jobs (isPending = 0) should not broadcast until Save is clicked
+                      db.get('SELECT is_pending FROM pdfs WHERE id = ?', [pdfId], (err, row) => {
+                        if (err) {
+                          console.error('[Dark Mode] Error checking is_pending:', err);
+                          return;
+                        }
+
+                        if (row && row.is_pending === 1) {
+                          // Only broadcast for pending jobs
+                          broadcastUpdate('pdf_dark_mode_ready', {
+                            id: pdfId,
+                            dark_mode_images_base: darkModeBaseFilename
+                          });
+                          console.log(`[Dark Mode] Images ready and broadcast for pending PDF ${pdfId}`);
+                        } else {
+                          console.log(`[Dark Mode] Images ready for board PDF ${pdfId} (no broadcast until save)`);
+                        }
                       });
 
                       console.log(`[Dark Mode] Database updated for PDF ${pdfId}`);

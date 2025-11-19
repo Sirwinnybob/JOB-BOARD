@@ -339,8 +339,7 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
   }
 
   // Always use fullscreen styling but start below header
-  // Use inset positioning without explicit height - let browser calculate
-  const containerClass = "fixed inset-x-0 top-16 bottom-0 bg-white dark:bg-black z-50 transition-colors";
+  const containerClass = "fixed left-0 right-0 bottom-0 top-16 bg-white dark:bg-black z-50 transition-colors";
   const containerStyle = {};
 
   // Generate dynamic CSS animations based on originRect
@@ -453,10 +452,10 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
           return (
             <div
               key={pdf.id}
-              className={`flex-shrink-0 ${isMobilePortrait ? 'w-full' : 'w-[60%]'} h-full snap-center flex items-center justify-center ${isMobilePortrait ? 'p-2' : 'p-4'}`}
+              className={`flex-shrink-0 ${isMobilePortrait ? 'w-full' : 'w-[60%]'} h-full snap-center flex flex-col ${isMobilePortrait ? 'p-2' : 'p-4'}`}
             >
-              {/* Image Container - relative positioning for labels */}
-              <div className="relative w-full h-full flex items-center justify-center">
+              {/* Image Container - flex-1 to fill available height */}
+              <div className="relative flex-1 max-w-6xl w-full mx-auto flex items-center justify-center overflow-hidden">
                 {pdf.is_placeholder ? (
                   <div
                     className="max-w-full max-h-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-lg shadow-md border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center p-4 sm:p-6 md:p-8 transition-colors"
@@ -475,7 +474,7 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
                     key={`${pdf.id}-${isDarkMode ? 'dark' : 'light'}`}
                     src={imageSrc}
                     alt={pdf.original_name}
-                    className="max-w-full max-h-full w-auto h-auto object-contain rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 shadow-md transition-all"
+                    className="max-w-full max-h-full object-contain rounded-lg border-2 border-dashed border-gray-300 dark:border-gray-600 shadow-md transition-all"
                     loading="lazy"
                     onError={(e) => {
                       // Fallback to regular image if dark mode image fails

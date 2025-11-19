@@ -383,25 +383,26 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
   const generateAnimationCSS = () => {
     if (!animationTransform) {
       // Fallback to simple center zoom if no transform calculated
+      // Using translate3d for hardware acceleration
       return `
         @keyframes zoomIn {
           from {
             opacity: 0;
-            transform: scale(0.85);
+            transform: scale(0.85) translate3d(0, 0, 0);
           }
           to {
             opacity: 1;
-            transform: scale(1);
+            transform: scale(1) translate3d(0, 0, 0);
           }
         }
         @keyframes zoomOut {
           from {
             opacity: 1;
-            transform: scale(1);
+            transform: scale(1) translate3d(0, 0, 0);
           }
           to {
             opacity: 0;
-            transform: scale(0.85);
+            transform: scale(0.85) translate3d(0, 0, 0);
           }
         }
       `;
@@ -410,26 +411,27 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
     const { scale, translateX, translateY } = animationTransform;
 
     // Initial state: positioned at grid item location, scaled to grid item size
-    // Final state: centered (translate 0,0), fullscreen (scale 1)
+    // Final state: centered (translate 0,0,0), fullscreen (scale 1)
+    // Using translate3d for hardware acceleration on mobile devices
     return `
       @keyframes zoomIn {
         from {
           opacity: 0.3;
-          transform: translate(${translateX}px, ${translateY}px) scale(${scale});
+          transform: translate3d(${translateX}px, ${translateY}px, 0) scale(${scale});
         }
         to {
           opacity: 1;
-          transform: translate(0, 0) scale(1);
+          transform: translate3d(0, 0, 0) scale(1);
         }
       }
       @keyframes zoomOut {
         from {
           opacity: 1;
-          transform: translate(0, 0) scale(1);
+          transform: translate3d(0, 0, 0) scale(1);
         }
         to {
           opacity: 0;
-          transform: translate(${translateX}px, ${translateY}px) scale(${scale});
+          transform: translate3d(${translateX}px, ${translateY}px, 0) scale(${scale});
         }
       }
     `;
@@ -442,21 +444,24 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
         {`
           .zoom-in-animation {
             animation: zoomIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            will-change: transform, opacity;
           }
           .zoom-out-animation {
             animation: zoomOut 0.4s cubic-bezier(0.7, 0, 0.84, 0);
+            will-change: transform, opacity;
           }
           .animate-fade-in {
             animation: fadeIn 0.3s ease-in;
+            will-change: transform, opacity;
           }
           @keyframes fadeIn {
             from {
               opacity: 0;
-              transform: scale(0.95);
+              transform: scale(0.95) translate3d(0, 0, 0);
             }
             to {
               opacity: 1;
-              transform: scale(1);
+              transform: scale(1) translate3d(0, 0, 0);
             }
           }
         `}
@@ -464,7 +469,12 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
       <div
         ref={containerRef}
         className={`${containerClass} ${animationState === 'zoom-in' ? 'zoom-in-animation' : ''} ${animationState === 'zoom-out' ? 'zoom-out-animation' : ''}`}
-        style={containerStyle}
+        style={{
+          ...containerStyle,
+          // Hardware acceleration for smoother animations on mobile
+          willChange: animationState !== 'none' ? 'transform, opacity' : 'auto',
+          transform: animationState === 'none' ? 'translate3d(0, 0, 0)' : undefined,
+        }}
       >
         {/* Horizontal Scroll Container */}
         <div
@@ -475,6 +485,9 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
             WebkitOverflowScrolling: 'touch',
             scrollbarWidth: 'none',
             msOverflowStyle: 'none',
+            // Hardware acceleration for smooth scrolling
+            transform: 'translate3d(0, 0, 0)',
+            willChange: 'scroll-position',
           }}
         >
         {/* Left spacer - allows first slide to center (hidden in mobile portrait) */}

@@ -1384,10 +1384,10 @@ function HomePage() {
 
       {/* Main Content */}
       <main
-        className={viewMode === 'grid' ? 'max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 relative z-10' : 'w-full relative z-10'}
+        className={(viewMode === 'grid' && !isClosingSlideshow) ? 'max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 relative z-10' : 'w-full relative z-10'}
         style={{
           // Only apply transform in grid mode - transform creates stacking context that breaks position:fixed in slideshow
-          ...(viewMode === 'grid' && {
+          ...((viewMode === 'grid' && !isClosingSlideshow) && {
             transform: 'translateZ(0)',
             backfaceVisibility: 'hidden',
             WebkitBackfaceVisibility: 'hidden'
@@ -1449,7 +1449,10 @@ function HomePage() {
                 <div
                   className={viewMode === 'slideshow' && !isClosingSlideshow ? 'opacity-0 pointer-events-none' : 'opacity-100'}
                   style={{
-                    transition: isClosingSlideshow ? 'none' : 'opacity 0.3s ease-in-out'
+                    transition: isClosingSlideshow ? 'none' : 'opacity 0.3s ease-in-out',
+                    // Hardware acceleration for smoother opacity transitions
+                    transform: 'translate3d(0, 0, 0)',
+                    willChange: viewMode === 'slideshow' ? 'opacity' : 'auto',
                   }}
                 >
                   {gridContent()}

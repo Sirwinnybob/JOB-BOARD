@@ -125,6 +125,13 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
       translateY: clampedTranslateY,
       originRect,
       viewport: { width: viewportWidth, height: viewportHeight },
+      debug: {
+        originCenterY,
+        viewportCenterY,
+        headerOffset,
+        containerHeight,
+        rawTranslateY: translateY
+      }
     });
   }, [originRect]);
 
@@ -469,7 +476,7 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
                         : `${aspectWidth} / ${aspectHeight}`
                     }}
                   >
-                    <p className="text-gray-600 dark:text-gray-400 font-bold text-center break-words leading-tight transition-colors" style={{ fontSize: 'clamp(2rem, 8vw, 7rem)' }}>
+                    <p className="text-gray-600 dark:text-gray-400 font-bold text-center break-words leading-tight transition-colors" style={{ fontSize: isMobilePortrait ? 'clamp(1rem, 5vw, 2.5rem)' : 'clamp(1.5rem, 3vw, 3.5rem)' }}>
                       {pdf.placeholder_text || 'PLACEHOLDER'}
                     </p>
                   </div>

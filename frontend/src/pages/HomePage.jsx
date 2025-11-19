@@ -12,6 +12,7 @@ import LabelManagementModal from '../components/LabelManagementModal';
 import PlaceholderEditModal from '../components/PlaceholderEditModal';
 import AlertModal from '../components/AlertModal';
 import PendingSection from '../components/PendingSection';
+import DeliveryScheduleModal from '../components/DeliveryScheduleModal';
 import useWebSocket from '../hooks/useWebSocket';
 import { useDarkMode } from '../contexts/DarkModeContext';
 import {
@@ -39,6 +40,7 @@ function HomePage() {
   const [showLabelModal, setShowLabelModal] = useState(false);
   const [showLabelManagement, setShowLabelManagement] = useState(false);
   const [showAlertModal, setShowAlertModal] = useState(false);
+  const [showDeliverySchedule, setShowDeliverySchedule] = useState(false);
   const [selectedPdfForLabels, setSelectedPdfForLabels] = useState(null);
   const [showPlaceholderEdit, setShowPlaceholderEdit] = useState(false);
   const [selectedPlaceholder, setSelectedPlaceholder] = useState(null);
@@ -1140,6 +1142,15 @@ function HomePage() {
               <span className="sm:hidden">KKC - Job Board</span>
             </h1>
             <div className="flex items-center space-x-2 sm:space-x-4">
+            <button
+              onClick={() => setShowDeliverySchedule(true)}
+              className="p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white transition-colors rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700"
+              title="Delivery Schedule"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </button>
             {!editMode && (
               <button
                 onClick={toggleViewMode}
@@ -1441,6 +1452,14 @@ function HomePage() {
             />
           )}
         </>
+      )}
+
+      {/* Delivery Schedule Modal - Available to all users */}
+      {showDeliverySchedule && (
+        <DeliveryScheduleModal
+          onClose={() => setShowDeliverySchedule(false)}
+          isAdmin={isAuthenticated}
+        />
       )}
     </div>
   );

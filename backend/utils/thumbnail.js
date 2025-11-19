@@ -38,20 +38,25 @@ async function convertToDarkMode(pdfPath, outputPath) {
   }
 }
 
-async function generateThumbnail(pdfPath, outputDir, baseFilename) {
+async function generateThumbnail(filePath, outputDir, baseFilename, isImage = false) {
   try {
     const finalName = `${baseFilename}.png`;
     const finalPath = path.join(outputDir, finalName);
 
-    // Use pdftocairo directly - it's already installed in the Docker image
-    // -png: output as PNG
-    // -f 1 -l 1: first page to last page (page 1 only)
-    // -singlefile: don't add page numbers to filename
-    // -r 200: resolution 200 DPI for better thumbnail quality
-    const outputBase = finalPath.replace('.png', '');
-    const command = `pdftocairo -png -f 1 -l 1 -singlefile -r 200 "${pdfPath}" "${outputBase}"`;
-
-    await execAsync(command);
+    if (isImage) {
+      // For images, just copy/convert to PNG using ImageMagick
+      const command = `magick "${filePath}" -resize 800x800\\> "${finalPath}"`;
+      await execAsync(command);
+    } else {
+      // Use pdftocairo for PDFs
+      // -png: output as PNG
+      // -f 1 -l 1: first page to last page (page 1 only)
+      // -singlefile: don't add page numbers to filename
+      // -r 200: resolution 200 DPI for better thumbnail quality
+      const outputBase = finalPath.replace('.png', '');
+      const command = `pdftocairo -png -f 1 -l 1 -singlefile -r 200 "${filePath}" "${outputBase}"`;
+      await execAsync(command);
+    }
 
     // Verify the file was created
     const fileExists = await fs.access(finalPath).then(() => true).catch(() => false);
@@ -62,6 +67,40 @@ async function generateThumbnail(pdfPath, outputDir, baseFilename) {
     return finalName;
   } catch (error) {
     console.error('Error generating thumbnail:', error);
+    throw error;
+  }
+}
+
+async function generateImageFile(imagePath, outputDir, baseFilename, isCustomUpload = false) {
+  try {
+    console.log(`Processing image file: ${imagePath}`);
+    console.log(`Output directory: ${outputDir}`);
+    console.log(`Base filename: ${baseFilename}`);
+    console.log(`Is custom upload: ${isCustomUpload}`);
+
+    // For images, convert/resize to PNG
+    // Use lower resolution for custom uploads
+    const maxDimension = isCustomUpload ? 1200 : 3000;
+    const targetPath = path.join(outputDir, `${baseFilename}-1.png`);
+    const command = `magick "${imagePath}" -resize ${maxDimension}x${maxDimension}\\> "${targetPath}"`;
+
+    console.log(`Running ImageMagick command: ${command}`);
+    await execAsync(command);
+
+    // Verify the file was created
+    const fileExists = await fs.access(targetPath).then(() => true).catch(() => false);
+    if (!fileExists) {
+      throw new Error(`Image conversion failed - output file not found: ${targetPath}`);
+    }
+
+    console.log(`Successfully converted image to: ${targetPath}`);
+
+    return {
+      pageCount: 1, // Images are always 1 page
+      baseFilename,
+    };
+  } catch (error) {
+    console.error('Error processing image file:', error);
     throw error;
   }
 }
@@ -190,4 +229,4 @@ async function generateDarkModeImages(pdfPath, outputDir, baseFilename) {
   }
 }
 
-module.exports = { generateThumbnail, generatePdfImages, generateDarkModeImages };
+module.exports = { generateThumbnail, generatePdfImages, generateImageFile, generateDarkModeImages };

@@ -37,6 +37,7 @@ function HomePage() {
   const [showUpload, setShowUpload] = useState(false);
   const [uploadTargetPosition, setUploadTargetPosition] = useState(null);
   const [uploadToPending, setUploadToPending] = useState(true);
+  const [skipOcr, setSkipOcr] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showLabelModal, setShowLabelModal] = useState(false);
   const [showLabelManagement, setShowLabelManagement] = useState(false);
@@ -665,6 +666,7 @@ function HomePage() {
   const handleUploadToPending = () => {
     setUploadTargetPosition(null);
     setUploadToPending(true);
+    setSkipOcr(false);
     setShowUpload(true);
   };
 
@@ -785,6 +787,15 @@ function HomePage() {
   const handleUploadToSlot = (position) => {
     setUploadTargetPosition(position + 1);
     setUploadToPending(false);
+    setSkipOcr(false);
+    setShowSlotMenu(null);
+    setShowUpload(true);
+  };
+
+  const handleUploadCustomToSlot = (position) => {
+    setUploadTargetPosition(position + 1);
+    setUploadToPending(false);
+    setSkipOcr(true); // Skip OCR for custom uploads
     setShowSlotMenu(null);
     setShowUpload(true);
   };
@@ -884,28 +895,31 @@ function HomePage() {
         newPdfs[destIndex] = movedItem;
         newPdfs[sourceIndex] = undefined;
       } else {
-        // Destination is occupied - iPhone-style behavior: insert and shift all items right
-        // Remove item from source first
+        // Destination is occupied - smart shift that fills existing gaps
+        // Remove item from source first (creates a gap)
         newPdfs[sourceIndex] = undefined;
 
-        // Insert item at destination, pushing everything else right
-        // We need to shift all items from destIndex onwards to the right by one
+        // Collect all non-empty items from destination onwards
+        // This automatically excludes the source position since it's now undefined
         const itemsToShift = [];
         for (let i = destIndex; i < newPdfs.length; i++) {
-          itemsToShift.push(newPdfs[i]);
+          if (newPdfs[i] !== undefined) {
+            itemsToShift.push(newPdfs[i]);
+          }
         }
 
         // Place moved item at destination
         newPdfs[destIndex] = movedItem;
 
-        // Shift the displaced items to the right
+        // Place the displaced items sequentially starting at destIndex + 1
+        // This compresses them together, naturally filling the gap left by the moved item
         for (let i = 0; i < itemsToShift.length; i++) {
           newPdfs[destIndex + 1 + i] = itemsToShift[i];
         }
 
-        // If we need to extend the array
-        if (destIndex + 1 + itemsToShift.length > newPdfs.length) {
-          newPdfs.length = destIndex + 1 + itemsToShift.length;
+        // Clear any remaining positions beyond where we wrote
+        for (let i = destIndex + 1 + itemsToShift.length; i < newPdfs.length; i++) {
+          newPdfs[i] = undefined;
         }
       }
 
@@ -980,27 +994,31 @@ function HomePage() {
       newPdfs[targetIndex] = movedItem;
       newPdfs[sourceIndex] = undefined;
     } else {
-      // Destination is occupied - iPhone-style behavior: insert and shift all items right
-      // Remove item from source first
+      // Destination is occupied - smart shift that fills existing gaps
+      // Remove item from source first (creates a gap)
       newPdfs[sourceIndex] = undefined;
 
-      // Insert item at destination, pushing everything else right
+      // Collect all non-empty items from destination onwards
+      // This automatically excludes the source position since it's now undefined
       const itemsToShift = [];
       for (let i = targetIndex; i < newPdfs.length; i++) {
-        itemsToShift.push(newPdfs[i]);
+        if (newPdfs[i] !== undefined) {
+          itemsToShift.push(newPdfs[i]);
+        }
       }
 
       // Place moved item at destination
       newPdfs[targetIndex] = movedItem;
 
-      // Shift the displaced items to the right
+      // Place the displaced items sequentially starting at targetIndex + 1
+      // This compresses them together, naturally filling the gap left by the moved item
       for (let i = 0; i < itemsToShift.length; i++) {
         newPdfs[targetIndex + 1 + i] = itemsToShift[i];
       }
 
-      // If we need to extend the array
-      if (targetIndex + 1 + itemsToShift.length > newPdfs.length) {
-        newPdfs.length = targetIndex + 1 + itemsToShift.length;
+      // Clear any remaining positions beyond where we wrote
+      for (let i = targetIndex + 1 + itemsToShift.length; i < newPdfs.length; i++) {
+        newPdfs[i] = undefined;
       }
     }
 
@@ -1148,6 +1166,7 @@ function HomePage() {
           onSlotMenuClose={handleSlotMenuClose}
           onAddPlaceholder={handleAddPlaceholder}
           onUploadToSlot={handleUploadToSlot}
+          onUploadCustomToSlot={handleUploadCustomToSlot}
           onMoveToPending={handleMovePdfToPending}
           onEditPlaceholder={handleEditPlaceholder}
           isTransitioning={shouldAnimate}
@@ -1485,10 +1504,12 @@ function HomePage() {
                 setShowUpload(false);
                 setUploadTargetPosition(null);
                 setUploadToPending(true);
+                setSkipOcr(false);
               }}
               onSuccess={handleUploadSuccess}
               targetPosition={uploadTargetPosition}
               uploadToPending={uploadToPending}
+              skipOcr={skipOcr}
             />
           )}
 

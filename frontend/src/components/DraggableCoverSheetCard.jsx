@@ -76,7 +76,8 @@ function DraggableCoverSheetCard({
       updates.construction_method = pdf.construction_method;
     } else {
       updates.job_number = pdf.job_number;
-      updates.construction_method = editValue;
+      // If editValue is "Custom...", keep it empty to trigger text input on next edit
+      updates.construction_method = editValue === 'Custom...' ? '' : editValue;
     }
 
     // Only update local state - don't save to backend until Save button is pressed
@@ -108,15 +109,24 @@ function DraggableCoverSheetCard({
       const lightColorMap = {
         'Face Frame': 'rgb(150, 179, 82)',
         'Frameless': 'rgb(237, 146, 35)',
-        'Both': 'rgb(0, 133, 138)'
+        'Both': 'rgb(0, 133, 138)',
+        'REMAKE': 'rgb(220, 38, 38)' // red-600
       };
       const darkColorMap = {
         'Face Frame': 'rgb(90, 107, 49)',   // Darker green
         'Frameless': 'rgb(142, 88, 21)',    // Darker orange
-        'Both': 'rgb(0, 80, 83)'            // Darker teal
+        'Both': 'rgb(0, 80, 83)',            // Darker teal
+        'REMAKE': 'rgb(153, 27, 27)'         // darker red (red-800)
       };
       const colorMap = darkMode ? darkColorMap : lightColorMap;
-      baseStyle.backgroundColor = colorMap[pdf.construction_method] || 'white';
+
+      // If not in the predefined map, treat as custom (golden yellow)
+      if (colorMap[pdf.construction_method]) {
+        baseStyle.backgroundColor = colorMap[pdf.construction_method];
+      } else {
+        // Custom construction method - use golden yellow
+        baseStyle.backgroundColor = darkMode ? 'rgb(204, 165, 0)' : 'rgb(255, 206, 0)'; // darker golden : golden yellow
+      }
     }
 
     // Add color transition delay during theme transitions
@@ -198,31 +208,61 @@ function DraggableCoverSheetCard({
         </div>
         <div className="min-w-0">
           <div className="flex items-center gap-1">
-            <span
-              className={`font-semibold hidden md:inline ${pdf.construction_method ? 'text-white' : 'text-gray-600 dark:text-gray-400'}`}
-              style={getColorTransitionStyle(['color'])}
-            >
-              Type:
-            </span>
-            {editMode && editing === 'construction_method' ? (
-              <select
-                value={editValue}
-                onChange={(e) => setEditValue(e.target.value)}
-                onBlur={() => handleSaveEdit('construction_method')}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleSaveEdit('construction_method');
-                  if (e.key === 'Escape') handleCancelEdit();
-                }}
-                className="flex-1 px-1 py-0.5 border border-blue-500 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-xs focus:outline-none"
-                style={getColorTransitionStyle(['background-color', 'color', 'border-color'])}
-                autoFocus
-                onClick={(e) => e.stopPropagation()}
+            {pdf.construction_method !== 'REMAKE' && (
+              <span
+                className={`font-semibold hidden md:inline ${pdf.construction_method ? 'text-white' : 'text-gray-600 dark:text-gray-400'}`}
+                style={getColorTransitionStyle(['color'])}
               >
-                <option value="">—</option>
-                <option value="Frameless">Frameless</option>
-                <option value="Face Frame">Face Frame</option>
-                <option value="Both">Both</option>
-              </select>
+                Type:
+              </span>
+            )}
+            {editMode && editing === 'construction_method' ? (
+              // Check if current value is a predefined type or custom
+              ['Frameless', 'Face Frame', 'Both', 'REMAKE', ''].includes(editValue) ? (
+                <select
+                  value={editValue}
+                  onChange={(e) => {
+                    if (e.target.value === 'Custom...') {
+                      setEditValue('');
+                      // Stay in edit mode but trigger re-render to show text input
+                    } else {
+                      setEditValue(e.target.value);
+                    }
+                  }}
+                  onBlur={() => handleSaveEdit('construction_method')}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleSaveEdit('construction_method');
+                    if (e.key === 'Escape') handleCancelEdit();
+                  }}
+                  className="flex-1 px-1 py-0.5 border border-blue-500 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-xs focus:outline-none"
+                  style={getColorTransitionStyle(['background-color', 'color', 'border-color'])}
+                  autoFocus
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <option value="">—</option>
+                  <option value="Frameless">Frameless</option>
+                  <option value="Face Frame">Face Frame</option>
+                  <option value="Both">Both</option>
+                  <option value="REMAKE">REMAKE</option>
+                  <option value="Custom...">Custom...</option>
+                </select>
+              ) : (
+                <input
+                  type="text"
+                  value={editValue}
+                  onChange={(e) => setEditValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleSaveEdit('construction_method');
+                    if (e.key === 'Escape') handleCancelEdit();
+                  }}
+                  onBlur={() => handleSaveEdit('construction_method')}
+                  className="flex-1 px-1 py-0.5 border border-blue-500 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-xs focus:outline-none"
+                  style={getColorTransitionStyle(['background-color', 'color', 'border-color'])}
+                  placeholder="Enter custom type"
+                  autoFocus
+                  onClick={(e) => e.stopPropagation()}
+                />
+              )
             ) : (
               <>
                 <span

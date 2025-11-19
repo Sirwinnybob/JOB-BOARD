@@ -419,19 +419,20 @@ function DraggableCoverSheetCard({
         </>
       )}
 
-      {/* Drag indicator / Mobile select button */}
+      {/* Drag indicator / Move button - click to select, then click destination */}
       {editMode && !isDragging && (
         <div
           onClick={(e) => {
-            if (isMobile && onSelect) {
+            if (onSelect) {
               e.stopPropagation();
               e.preventDefault();
               onSelect();
             }
           }}
-          className={`absolute top-1 left-1 sm:top-2 sm:left-2 bg-blue-600 text-white rounded-full w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center shadow-lg ${
-            isMobile && isSelected ? 'bg-blue-700 ring-2 ring-white' : ''
+          className={`absolute top-1 left-1 sm:top-2 sm:left-2 bg-blue-600 text-white rounded-full w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center shadow-lg cursor-pointer hover:bg-blue-700 transition-all ${
+            isSelected ? 'bg-blue-700 ring-2 ring-white scale-110' : ''
           }`}
+          title="Click to select, then click where you want to move this job"
         >
           <svg
             className="w-3 h-3 sm:w-5 sm:h-5"

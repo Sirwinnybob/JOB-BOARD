@@ -37,6 +37,7 @@ function HomePage() {
   const [showUpload, setShowUpload] = useState(false);
   const [uploadTargetPosition, setUploadTargetPosition] = useState(null);
   const [uploadToPending, setUploadToPending] = useState(true);
+  const [skipOcr, setSkipOcr] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showLabelModal, setShowLabelModal] = useState(false);
   const [showLabelManagement, setShowLabelManagement] = useState(false);
@@ -665,6 +666,7 @@ function HomePage() {
   const handleUploadToPending = () => {
     setUploadTargetPosition(null);
     setUploadToPending(true);
+    setSkipOcr(false);
     setShowUpload(true);
   };
 
@@ -785,6 +787,15 @@ function HomePage() {
   const handleUploadToSlot = (position) => {
     setUploadTargetPosition(position + 1);
     setUploadToPending(false);
+    setSkipOcr(false);
+    setShowSlotMenu(null);
+    setShowUpload(true);
+  };
+
+  const handleUploadCustomToSlot = (position) => {
+    setUploadTargetPosition(position + 1);
+    setUploadToPending(false);
+    setSkipOcr(true); // Skip OCR for custom uploads
     setShowSlotMenu(null);
     setShowUpload(true);
   };
@@ -1155,6 +1166,7 @@ function HomePage() {
           onSlotMenuClose={handleSlotMenuClose}
           onAddPlaceholder={handleAddPlaceholder}
           onUploadToSlot={handleUploadToSlot}
+          onUploadCustomToSlot={handleUploadCustomToSlot}
           onMoveToPending={handleMovePdfToPending}
           onEditPlaceholder={handleEditPlaceholder}
           isTransitioning={shouldAnimate}
@@ -1492,10 +1504,12 @@ function HomePage() {
                 setShowUpload(false);
                 setUploadTargetPosition(null);
                 setUploadToPending(true);
+                setSkipOcr(false);
               }}
               onSuccess={handleUploadSuccess}
               targetPosition={uploadTargetPosition}
               uploadToPending={uploadToPending}
+              skipOcr={skipOcr}
             />
           )}
 

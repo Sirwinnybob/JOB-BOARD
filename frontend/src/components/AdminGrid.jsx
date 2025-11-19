@@ -2,7 +2,7 @@ import React from 'react';
 import DraggableGridItem from './DraggableGridItem';
 import MobileActionBar from './MobileActionBar';
 
-function AdminGrid({ pdfs, rows, cols, aspectWidth, aspectHeight, editMode, onReorder, onDelete, onLabelClick, onMetadataUpdate, onSlotMenuOpen, showSlotMenu, onSlotMenuClose, onAddPlaceholder, onUploadToSlot, onMoveToPending, onEditPlaceholder, isTransitioning, isMobile, selectedMobileCardId, onMobileCardSelect, onMobileTapToMove }) {
+function AdminGrid({ pdfs, rows, cols, aspectWidth, aspectHeight, editMode, onReorder, onDelete, onLabelClick, onMetadataUpdate, onSlotMenuOpen, showSlotMenu, onSlotMenuClose, onAddPlaceholder, onUploadToSlot, onUploadCustomToSlot, onMoveToPending, onEditPlaceholder, isTransitioning, isMobile, selectedMobileCardId, onMobileCardSelect, onMobileTapToMove }) {
   const totalSlots = rows * cols;
 
   // Responsive columns: Cap at 4 for better mobile experience
@@ -74,6 +74,7 @@ function AdminGrid({ pdfs, rows, cols, aspectWidth, aspectHeight, editMode, onRe
             onSlotMenuClose={onSlotMenuClose}
             onAddPlaceholder={onAddPlaceholder}
             onUploadToSlot={onUploadToSlot}
+            onUploadCustomToSlot={onUploadCustomToSlot}
             onEditPlaceholder={onEditPlaceholder}
             isTransitioning={isTransitioning}
             animationDelay={animationDelay}

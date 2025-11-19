@@ -108,12 +108,14 @@ function DraggableCoverSheetCard({
       const lightColorMap = {
         'Face Frame': 'rgb(150, 179, 82)',
         'Frameless': 'rgb(237, 146, 35)',
-        'Both': 'rgb(0, 133, 138)'
+        'Both': 'rgb(0, 133, 138)',
+        'REMAKE': 'rgb(220, 38, 38)' // red-600
       };
       const darkColorMap = {
         'Face Frame': 'rgb(90, 107, 49)',   // Darker green
         'Frameless': 'rgb(142, 88, 21)',    // Darker orange
-        'Both': 'rgb(0, 80, 83)'            // Darker teal
+        'Both': 'rgb(0, 80, 83)',            // Darker teal
+        'REMAKE': 'rgb(153, 27, 27)'         // darker red (red-800)
       };
       const colorMap = darkMode ? darkColorMap : lightColorMap;
       baseStyle.backgroundColor = colorMap[pdf.construction_method] || 'white';
@@ -198,12 +200,14 @@ function DraggableCoverSheetCard({
         </div>
         <div className="min-w-0">
           <div className="flex items-center gap-1">
-            <span
-              className={`font-semibold hidden md:inline ${pdf.construction_method ? 'text-white' : 'text-gray-600 dark:text-gray-400'}`}
-              style={getColorTransitionStyle(['color'])}
-            >
-              Type:
-            </span>
+            {pdf.construction_method !== 'REMAKE' && (
+              <span
+                className={`font-semibold hidden md:inline ${pdf.construction_method ? 'text-white' : 'text-gray-600 dark:text-gray-400'}`}
+                style={getColorTransitionStyle(['color'])}
+              >
+                Type:
+              </span>
+            )}
             {editMode && editing === 'construction_method' ? (
               <select
                 value={editValue}
@@ -222,6 +226,7 @@ function DraggableCoverSheetCard({
                 <option value="Frameless">Frameless</option>
                 <option value="Face Frame">Face Frame</option>
                 <option value="Both">Both</option>
+                <option value="REMAKE">REMAKE</option>
               </select>
             ) : (
               <>

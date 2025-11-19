@@ -8,17 +8,22 @@ function UploadModal({ onClose, onSuccess, targetPosition = null, uploadToPendin
   const [error, setError] = useState('');
   const fileInputRef = useRef(null);
 
+  const validateFile = (selectedFile) => {
+    const allowedTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg'];
+    if (!allowedTypes.includes(selectedFile.type)) {
+      setError('Please select a PDF or image file (PNG, JPG)');
+      return false;
+    }
+    if (selectedFile.size > 50 * 1024 * 1024) {
+      setError('File size must be less than 50MB');
+      return false;
+    }
+    return true;
+  };
+
   const handleFileChange = (e) => {
     const selectedFile = e.target.files[0];
-    if (selectedFile) {
-      if (selectedFile.type !== 'application/pdf') {
-        setError('Please select a PDF file');
-        return;
-      }
-      if (selectedFile.size > 50 * 1024 * 1024) {
-        setError('File size must be less than 50MB');
-        return;
-      }
+    if (selectedFile && validateFile(selectedFile)) {
       setFile(selectedFile);
       setError('');
     }
@@ -27,15 +32,7 @@ function UploadModal({ onClose, onSuccess, targetPosition = null, uploadToPendin
   const handleDrop = (e) => {
     e.preventDefault();
     const droppedFile = e.dataTransfer.files[0];
-    if (droppedFile) {
-      if (droppedFile.type !== 'application/pdf') {
-        setError('Please select a PDF file');
-        return;
-      }
-      if (droppedFile.size > 50 * 1024 * 1024) {
-        setError('File size must be less than 50MB');
-        return;
-      }
+    if (droppedFile && validateFile(droppedFile)) {
       setFile(droppedFile);
       setError('');
     }
@@ -124,7 +121,7 @@ function UploadModal({ onClose, onSuccess, targetPosition = null, uploadToPendin
               <p className="mt-2 text-sm text-gray-600 dark:text-gray-400 transition-colors">
                 Click to upload or drag and drop
               </p>
-              <p className="text-xs text-gray-500 transition-colors">PDF files only (max 50MB)</p>
+              <p className="text-xs text-gray-500 transition-colors">PDF or image files (PNG, JPG) up to 50MB</p>
             </div>
           )}
         </div>
@@ -132,7 +129,7 @@ function UploadModal({ onClose, onSuccess, targetPosition = null, uploadToPendin
         <input
           ref={fileInputRef}
           type="file"
-          accept="application/pdf"
+          accept="application/pdf,image/png,image/jpeg,image/jpg"
           onChange={handleFileChange}
           className="hidden"
         />

@@ -15,7 +15,7 @@ const { promisify } = require('util');
 const webpush = require('web-push');
 const db = require('./db');
 const authMiddleware = require('./middleware/auth');
-const { generateThumbnail, generatePdfImages, generateDarkModeImages } = require('./utils/thumbnail');
+const { generateThumbnail, generatePdfImages, generateImageFile, generateDarkModeImages } = require('./utils/thumbnail');
 const { extractMetadata } = require('./utils/textExtraction');
 
 const execAsync = promisify(exec);
@@ -296,7 +296,12 @@ const storage = multer.diskStorage({
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
-    const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1E9)}.pdf`;
+    // Determine extension based on mimetype
+    let ext = '.pdf';
+    if (file.mimetype === 'image/png') ext = '.png';
+    else if (file.mimetype === 'image/jpeg' || file.mimetype === 'image/jpg') ext = '.jpg';
+
+    const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1E9)}${ext}`;
     cb(null, uniqueName);
   }
 });
@@ -304,10 +309,17 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage,
   fileFilter: (req, file, cb) => {
-    if (file.mimetype === 'application/pdf') {
+    const allowedMimeTypes = [
+      'application/pdf',
+      'image/png',
+      'image/jpeg',
+      'image/jpg'
+    ];
+
+    if (allowedMimeTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error('Only PDF files are allowed'));
+      cb(new Error('Only PDF and image files (PNG, JPG) are allowed'));
     }
   },
   limits: { fileSize: 50 * 1024 * 1024 } // 50MB max
@@ -406,13 +418,14 @@ app.get('/api/pdfs', async (req, res) => {
 app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ error: 'No PDF file uploaded' });
+      return res.status(400).json({ error: 'No file uploaded' });
     }
 
     const filename = req.file.filename;
     const originalName = req.file.originalname;
-    const pdfPath = path.join(uploadDir, filename);
+    const filePath = path.join(uploadDir, filename);
     const baseFilename = path.parse(filename).name;
+    const isImage = req.file.mimetype.startsWith('image/');
 
     // Get is_pending from request body (default to 1 if not provided)
     const isPending = req.body.is_pending !== undefined ? parseInt(req.body.is_pending) : 1;
@@ -420,12 +433,16 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
     const skipOcr = req.body.skip_ocr === '1' || req.body.skip_ocr === 'true';
 
     // Generate thumbnail (fast)
-    const thumbnailName = await generateThumbnail(pdfPath, thumbnailDir, baseFilename);
+    const thumbnailName = await generateThumbnail(filePath, thumbnailDir, baseFilename, isImage);
 
-    // Generate full PDF images for viewing (light mode only - fast)
-    // For custom uploads, use lower DPI to reduce file size and improve performance
+    // Generate display images
+    // For images: convert/resize to PNG
+    // For PDFs: extract pages as PNG
+    // For custom uploads, use lower resolution to reduce file size
     const imagesBase = `${baseFilename}-pages`;
-    const { pageCount } = await generatePdfImages(pdfPath, thumbnailDir, imagesBase, skipOcr);
+    const { pageCount } = isImage
+      ? await generateImageFile(filePath, thumbnailDir, imagesBase, skipOcr)
+      : await generatePdfImages(filePath, thumbnailDir, imagesBase, skipOcr);
 
     // Keep PDF for background processing (dark mode and OCR)
     // Will be deleted after background processing completes
@@ -499,26 +516,27 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
         });
 
         // Process OCR and Dark Mode in background (don't wait for response)
+        // Skip both for images - they don't need OCR or dark mode
         setImmediate(async () => {
           // Track completion of both background tasks
           let ocrComplete = false;
           let darkModeComplete = false;
 
-          // Cleanup function - delete PDF after both tasks complete
+          // Cleanup function - delete file after both tasks complete (or immediately for images)
           const checkAndCleanup = async () => {
             if (ocrComplete && darkModeComplete) {
               try {
-                await fs.unlink(pdfPath);
-                console.log(`[Cleanup] Deleted original PDF file: ${filename}`);
+                await fs.unlink(filePath);
+                console.log(`[Cleanup] Deleted original file: ${filename}`);
               } catch (unlinkErr) {
-                console.error('[Cleanup] Error deleting PDF file:', unlinkErr);
+                console.error('[Cleanup] Error deleting file:', unlinkErr);
               }
             }
           };
 
-          // OCR extraction (skip if skip_ocr is true)
-          if (skipOcr) {
-            console.log(`[OCR] Skipping OCR extraction for PDF ${pdfId} (custom upload)`);
+          // OCR extraction (skip for images and custom uploads)
+          if (isImage || skipOcr) {
+            console.log(`[OCR] Skipping OCR extraction for ${pdfId} (${isImage ? 'image file' : 'custom upload'})`);
             ocrComplete = true;
             checkAndCleanup();
           } else {
@@ -530,7 +548,7 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
                 const existingImagePath = path.join(thumbnailDir, `${imagesBase}-1.png`);
                 console.log(`[OCR] Using existing image at: ${existingImagePath}`);
 
-                const metadata = await extractMetadata(pdfPath, existingImagePath);
+                const metadata = await extractMetadata(filePath, existingImagePath);
                 console.log(`[OCR] Complete for PDF ${pdfId}:`, metadata);
 
                 // Update database with extracted metadata (only if not manually set)
@@ -567,15 +585,15 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
             })();
           }
 
-          // Dark mode generation (skip for custom uploads)
-          if (skipOcr) {
-            console.log(`[Dark Mode] Skipping dark mode generation for PDF ${pdfId} (custom upload)`);
+          // Dark mode generation (skip for images and custom uploads)
+          if (isImage || skipOcr) {
+            console.log(`[Dark Mode] Skipping dark mode generation for ${pdfId} (${isImage ? 'image file' : 'custom upload'})`);
             darkModeComplete = true;
             checkAndCleanup();
           } else {
             (async () => {
               try {
-                const darkModeBaseFilename = await generateDarkModeImages(pdfPath, thumbnailDir, imagesBase);
+                const darkModeBaseFilename = await generateDarkModeImages(filePath, thumbnailDir, imagesBase);
 
                 if (darkModeBaseFilename) {
                   // Update database with dark mode image path

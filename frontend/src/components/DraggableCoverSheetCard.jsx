@@ -327,12 +327,12 @@ function DraggableCoverSheetCard({
             e.stopPropagation();
             onLabelClick(pdf);
           }}
-          className={`absolute bottom-2 right-2 bg-purple-600 hover:bg-purple-700 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg ${!isTransitioning ? 'transition-colors' : ''} z-10`}
+          className={`absolute bottom-1 right-1 sm:bottom-2 sm:right-2 bg-purple-600 hover:bg-purple-700 text-white rounded-full w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center shadow-lg ${!isTransitioning ? 'transition-colors' : ''} z-10`}
           aria-label="Manage Labels"
           title="Manage Labels"
         >
           <svg
-            className="w-5 h-5"
+            className="w-3 h-3 sm:w-5 sm:h-5"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -354,12 +354,12 @@ function DraggableCoverSheetCard({
           {onMoveToPending && (
             <button
               onClick={() => onMoveToPending(pdf.id)}
-              className={`absolute top-2 right-12 bg-yellow-600 hover:bg-yellow-700 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg ${!isTransitioning ? 'transition-colors' : ''} z-10`}
+              className={`absolute top-1 right-8 sm:top-2 sm:right-12 bg-yellow-600 hover:bg-yellow-700 text-white rounded-full w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center shadow-lg ${!isTransitioning ? 'transition-colors' : ''} z-10`}
               aria-label="Move to Pending"
               title="Move to Pending"
             >
               <svg
-                className="w-5 h-5"
+                className="w-3 h-3 sm:w-5 sm:h-5"
                 fill="none"
                 stroke="currentColor"
                 viewBox="0 0 24 24"
@@ -376,11 +376,11 @@ function DraggableCoverSheetCard({
           {/* Delete button */}
           <button
             onClick={() => onDelete(pdf.id)}
-            className={`absolute top-2 right-2 bg-red-600 hover:bg-red-700 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg ${!isTransitioning ? 'transition-colors' : ''} z-10`}
+            className={`absolute top-1 right-1 sm:top-2 sm:right-2 bg-red-600 hover:bg-red-700 text-white rounded-full w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center shadow-lg ${!isTransitioning ? 'transition-colors' : ''} z-10`}
             aria-label="Delete"
           >
             <svg
-              className="w-5 h-5"
+              className="w-3 h-3 sm:w-5 sm:h-5"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -398,9 +398,9 @@ function DraggableCoverSheetCard({
 
       {/* Drag indicator */}
       {editMode && !isDragging && (
-        <div className="absolute top-2 left-2 bg-blue-600 text-white rounded-full w-8 h-8 flex items-center justify-center shadow-lg">
+        <div className="absolute top-1 left-1 sm:top-2 sm:left-2 bg-blue-600 text-white rounded-full w-6 h-6 sm:w-8 sm:h-8 flex items-center justify-center shadow-lg">
           <svg
-            className="w-5 h-5"
+            className="w-3 h-3 sm:w-5 sm:h-5"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"

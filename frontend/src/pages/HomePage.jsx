@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { DndContext, closestCenter, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { DndContext, closestCenter, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { pdfAPI, settingsAPI, authAPI } from '../utils/api';
 import PDFGrid from '../components/PDFGrid';
 import AdminGrid from '../components/AdminGrid';
@@ -67,11 +67,17 @@ function HomePage() {
   const [highlightedJobId, setHighlightedJobId] = useState(null);
   const navigate = useNavigate();
 
-  // Configure drag sensors
+  // Configure drag sensors - both mouse/pointer and touch
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: {
         distance: 8, // 8px movement required to start drag
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 250, // 250ms delay before drag starts on touch
+        tolerance: 5, // 5px tolerance for movement during delay
       },
     })
   );

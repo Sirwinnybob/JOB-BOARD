@@ -104,11 +104,18 @@ function DraggableCoverSheetCard({
         ? 'rgb(55, 65, 81)' // dark:bg-gray-700
         : 'white';
     } else {
-      const colorMap = {
+      // Different colors for light and dark mode
+      const lightColorMap = {
         'Face Frame': 'rgb(150, 179, 82)',
         'Frameless': 'rgb(237, 146, 35)',
         'Both': 'rgb(0, 133, 138)'
       };
+      const darkColorMap = {
+        'Face Frame': 'rgb(90, 107, 49)',   // Darker green
+        'Frameless': 'rgb(142, 88, 21)',    // Darker orange
+        'Both': 'rgb(0, 80, 83)'            // Darker teal
+      };
+      const colorMap = darkMode ? darkColorMap : lightColorMap;
       baseStyle.backgroundColor = colorMap[pdf.construction_method] || 'white';
     }
 

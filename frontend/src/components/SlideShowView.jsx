@@ -222,45 +222,21 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
     }
   }, [isMobilePortrait]);
 
-  // Handle zoom-out animation when closing
+  // Handle fade-out when closing
   const hasStartedClosingRef = useRef(false);
   useEffect(() => {
     if (isClosing && !hasStartedClosingRef.current) {
       hasStartedClosingRef.current = true;
-      console.log('%c[SlideShowView] Closing animation started', 'background: #dc2626; color: white; padding: 4px 8px; border-radius: 3px; font-weight: bold;');
+      console.log('%c[SlideShowView] Closing - fading out', 'background: #dc2626; color: white; padding: 4px 8px; border-radius: 3px; font-weight: bold;');
 
-      // CRITICAL: Scroll to the current slideshow item BEFORE animation
-      // Use currentSlideshowIndex from HomePage (accurate) not local currentIndex (can be stale)
-      const container = scrollContainerRef.current;
-      if (container) {
-        const slideWidthPercent = isMobilePortrait ? 1.0 : 0.6;
-        const leftSpacerPercent = isMobilePortrait ? 0 : 0.2;
-        const slideWidth = container.offsetWidth * slideWidthPercent;
-        const leftSpacer = container.offsetWidth * leftSpacerPercent;
-        const targetScroll = leftSpacer + (currentSlideshowIndex * slideWidth);
-
-        // Disable scroll snap temporarily to ensure exact positioning
-        const originalScrollSnapType = container.style.scrollSnapType;
-        container.style.scrollSnapType = 'none';
-        container.scrollLeft = targetScroll;
-        console.log(`[SlideShowView] Pre-close scroll to index ${currentSlideshowIndex}: ${targetScroll.toFixed(2)}px`);
-
-        // Re-enable scroll snap after positioning
-        requestAnimationFrame(() => {
-          container.style.scrollSnapType = originalScrollSnapType;
-        });
-      }
-
-      // Start animation after ensuring correct slide is visible
-      requestAnimationFrame(() => {
-        setAnimationState('zoom-out');
-      });
+      // Simple fade out - no complex positioning needed
+      setAnimationState('fade-out');
 
       const timer = setTimeout(() => {
         if (onAnimationComplete) {
           onAnimationComplete();
         }
-      }, 400); // Match animation duration
+      }, 300); // Fade duration
       return () => clearTimeout(timer);
     }
 
@@ -268,7 +244,7 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
     if (!isClosing) {
       hasStartedClosingRef.current = false;
     }
-  }, [isClosing, onAnimationComplete, currentSlideshowIndex, isMobilePortrait]);
+  }, [isClosing, onAnimationComplete]);
 
   useEffect(() => {
     const container = scrollContainerRef.current;
@@ -408,23 +384,12 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
             transform: scale(1) translate3d(0, 0, 0);
           }
         }
-        @keyframes zoomOut {
-          from {
-            opacity: 1;
-            transform: scale(1) translate3d(0, 0, 0);
-          }
-          to {
-            opacity: 0;
-            transform: scale(0.85) translate3d(0, 0, 0);
-          }
-        }
       `;
     }
 
     const { scale, translateX, translateY } = animationTransform;
 
-    // Initial state: positioned at grid item location, scaled to grid item size
-    // Final state: centered (translate 0,0,0), fullscreen (scale 1)
+    // Zoom in animation for opening - smooth maximize from grid item to fullscreen
     // Using translate3d for hardware acceleration on mobile devices
     return `
       @keyframes zoomIn {
@@ -435,16 +400,6 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
         to {
           opacity: 1;
           transform: translate3d(0, 0, 0) scale(1);
-        }
-      }
-      @keyframes zoomOut {
-        from {
-          opacity: 1;
-          transform: translate3d(0, 0, 0) scale(1);
-        }
-        to {
-          opacity: 0.3;
-          transform: translate3d(${translateX}px, ${translateY}px, 0) scale(${scale});
         }
       }
     `;
@@ -459,9 +414,17 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
             animation: zoomIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
             will-change: transform, opacity;
           }
-          .zoom-out-animation {
-            animation: zoomOut 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-            will-change: transform, opacity;
+          .fade-out-animation {
+            animation: fadeOut 0.3s ease-out forwards;
+            will-change: opacity;
+          }
+          @keyframes fadeOut {
+            from {
+              opacity: 1;
+            }
+            to {
+              opacity: 0;
+            }
           }
           .animate-fade-in {
             animation: fadeIn 0.3s ease-in;
@@ -481,7 +444,7 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
       </style>
       <div
         ref={containerRef}
-        className={`${containerClass} ${animationState === 'zoom-in' ? 'zoom-in-animation' : ''} ${animationState === 'zoom-out' ? 'zoom-out-animation' : ''}`}
+        className={`${containerClass} ${animationState === 'zoom-in' ? 'zoom-in-animation' : ''} ${animationState === 'fade-out' ? 'fade-out-animation' : ''}`}
         style={{
           ...containerStyle,
           // Hardware acceleration for smoother animations on mobile

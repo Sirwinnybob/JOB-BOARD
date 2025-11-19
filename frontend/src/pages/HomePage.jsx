@@ -1001,83 +1001,11 @@ function HomePage() {
   const toggleViewMode = () => {
     console.log('[HomePage] toggleViewMode called, current viewMode:', viewMode);
     if (viewMode === 'slideshow') {
-      // Exiting slideshow - find current item's card
+      // Exiting slideshow - simple fade-out
       console.log('[HomePage] Exiting slideshow via toggle');
       setViewMode('grid');
       localStorage.setItem('viewMode', 'grid');
-
-      // Use filtered pdfs for consistent indexing
-      const displayPdfs = pdfs.filter(p => p);
-      const targetPdf = displayPdfs[currentSlideshowIndex];
-
-      if (targetPdf) {
-        // Wait for grid to be rendered, then find the card for the CURRENTLY VIEWED PDF
-        requestAnimationFrame(() => {
-          const foundCard = document.querySelector(`[data-pdf-id="${targetPdf.id}"]`);
-
-          if (foundCard) {
-            // Calculate slideshow container center (matches SlideShowView calculation)
-            const viewportHeight = window.innerHeight;
-            const slideshowHeaderOffset = 64; // top-16 in pixels
-            const slideshowCenterY = slideshowHeaderOffset + ((viewportHeight - slideshowHeaderOffset) / 2);
-
-            // Get card's current position
-            const rect = foundCard.getBoundingClientRect();
-            const currentScrollY = window.scrollY || window.pageYOffset;
-
-            // Calculate card's center in page coordinates
-            const cardPageY = rect.top + currentScrollY;
-            const cardCenterPageY = cardPageY + (rect.height / 2);
-
-            // Calculate scroll position that aligns card center with slideshow center
-            const targetScrollY = cardCenterPageY - slideshowCenterY;
-
-            // Check if we need to scroll
-            const scrollDelta = Math.abs(currentScrollY - targetScrollY);
-
-            if (scrollDelta > 5) {
-              // Need to scroll to align centers
-              console.log(`[HomePage] Toggle exit: aligning card center with slideshow center (scroll ${currentScrollY.toFixed(1)} -> ${targetScrollY.toFixed(1)})`);
-              window.scrollTo({ top: targetScrollY, behavior: 'auto' });
-
-              // Wait for scroll to complete, then capture rect
-              requestAnimationFrame(() => {
-                requestAnimationFrame(() => {
-                  const newRect = foundCard.getBoundingClientRect();
-                  const finalScrollY = window.scrollY || window.pageYOffset;
-                  setOriginRect({
-                    top: newRect.top,
-                    left: newRect.left,
-                    width: newRect.width,
-                    height: newRect.height,
-                    scrollX: window.scrollX || window.pageXOffset,
-                    scrollY: finalScrollY,
-                  });
-                  console.log('[HomePage] Toggle captured rect after alignment (index', currentSlideshowIndex, '):', newRect);
-                  setIsClosingSlideshow(true);
-                });
-              });
-            } else {
-              // Already aligned - capture rect immediately
-              setOriginRect({
-                top: rect.top,
-                left: rect.left,
-                width: rect.width,
-                height: rect.height,
-                scrollX: window.scrollX || window.pageXOffset,
-                scrollY: currentScrollY,
-              });
-              console.log('[HomePage] Toggle card already aligned, captured rect (index', currentSlideshowIndex, '):', rect);
-              setIsClosingSlideshow(true);
-            }
-          } else {
-            console.warn('[HomePage] Could not find card for toggle exit, using fallback');
-            setIsClosingSlideshow(true);
-          }
-        });
-      } else {
-        setIsClosingSlideshow(true);
-      }
+      setIsClosingSlideshow(true);
     } else {
       // Entering slideshow - capture first item's rect before switching
       console.log('[HomePage] Entering slideshow via toggle, capturing first item rect');
@@ -1107,94 +1035,15 @@ function HomePage() {
   };
 
   const handleInitiateClose = () => {
-    // Trigger zoom-out animation
+    // Simple fade-out - no complex positioning needed
     console.log('[HomePage] handleInitiateClose called');
 
     // Switch to grid view immediately so it's already rendered underneath
     setViewMode('grid');
     localStorage.setItem('viewMode', 'grid');
 
-    // Use filtered pdfs (no nulls/undefined) for consistent indexing with SlideShowView
-    const displayPdfs = pdfs.filter(p => p);
-    // Get the currently viewed PDF based on slideshow index
-    const currentPdf = displayPdfs[currentSlideshowIndex];
-    console.log('[HomePage] Current slideshow index:', currentSlideshowIndex, 'PDF:', currentPdf);
-
-    if (currentPdf) {
-      // Wait for grid to render, then find the card for the CURRENTLY VIEWED PDF
-      // Use double RAF to ensure layout is complete
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          // Find the card by data-pdf-id attribute
-          const foundCard = document.querySelector(`[data-pdf-id="${currentPdf.id}"]`);
-
-        if (foundCard) {
-          // Calculate slideshow container center (matches SlideShowView calculation)
-          const viewportHeight = window.innerHeight;
-          const slideshowHeaderOffset = 64; // top-16 in pixels
-          const slideshowCenterY = slideshowHeaderOffset + ((viewportHeight - slideshowHeaderOffset) / 2);
-
-          // Get card's current position
-          const rect = foundCard.getBoundingClientRect();
-          const currentScrollY = window.scrollY || window.pageYOffset;
-
-          // Calculate card's center in page coordinates
-          const cardPageY = rect.top + currentScrollY;
-          const cardCenterPageY = cardPageY + (rect.height / 2);
-
-          // Calculate scroll position that aligns card center with slideshow center
-          const targetScrollY = cardCenterPageY - slideshowCenterY;
-
-          // Check if we need to scroll
-          const scrollDelta = Math.abs(currentScrollY - targetScrollY);
-
-          if (scrollDelta > 5) {
-            // Need to scroll to align centers
-            console.log(`[HomePage] Aligning card center with slideshow center (scroll ${currentScrollY.toFixed(1)} -> ${targetScrollY.toFixed(1)})`);
-            window.scrollTo({ top: targetScrollY, behavior: 'auto' });
-
-            // Wait for scroll to complete, then capture rect
-            requestAnimationFrame(() => {
-              requestAnimationFrame(() => {
-                const newRect = foundCard.getBoundingClientRect();
-                const finalScrollY = window.scrollY || window.pageYOffset;
-                const updatedOriginRect = {
-                  top: newRect.top,
-                  left: newRect.left,
-                  width: newRect.width,
-                  height: newRect.height,
-                  scrollX: window.scrollX || window.pageXOffset,
-                  scrollY: finalScrollY,
-                };
-                setOriginRect(updatedOriginRect);
-                console.log('[HomePage] Captured rect after alignment (index', currentSlideshowIndex, '):', updatedOriginRect);
-                setIsClosingSlideshow(true);
-              });
-            });
-          } else {
-            // Already aligned - capture rect immediately
-            const updatedOriginRect = {
-              top: rect.top,
-              left: rect.left,
-              width: rect.width,
-              height: rect.height,
-              scrollX: window.scrollX || window.pageXOffset,
-              scrollY: currentScrollY,
-            };
-            setOriginRect(updatedOriginRect);
-            console.log('[HomePage] Card already aligned, captured rect (index', currentSlideshowIndex, '):', updatedOriginRect);
-            setIsClosingSlideshow(true);
-          }
-        } else {
-          console.warn('[HomePage] Could not find current PDF in grid, using fallback close animation');
-          setOriginRect(null);
-          setIsClosingSlideshow(true);
-        }
-        });
-      });
-    } else {
-      setIsClosingSlideshow(true);
-    }
+    // Start fade-out animation
+    setIsClosingSlideshow(true);
   };
 
   const handleSlideshowAnimationComplete = () => {

@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect, useLayoutEffect, useCallback } from 'react';
+import React, { useRef, useState, useEffect, useLayoutEffect, useCallback, useMemo } from 'react';
 import { useDarkMode } from '../contexts/DarkModeContext';
 
 function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick = false, isClosing = false, onAnimationComplete = null, originRect = null, onIndexChange = null, aspectWidth = 11, aspectHeight = 10 }) {
@@ -495,23 +495,13 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
               <div className="relative flex-1 max-w-6xl w-full mx-auto flex items-center justify-center overflow-hidden">
                 {pdf.is_placeholder ? (
                   (() => {
-                    // Log placeholder rendering details
-                    console.log(`[SlideShowView] Rendering placeholder ${index}:`, {
-                      placeholderId: pdf.id,
-                      placeholderText: pdf.placeholder_text,
-                      referenceImageDimensions,
-                      hasReferenceDimensions: !!referenceImageDimensions,
-                      fallbackAspect: `${aspectWidth} / ${aspectHeight}`,
-                      positioning: referenceImageDimensions ? 'absolute (using reference)' : 'relative (fallback)'
-                    });
-
                     return (
                       <div className="relative w-full h-full flex items-center justify-center">
                         {referenceImageDimensions ? (
                           <>
                             {/* Sized container matching aspect ratio */}
                             <div
-                              className="relative max-w-full max-h-full"
+                              className="relative w-full max-h-full"
                               style={{
                                 aspectRatio: referenceImageDimensions.aspectRatio
                               }}
@@ -527,7 +517,7 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
                         ) : (
                           /* Fallback when no reference dimensions available */
                           <div
-                            className="max-w-full max-h-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-lg shadow-md border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center p-4 sm:p-6 md:p-8 transition-colors"
+                            className="w-full max-h-full bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700 dark:to-gray-800 rounded-lg shadow-md border-2 border-dashed border-gray-300 dark:border-gray-600 flex items-center justify-center p-4 sm:p-6 md:p-8 transition-colors"
                             style={{
                               aspectRatio: `${aspectWidth} / ${aspectHeight}`
                             }}

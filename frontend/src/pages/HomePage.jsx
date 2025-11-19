@@ -1106,9 +1106,11 @@ function HomePage() {
 
     if (currentPdf) {
       // Wait for grid to render, then find the card for the CURRENTLY VIEWED PDF
+      // Use double RAF to ensure layout is complete
       requestAnimationFrame(() => {
-        // Find the card by data-pdf-id attribute
-        const foundCard = document.querySelector(`[data-pdf-id="${currentPdf.id}"]`);
+        requestAnimationFrame(() => {
+          // Find the card by data-pdf-id attribute
+          const foundCard = document.querySelector(`[data-pdf-id="${currentPdf.id}"]`);
 
         if (foundCard) {
           // Check if the card is significantly off-screen
@@ -1156,6 +1158,7 @@ function HomePage() {
           setOriginRect(null);
           setIsClosingSlideshow(true);
         }
+        });
       });
     } else {
       setIsClosingSlideshow(true);

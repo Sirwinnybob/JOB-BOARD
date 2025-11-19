@@ -196,7 +196,13 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
       // This ensures the currently visible item is properly centered
       scrollToIndex(currentIndex, true); // immediate = true for instant scroll
 
-      setAnimationState('zoom-out');
+      // Wait for scroll to complete before starting animation
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          setAnimationState('zoom-out');
+        });
+      });
+
       const timer = setTimeout(() => {
         if (onAnimationComplete) {
           onAnimationComplete();
@@ -248,10 +254,19 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
       const leftSpacerPercent = isMobilePortrait ? 0 : 0.2;
       const slideWidth = container.offsetWidth * slideWidthPercent;
       const leftSpacer = container.offsetWidth * leftSpacerPercent;
-      container.scrollTo({
-        left: leftSpacer + (index * slideWidth),
-        behavior: immediate ? 'auto' : 'smooth'
-      });
+      const targetScroll = leftSpacer + (index * slideWidth);
+      console.log(`[SlideShowView] Scrolling to index ${index}, targetScroll: ${targetScroll.toFixed(2)}px, current: ${container.scrollLeft.toFixed(2)}px`);
+
+      if (immediate) {
+        // For immediate scrolls (like before close animation), set scrollLeft directly
+        container.scrollLeft = targetScroll;
+        console.log(`[SlideShowView] Scroll completed immediately, new scrollLeft: ${container.scrollLeft.toFixed(2)}px`);
+      } else {
+        container.scrollTo({
+          left: targetScroll,
+          behavior: 'smooth'
+        });
+      }
     }
   }, [isMobilePortrait]);
 

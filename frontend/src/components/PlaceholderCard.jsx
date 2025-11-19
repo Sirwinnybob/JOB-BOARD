@@ -104,7 +104,7 @@ function PlaceholderCard({
       {/* Placeholder Text */}
       <div className="w-full h-full flex items-center justify-center p-4">
         <p
-          className="font-bold text-center break-words leading-tight"
+          className="font-bold text-center break-words leading-tight whitespace-pre-wrap"
           style={{
             ...getTextStyle(),
             fontSize: 'clamp(0.4rem, 2vw, 1.5rem)'

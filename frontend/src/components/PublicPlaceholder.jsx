@@ -73,7 +73,7 @@ function PublicPlaceholder({ placeholder, colorTransitionDelay, onClick }) {
     >
       <div className="w-full h-full flex items-center justify-center px-3 sm:px-4 md:px-6 py-2 sm:py-3 md:py-4">
         <p
-          className="font-bold text-center break-words leading-tight w-full"
+          className="font-bold text-center break-words leading-tight w-full whitespace-pre-wrap"
           style={{
             ...getTextStyle(),
             fontSize: 'clamp(0.4rem, 2vw, 1.5rem)'

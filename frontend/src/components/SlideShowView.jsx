@@ -476,7 +476,7 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
                         : `${aspectWidth} / ${aspectHeight}`
                     }}
                   >
-                    <p className="text-gray-600 dark:text-gray-400 font-bold text-center break-words leading-tight transition-colors" style={{ fontSize: isMobilePortrait ? 'clamp(1rem, 5vw, 2.5rem)' : 'clamp(1.5rem, 3vw, 3.5rem)' }}>
+                    <p className="text-gray-600 dark:text-gray-400 font-bold text-center break-words leading-tight whitespace-pre-wrap transition-colors" style={{ fontSize: isMobilePortrait ? 'clamp(0.6rem, 4vw, 2rem)' : 'clamp(0.8rem, 2.5vw, 2.5rem)' }}>
                       {pdf.placeholder_text || 'PLACEHOLDER'}
                     </p>
                   </div>

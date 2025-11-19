@@ -13,6 +13,7 @@ import PlaceholderEditModal from '../components/PlaceholderEditModal';
 import AlertModal from '../components/AlertModal';
 import PendingSection from '../components/PendingSection';
 import DeliveryScheduleModal from '../components/DeliveryScheduleModal';
+import MobileActionBar from '../components/MobileActionBar';
 import useWebSocket from '../hooks/useWebSocket';
 import { useDarkMode } from '../contexts/DarkModeContext';
 import {
@@ -65,6 +66,8 @@ function HomePage() {
   const lastActivityRef = useRef(Date.now());
   const inactivityTimerRef = useRef(null);
   const [highlightedJobId, setHighlightedJobId] = useState(null);
+  const [selectedMobileCardId, setSelectedMobileCardId] = useState(null);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const navigate = useNavigate();
 
   // Configure drag sensors - both mouse/pointer and touch
@@ -81,6 +84,15 @@ function HomePage() {
       },
     })
   );
+
+  // Track mobile screen size
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   // Check authentication on mount
   useEffect(() => {
@@ -828,12 +840,11 @@ function HomePage() {
         return;
       }
 
+      // iOS-style shift behavior: remove from source, insert at destination
+      // This makes items shift to fill the gap, rather than just swapping
       const newPdfs = [...workingPdfs];
-      const sourcePdfItem = newPdfs[sourceIndex];
-      const destPdfItem = newPdfs[destIndex];
-
-      newPdfs[destIndex] = sourcePdfItem;
-      newPdfs[sourceIndex] = destPdfItem;
+      const [movedItem] = newPdfs.splice(sourceIndex, 1); // Remove from source
+      newPdfs.splice(destIndex, 0, movedItem); // Insert at destination
 
       setWorkingPdfs(newPdfs);
       setHasUnsavedChanges(true);
@@ -1087,6 +1098,9 @@ function HomePage() {
           onMoveToPending={handleMovePdfToPending}
           onEditPlaceholder={handleEditPlaceholder}
           isTransitioning={shouldAnimate}
+          isMobile={isMobile}
+          selectedMobileCardId={selectedMobileCardId}
+          onMobileCardSelect={setSelectedMobileCardId}
         />
       );
     }
@@ -1468,6 +1482,29 @@ function HomePage() {
           isAdmin={isAuthenticated}
         />
       )}
+
+      {/* Mobile Action Bar - shown when a card is selected on mobile in edit mode */}
+      {isMobile && editMode && selectedMobileCardId && (() => {
+        // Find the selected PDF from the working PDFs
+        const selectedPdf = workingPdfs.find(pdf => pdf && `pdf-${pdf.id}` === selectedMobileCardId);
+        return selectedPdf ? (
+          <>
+            {/* Backdrop to deselect when tapping outside */}
+            <div
+              className="fixed inset-0 bg-black/20 z-40"
+              onClick={() => setSelectedMobileCardId(null)}
+            />
+            <MobileActionBar
+              pdf={selectedPdf}
+              onDelete={handleDeletePdf}
+              onLabelClick={selectedPdf.is_placeholder ? null : handleLabelClick}
+              onMoveToPending={selectedPdf.is_placeholder ? null : handleMoveToPending}
+              onEditPlaceholder={selectedPdf.is_placeholder ? handleEditPlaceholder : null}
+              onClose={() => setSelectedMobileCardId(null)}
+            />
+          </>
+        ) : null;
+      })()}
     </div>
   );
 }

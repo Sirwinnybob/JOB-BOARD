@@ -12,6 +12,9 @@ function DraggableCoverSheetCard({
   onMetadataUpdate,
   colorTransitionDelay,
   isHighlighted = false,
+  isMobile = false,
+  isSelected = false,
+  onSelect,
 }) {
   const [editing, setEditing] = useState(null);
   const [editValue, setEditValue] = useState('');
@@ -255,9 +258,17 @@ function DraggableCoverSheetCard({
 
       {/* Cover Sheet Card */}
       <div
+        onClick={(e) => {
+          if (isMobile && editMode && onSelect) {
+            e.stopPropagation();
+            onSelect();
+          }
+        }}
         className={`flex-1 relative bg-white dark:bg-gray-800 rounded-b-lg shadow-md overflow-hidden ${!isTransitioning ? 'transition-all' : ''} min-h-0 ${
           editMode ? 'cursor-move border-2 animate-border-pulse' : 'cursor-default border border-gray-200 dark:border-gray-700'
-        } ${isDragging ? 'opacity-50' : ''} ${isHighlighted ? 'notification-glow' : ''}`}
+        } ${isDragging ? 'opacity-50' : ''} ${isHighlighted ? 'notification-glow' : ''} ${
+          isMobile && editMode && isSelected ? 'ring-4 ring-blue-500' : ''
+        }`}
         style={getColorTransitionStyle(['background-color', 'border-color'])}
       >
       {/* Cross-fade between light and dark images */}
@@ -320,8 +331,8 @@ function DraggableCoverSheetCard({
         </div>
       )}
 
-      {/* Label management button in edit mode */}
-      {editMode && onLabelClick && !isDragging && (
+      {/* Label management button in edit mode - hidden on mobile unless selected */}
+      {editMode && onLabelClick && !isDragging && !(isMobile && !isSelected) && (
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -347,8 +358,8 @@ function DraggableCoverSheetCard({
         </button>
       )}
 
-      {/* Action buttons in edit mode */}
-      {editMode && (
+      {/* Action buttons in edit mode - hidden on mobile unless selected */}
+      {editMode && !(isMobile && !isSelected) && (
         <>
           {/* Move to Pending button */}
           {onMoveToPending && (

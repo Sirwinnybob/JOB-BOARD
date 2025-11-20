@@ -274,6 +274,27 @@ function HomePage() {
       return;
     }
 
+    // Handle dark mode updates even during edit mode
+    if (editMode && message.type === 'pdf_dark_mode_ready') {
+      console.log('Updating dark mode images during edit mode:', message.data);
+      const { id, dark_mode_images_base } = message.data;
+
+      // Update function to apply dark mode images to a PDF
+      const updatePdfDarkMode = (pdf) => {
+        if (pdf.id === id) {
+          return { ...pdf, dark_mode_images_base };
+        }
+        return pdf;
+      };
+
+      // Update both working copies and main state
+      setWorkingPdfs(prev => prev.map(updatePdfDarkMode));
+      setWorkingPendingPdfs(prev => prev.map(updatePdfDarkMode));
+      setPdfs(prev => prev.map(updatePdfDarkMode));
+      setPendingPdfs(prev => prev.map(updatePdfDarkMode));
+      return;
+    }
+
     // During edit mode, mark that external changes occurred but still apply them
     const relevantTypes = [
       'pdf_uploaded',
@@ -507,13 +528,10 @@ function HomePage() {
             if (!workingPdf) return;
 
             const originalPdf = [...pdfs, ...pendingPdfs].find(p => p && p.id === workingPdf.id);
-            if (originalPdf) {
-              const metadataChanged =
-                originalPdf.job_number !== workingPdf.job_number ||
-                originalPdf.construction_method !== workingPdf.construction_method ||
-                originalPdf.placeholder_text !== workingPdf.placeholder_text;
 
-              if (metadataChanged) {
+            // If no original PDF found, this is a newly uploaded job - save metadata if any exists
+            if (!originalPdf) {
+              if (workingPdf.job_number || workingPdf.construction_method || workingPdf.placeholder_text) {
                 metadataUpdates.push(
                   pdfAPI.updateMetadata(workingPdf.id, {
                     job_number: workingPdf.job_number,
@@ -522,6 +540,23 @@ function HomePage() {
                   })
                 );
               }
+              return;
+            }
+
+            // Compare existing PDF for changes
+            const metadataChanged =
+              originalPdf.job_number !== workingPdf.job_number ||
+              originalPdf.construction_method !== workingPdf.construction_method ||
+              originalPdf.placeholder_text !== workingPdf.placeholder_text;
+
+            if (metadataChanged) {
+              metadataUpdates.push(
+                pdfAPI.updateMetadata(workingPdf.id, {
+                  job_number: workingPdf.job_number,
+                  construction_method: workingPdf.construction_method,
+                  placeholder_text: workingPdf.placeholder_text
+                })
+              );
             }
           });
 

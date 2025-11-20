@@ -1258,6 +1258,10 @@ app.get('/api/settings', async (req, res) => {
         settings[row.key] = row.value;
       });
 
+      // Add company branding from environment variables
+      settings.companyName = process.env.COMPANY_NAME || 'Job Board';
+      settings.companyShortName = process.env.COMPANY_SHORT_NAME || 'Job Board';
+
       res.json(settings);
     });
   } catch (error) {

@@ -316,6 +316,8 @@ Docker volumes ensure data persists across container restarts:
 | `JWT_SECRET` | JWT signing secret | - | **Yes** |
 | `ADMIN_USERNAME` | Admin username | - | **Yes** |
 | `ADMIN_PASSWORD` | Admin password | - | **Yes** |
+| `COMPANY_NAME` | Full company name shown in header | `Job Board` | No |
+| `COMPANY_SHORT_NAME` | Short name for mobile header | `Job Board` | No |
 | `VAPID_PUBLIC_KEY` | Web Push public key | - | No* |
 | `VAPID_PRIVATE_KEY` | Web Push private key | - | No* |
 | `VAPID_SUBJECT` | Contact email for push service | `mailto:admin@example.com` | No |

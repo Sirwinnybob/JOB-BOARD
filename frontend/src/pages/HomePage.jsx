@@ -32,7 +32,14 @@ function HomePage() {
   const [workingPdfs, setWorkingPdfs] = useState([]);
   const [workingPendingPdfs, setWorkingPendingPdfs] = useState([]);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
-  const [settings, setSettings] = useState({ grid_rows: 6, grid_cols: 4, aspect_ratio_width: 11, aspect_ratio_height: 10 });
+  const [settings, setSettings] = useState({
+    grid_rows: 6,
+    grid_cols: 4,
+    aspect_ratio_width: 11,
+    aspect_ratio_height: 10,
+    companyName: 'Job Board',
+    companyShortName: 'Job Board'
+  });
   const [editMode, setEditMode] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
   const [uploadTargetPosition, setUploadTargetPosition] = useState(null);
@@ -221,6 +228,8 @@ function HomePage() {
         grid_cols: parseInt(settingsRes.data.grid_cols),
         aspect_ratio_width: parseFloat(settingsRes.data.aspect_ratio_width || 11),
         aspect_ratio_height: parseFloat(settingsRes.data.aspect_ratio_height || 10),
+        companyName: settingsRes.data.companyName || 'Job Board',
+        companyShortName: settingsRes.data.companyShortName || 'Job Board',
       });
     } catch (error) {
       console.error('Error loading data:', error);
@@ -1361,7 +1370,8 @@ function HomePage() {
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4">
           <div className="flex justify-between items-center">
             <h1 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white transition-colors">
-              Job Board
+              <span className="hidden sm:inline">{settings.companyName}</span>
+              <span className="sm:hidden">{settings.companyShortName}</span>
             </h1>
             <div className="flex items-center space-x-2 sm:space-x-4">
             <button

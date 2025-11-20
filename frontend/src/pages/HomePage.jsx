@@ -1361,8 +1361,7 @@ function HomePage() {
         <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-4">
           <div className="flex justify-between items-center">
             <h1 className="text-lg sm:text-2xl font-bold text-gray-900 dark:text-white transition-colors">
-              <span className="hidden sm:inline">Kustom Kraft Cabinets - Job Board</span>
-              <span className="sm:hidden">KKC - Job Board</span>
+              Job Board
             </h1>
             <div className="flex items-center space-x-2 sm:space-x-4">
             <button

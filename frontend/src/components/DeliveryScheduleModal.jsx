@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useDarkMode } from '../contexts/DarkModeContext';
 import ConfirmModal from './ConfirmModal';
 
-function DeliveryScheduleModal({ onClose, isAdmin }) {
+function DeliveryScheduleModal({ onClose, isAdmin, schedule: propSchedule, onScheduleUpdate }) {
   const { darkMode } = useDarkMode();
-  const [schedule, setSchedule] = useState({});
+  const [schedule, setSchedule] = useState(propSchedule || {});
   const [loading, setLoading] = useState(true);
   const [editingSlot, setEditingSlot] = useState(null);
   const [editForm, setEditForm] = useState({ jobs: [] });
@@ -20,52 +20,25 @@ function DeliveryScheduleModal({ onClose, isAdmin }) {
 
   useEffect(() => {
     fetchSchedule();
-
-    // Set up WebSocket connection for real-time updates
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const wsUrl = `${protocol}//${window.location.host}`;
-    const ws = new WebSocket(wsUrl);
-
-    ws.onopen = () => {
-      console.log('📡 WebSocket connected for delivery schedule updates');
-    };
-
-    ws.onmessage = (event) => {
-      try {
-        const message = JSON.parse(event.data);
-
-        // Listen for delivery schedule updates
-        if (message.type === 'delivery_schedule_updated' && message.data?.schedule) {
-          console.log('📅 Received delivery schedule update via WebSocket');
-          setSchedule(message.data.schedule);
-        }
-      } catch (error) {
-        console.error('Error parsing WebSocket message:', error);
-      }
-    };
-
-    ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-    };
-
-    ws.onclose = () => {
-      console.log('🔌 WebSocket disconnected');
-    };
-
-    // Cleanup on unmount
-    return () => {
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.close();
-      }
-    };
   }, []);
+
+  // Sync with prop schedule updates from HomePage WebSocket
+  useEffect(() => {
+    if (propSchedule && Object.keys(propSchedule).length > 0) {
+      setSchedule(propSchedule);
+    }
+  }, [propSchedule]);
 
   const fetchSchedule = async () => {
     try {
       const response = await fetch('/api/delivery-schedule');
       if (response.ok) {
         const data = await response.json();
-        setSchedule(data.schedule || {});
+        const scheduleData = data.schedule || {};
+        setSchedule(scheduleData);
+        if (onScheduleUpdate) {
+          onScheduleUpdate(scheduleData);
+        }
       }
     } catch (error) {
       console.error('Failed to fetch delivery schedule:', error);
@@ -104,6 +77,9 @@ function DeliveryScheduleModal({ onClose, isAdmin }) {
       if (response.ok) {
         const updated = await response.json();
         setSchedule(updated.schedule);
+        if (onScheduleUpdate) {
+          onScheduleUpdate(updated.schedule);
+        }
         setEditingSlot(null);
         setEditForm({ jobs: [] });
       } else {
@@ -166,7 +142,11 @@ function DeliveryScheduleModal({ onClose, isAdmin }) {
 
           if (response.ok) {
             const updated = await response.json();
-            setSchedule(updated.schedule || {});
+            const scheduleData = updated.schedule || {};
+            setSchedule(scheduleData);
+            if (onScheduleUpdate) {
+              onScheduleUpdate(scheduleData);
+            }
           } else {
             console.error('Failed to reset delivery schedule:', response.status, response.statusText);
           }
@@ -210,6 +190,9 @@ function DeliveryScheduleModal({ onClose, isAdmin }) {
           if (response.ok) {
             const updated = await response.json();
             setSchedule(updated.schedule);
+            if (onScheduleUpdate) {
+              onScheduleUpdate(updated.schedule);
+            }
           } else {
             console.error('Failed to delete job:', response.status, response.statusText);
           }
@@ -303,6 +286,9 @@ function DeliveryScheduleModal({ onClose, isAdmin }) {
         if (response.ok) {
           const updated = await response.json();
           setSchedule(updated.schedule);
+          if (onScheduleUpdate) {
+            onScheduleUpdate(updated.schedule);
+          }
         }
       } else {
         // Moving between different slots - need to update both
@@ -333,6 +319,9 @@ function DeliveryScheduleModal({ onClose, isAdmin }) {
           if (targetResponse.ok) {
             const updated = await targetResponse.json();
             setSchedule(updated.schedule);
+            if (onScheduleUpdate) {
+              onScheduleUpdate(updated.schedule);
+            }
           }
         }
       }
@@ -395,6 +384,9 @@ function DeliveryScheduleModal({ onClose, isAdmin }) {
         if (response.ok) {
           const updated = await response.json();
           setSchedule(updated.schedule);
+          if (onScheduleUpdate) {
+            onScheduleUpdate(updated.schedule);
+          }
         }
       } else {
         // Check if target slot would exceed max capacity (only for different slots)
@@ -432,6 +424,9 @@ function DeliveryScheduleModal({ onClose, isAdmin }) {
           if (targetResponse.ok) {
             const updated = await targetResponse.json();
             setSchedule(updated.schedule);
+            if (onScheduleUpdate) {
+              onScheduleUpdate(updated.schedule);
+            }
           }
         }
       }

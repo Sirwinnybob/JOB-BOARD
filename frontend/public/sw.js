@@ -1,5 +1,5 @@
-// Service Worker for Kustom Kraft Cabinets Job Board PWA
-const CACHE_NAME = 'kk-job-board-v1';
+// Service Worker for Job Board PWA
+const CACHE_NAME = 'job-board-v1';
 const STATIC_CACHE = [
   '/',
   '/index.html',

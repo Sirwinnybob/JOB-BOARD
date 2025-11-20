@@ -1,6 +1,9 @@
 # Job Board Web Application
 
-A production-ready, full-stack job board application with PDF preview grid, built for deployment on TrueNAS using Dockge.
+A production-ready, full-stack job board application with PDF preview grid and real-time updates, built for containerized deployment.
+
+[![Version](https://img.shields.io/badge/version-1.0.0-blue.svg)](https://github.com/Sirwinnybob/JOB-BOARD)
+[![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 
 ## Features
 
@@ -33,20 +36,21 @@ A production-ready, full-stack job board application with PDF preview grid, buil
 JOB-BOARD/
 ├── backend/
 │   ├── middleware/          # Auth middleware
-│   ├── utils/              # Thumbnail generation
+│   ├── utils/              # Thumbnail generation & push notifications
 │   ├── db.js               # Database initialization
-│   ├── server.js           # Express server
+│   ├── server.js           # Express server with WebSocket
 │   └── package.json
 ├── frontend/
 │   ├── src/
 │   │   ├── components/     # React components
-│   │   ├── pages/          # Page components
-│   │   ├── utils/          # API utilities
+│   │   ├── pages/          # Page components (Home, Admin)
+│   │   ├── utils/          # API utilities & WebSocket client
 │   │   └── App.jsx
+│   ├── public/             # PWA assets & service worker
 │   ├── index.html
 │   └── package.json
 ├── Dockerfile              # Multi-stage build
-├── docker-compose.yml
+├── docker-compose.yml      # Container orchestration
 └── README.md
 ```
 
@@ -62,7 +66,7 @@ JOB-BOARD/
 
 1. Clone the repository:
 ```bash
-git clone <repository-url>
+git clone https://github.com/Sirwinnybob/JOB-BOARD.git
 cd JOB-BOARD
 ```
 
@@ -102,16 +106,16 @@ npm run dev
 - Frontend: http://localhost:5173
 - Backend API: http://localhost:3000
 
-## Production Deployment on TrueNAS with Dockge
+## Production Deployment
 
-### Step 1: Prepare Environment
+### Using Docker Compose (Recommended)
 
 1. **Create `.env` file** in the project root:
 ```bash
 cp .env.example .env
 ```
 
-2. **Edit `.env` with secure credentials**:
+2. **Configure environment variables**:
 ```bash
 # Generate a secure JWT secret
 JWT_SECRET=$(openssl rand -base64 32)
@@ -121,29 +125,36 @@ ADMIN_USERNAME=your_admin_username
 ADMIN_PASSWORD=your_secure_password
 ```
 
-### Step 2: Deploy with Dockge
+3. **Deploy with Docker Compose**:
+```bash
+docker-compose up -d
+```
 
-1. **In Dockge UI**, create a new stack named `job-board`
+4. **Access the application**:
+   - Application: http://localhost:3000
+   - Admin Panel: http://localhost:3000/admin
 
-2. **Paste the docker-compose.yml content** or use the file directly
+### Deploying with Dockge (TrueNAS/Portainer)
 
-3. **Set environment variables** in Dockge:
+1. In your container management UI, create a new stack named `job-board`
+2. Use the provided `docker-compose.yml` file
+3. Set environment variables in the UI:
    - `JWT_SECRET`: Your generated secret
    - `ADMIN_USERNAME`: Your admin username
    - `ADMIN_PASSWORD`: Your secure password
+4. Deploy the stack
 
-4. **Deploy the stack**
+### Reverse Proxy Configuration (HTTPS)
 
-### Step 3: Configure Reverse Proxy (Nginx Proxy Manager)
-
-#### Option A: Using Nginx Proxy Manager UI
+#### Nginx Proxy Manager
 
 1. **Add Proxy Host**:
-   - Domain: `jobboard.kustomkraftcabinets.ddns.net`
+   - Domain: `your-domain.com`
    - Scheme: `http`
-   - Forward Hostname/IP: `job-board-app` (container name)
+   - Forward Hostname/IP: `job-board-app` (or container IP)
    - Forward Port: `3000`
-   - Enable: WebSocket Support
+   - **Enable: WebSocket Support** (Required!)
+   - **Disable: Cache Assets** (Important for WebSocket)
    - Enable: Block Common Exploits
 
 2. **SSL Certificate**:
@@ -152,23 +163,23 @@ ADMIN_PASSWORD=your_secure_password
    - Enable Force SSL
    - Enable HTTP/2 Support
 
-#### Option B: Manual Nginx Configuration
+#### Manual Nginx Configuration
 
-Create `/etc/nginx/sites-available/jobboard.conf`:
+Create nginx configuration:
 
 ```nginx
 server {
     listen 80;
-    server_name jobboard.kustomkraftcabinets.ddns.net;
+    server_name your-domain.com;
     return 301 https://$server_name$request_uri;
 }
 
 server {
     listen 443 ssl http2;
-    server_name jobboard.kustomkraftcabinets.ddns.net;
+    server_name your-domain.com;
 
-    ssl_certificate /etc/letsencrypt/live/jobboard.kustomkraftcabinets.ddns.net/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/jobboard.kustomkraftcabinets.ddns.net/privkey.pem;
+    ssl_certificate /path/to/fullchain.pem;
+    ssl_certificate_key /path/to/privkey.pem;
 
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_ciphers HIGH:!aNULL:!MD5;
@@ -178,10 +189,14 @@ server {
     location / {
         proxy_pass http://localhost:3000;
         proxy_http_version 1.1;
+
+        # WebSocket support (required!)
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection 'upgrade';
         proxy_set_header Host $host;
         proxy_cache_bypass $http_upgrade;
+
+        # Standard proxy headers
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
@@ -196,58 +211,29 @@ nginx -t
 systemctl reload nginx
 ```
 
-### Step 4: SSL Certificate Setup
-
-If using Let's Encrypt directly:
-
-```bash
-certbot certonly --nginx -d jobboard.kustomkraftcabinets.ddns.net
-```
-
-The certificates will be stored in:
-```
-/etc/letsencrypt/live/jobboard.kustomkraftcabinets.ddns.net/
-```
-
-### Step 5: Verify Deployment
-
-1. **Check container status**:
-```bash
-docker ps | grep job-board
-docker logs job-board-app
-```
-
-2. **Access the application**:
-   - Public: https://jobboard.kustomkraftcabinets.ddns.net
-   - Admin: https://jobboard.kustomkraftcabinets.ddns.net/admin
-
-3. **Test health endpoint**:
-```bash
-curl http://localhost:3000/api/health
-# Should return: {"status":"ok"}
-```
-
 ## Usage
 
 ### Public View
 
-1. Visit `https://jobboard.kustomkraftcabinets.ddns.net`
+1. Visit your application URL
 2. Browse PDF thumbnails in the grid
 3. View colored labels (NEW, MOVED, PENDING, etc.) on PDFs
 4. Click any thumbnail to view full PDF
 5. Press ESC or click X to close the viewer
+6. Real-time updates appear automatically when admin makes changes
 
 ### Admin Panel
 
-1. Visit `https://jobboard.kustomkraftcabinets.ddns.net/admin`
+1. Navigate to `/admin`
 2. Log in with your admin credentials
 3. **Upload PDFs**: Click "Upload PDF" button
 4. **Edit Mode**: Click "Edit Mode" to enable drag-and-drop
    - Drag PDFs to reorder them
-   - Click the tag icon to manage labels for a PDF
+   - Click the tag icon to manage labels
    - Click X button to delete PDFs
    - Click "Done Editing" when finished
 5. **Settings**: Click "Settings" to change grid dimensions
+6. **Notifications**: Send custom push notifications to all subscribed devices
 
 ### Label Management
 
@@ -259,12 +245,11 @@ curl http://localhost:3000/api/health
 
 ### Real-Time Updates
 
-The application uses WebSocket for live synchronization across all connected devices:
+The application uses WebSocket for live synchronization:
 
-**How it works:**
-- When an admin makes changes (upload, delete, reorder, label updates, settings changes), the server broadcasts updates via WebSocket
-- All connected clients (both public viewers and other admins) automatically receive and apply the updates
 - **No page refresh required** - changes appear instantly on all devices
+- Automatic reconnection on disconnect (exponential backoff, up to 10 attempts)
+- All connected clients receive updates simultaneously
 
 **Update Types:**
 - `pdf_uploaded` - New PDF added
@@ -275,20 +260,33 @@ The application uses WebSocket for live synchronization across all connected dev
 - `label_deleted` - Label removed
 - `settings_updated` - Grid dimensions changed
 
-**Connection Features:**
-- Automatic reconnection on disconnect (exponential backoff)
-- Up to 10 reconnection attempts
-- Maximum 30-second delay between attempts
+## Push Notifications
 
-## API Endpoints
+This application supports Web Push notifications that work even when the PWA is closed. See **[PUSH_NOTIFICATIONS_SETUP.md](PUSH_NOTIFICATIONS_SETUP.md)** for complete setup guide.
+
+### Quick Start
+
+1. **Generate VAPID Keys**: Open `generate-vapid-keys.html` in your browser
+2. **Add to .env**: Copy the keys to your environment variables
+3. **Restart Backend**: Apply the configuration
+4. **Subscribe Devices**: Use the browser's notification permission prompt or admin panel
+
+**Notification Types:**
+- **NEW JOB**: When jobs are published or moved from pending to active
+- **JOB(S) MOVED**: When jobs are reordered on the board
+- **Custom Alerts**: Admins can send custom notifications anytime
+
+## API Reference
 
 ### Public Endpoints
+
 - `GET /api/pdfs` - Get all PDFs (includes labels)
 - `GET /api/labels` - Get all available labels
 - `GET /api/settings` - Get grid settings
 - `GET /api/health` - Health check
 
 ### Admin Endpoints (Require JWT)
+
 - `POST /api/auth/login` - Admin login
 - `POST /api/pdfs` - Upload PDF
 - `DELETE /api/pdfs/:id` - Delete PDF
@@ -297,6 +295,7 @@ The application uses WebSocket for live synchronization across all connected dev
 - `POST /api/labels` - Create new label
 - `DELETE /api/labels/:id` - Delete label
 - `PUT /api/settings` - Update grid settings
+- `POST /api/notifications/send` - Send push notification
 
 ## Data Persistence
 
@@ -306,173 +305,46 @@ Docker volumes ensure data persists across container restarts:
 - `./data/thumbnails` - Generated thumbnails
 - `./data/database.sqlite` - SQLite database file
 
-**Backup these directories regularly!**
+**Important: Backup these directories regularly!**
+
+## Environment Variables
+
+| Variable | Description | Default | Required |
+|----------|-------------|---------|----------|
+| `PORT` | Server port | `3000` | No |
+| `NODE_ENV` | Environment | `production` | No |
+| `JWT_SECRET` | JWT signing secret | - | **Yes** |
+| `ADMIN_USERNAME` | Admin username | - | **Yes** |
+| `ADMIN_PASSWORD` | Admin password | - | **Yes** |
+| `COMPANY_NAME` | Full company name shown in header | `Job Board` | No |
+| `COMPANY_SHORT_NAME` | Short name for mobile header | `Job Board` | No |
+| `VAPID_PUBLIC_KEY` | Web Push public key | - | No* |
+| `VAPID_PRIVATE_KEY` | Web Push private key | - | No* |
+| `VAPID_SUBJECT` | Contact email for push service | `mailto:admin@example.com` | No |
+
+*Required only if using push notifications
 
 ## Security Considerations
 
 1. **Change default credentials** in `.env`
-2. **Use strong JWT secret** (32+ characters)
+2. **Use strong JWT secret** (32+ characters, generated with `openssl rand -base64 32`)
 3. **Enable HTTPS** via reverse proxy
-4. **Rate limiting** is enabled (100 req/15min per IP)
+4. **Rate limiting** enabled (100 requests/15 minutes per IP)
 5. **File upload restrictions**: PDF only, max 50MB
 6. **Helmet.js** security headers enabled
+7. **CORS** properly configured for production
 
 ## Troubleshooting
 
-### Container won't start
+### Container Issues
+
+**Container won't start:**
 ```bash
 # Check logs
 docker logs job-board-app
 
-# Check environment variables
-docker exec job-board-app env | grep JWT
-```
-
-### PDF thumbnails not generating
-```bash
-# Verify poppler is installed
-docker exec job-board-app which pdftoppm
-
-# Check permissions
-docker exec job-board-app ls -la /app/thumbnails
-```
-
-### Upload fails
-```bash
-# Check upload directory permissions
-docker exec job-board-app ls -la /app/uploads
-
-# Check disk space
-df -h
-```
-
-### Can't log in
-```bash
-# Verify credentials in .env
-cat .env
-
-# Check JWT secret is set
-docker exec job-board-app printenv JWT_SECRET
-```
-
-## Development
-
-### Build frontend
-```bash
-cd frontend
-npm run build
-```
-
-### Build Docker image
-```bash
-docker build -t job-board-app .
-```
-
-### Run tests
-```bash
-# Backend
-cd backend
-npm test
-
-# Frontend
-cd frontend
-npm test
-```
-
-## Push Notifications Setup
-
-This application supports Web Push notifications that work even when the PWA is closed. See **[PUSH_NOTIFICATIONS_SETUP.md](PUSH_NOTIFICATIONS_SETUP.md)** for complete setup guide.
-
-### Quick Start
-
-1. **Generate VAPID Keys**: Open `generate-vapid-keys.html` in your browser
-2. **Add to .env**: Copy the keys to your environment variables
-3. **Restart Backend**: Apply the configuration
-4. **Subscribe Devices**: Open `manage-notifications.html` on each device to subscribe
-
-**Each device needs its own subscription!** Use the `manage-notifications.html` tool to easily subscribe tablets and phones without developer tools.
-
-### Notification Types
-
-- **NEW JOB**: When jobs are published or moved from pending to active
-- **JOB(S) MOVED**: When jobs are reordered on the board
-- **Custom Alerts**: Admins can send custom notifications anytime
-
-## Environment Variables
-
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `PORT` | Server port | `3000` |
-| `NODE_ENV` | Environment | `production` |
-| `JWT_SECRET` | JWT signing secret | Required |
-| `ADMIN_USERNAME` | Admin username | Required |
-| `ADMIN_PASSWORD` | Admin password | Required |
-| `VAPID_PUBLIC_KEY` | Web Push public key | Optional (required for push notifications) |
-| `VAPID_PRIVATE_KEY` | Web Push private key | Optional (required for push notifications) |
-| `VAPID_SUBJECT` | Contact email for push service | `mailto:admin@example.com` |
-
-## Performance
-
-- **Multi-stage build** reduces image size
-- **Static assets** served via Express
-- **PDF thumbnails** cached and reused
-- **Lazy loading** for thumbnail images
-- **Production build** optimized with Vite
-
-## Browser Support
-
-- Chrome/Edge 90+
-- Firefox 88+
-- Safari 14+
-- Mobile browsers (iOS Safari, Chrome Mobile)
-
-## Troubleshooting
-
-### HTTPS/WebSocket Issues
-
-If your application works over HTTP but **not over HTTPS**, this is almost always caused by **WebSocket (WSS) connection failures** through your NGINX reverse proxy.
-
-**Quick Fix for Nginx Proxy Manager Users:**
-
-1. **Disable "Cache Assets"** - This is the #1 cause of WSS failures
-2. **Enable "Websockets Support"**
-3. **Clear browser cache** and hard refresh (Ctrl+Shift+R)
-
-**Detailed Troubleshooting:**
-
-See [HTTPS_TROUBLESHOOTING.md](HTTPS_TROUBLESHOOTING.md) for:
-- Complete diagnostic steps
-- NGINX configuration examples
-- Browser console debugging
-- Command-line testing tools
-- Common issues and solutions
-
-**Quick Diagnostic:**
-
-```bash
-# Run the diagnostic script
-chmod +x test-https-wss.sh
-./test-https-wss.sh
-
-# Check browser console (F12) for WebSocket errors
-# Should see: "✅ WebSocket connected successfully"
-# Not: "❌ WebSocket error" or "Close code 1006"
-```
-
-**Most Common Causes:**
-1. ❌ **Cache Assets enabled** in Nginx Proxy Manager (breaks WebSocket)
-2. ❌ Websockets Support not enabled
-3. ❌ Missing WebSocket upgrade headers in NGINX config
-4. ❌ SSL certificate issues
-
-For detailed solutions, see [HTTPS_TROUBLESHOOTING.md](HTTPS_TROUBLESHOOTING.md).
-
-### Other Common Issues
-
-**Container won't start:**
-```bash
-docker logs job-board-app
-# Check for missing environment variables (JWT_SECRET, ADMIN_USERNAME, ADMIN_PASSWORD)
+# Verify environment variables
+docker exec job-board-app env | grep -E "JWT|ADMIN"
 ```
 
 **502 Bad Gateway:**
@@ -484,18 +356,115 @@ docker ps | grep job-board
 curl http://localhost:3000/api/health
 ```
 
-**PDFs not uploading:**
-- Check client_max_body_size in NGINX (should be 50M)
-- Verify disk space: `df -h`
-- Check container logs for errors
+### PDF Processing
+
+**Thumbnails not generating:**
+```bash
+# Verify poppler is installed
+docker exec job-board-app which pdftoppm
+
+# Check permissions
+docker exec job-board-app ls -la /app/thumbnails
+```
+
+**Upload fails:**
+```bash
+# Check upload directory permissions
+docker exec job-board-app ls -la /app/uploads
+
+# Verify disk space
+df -h
+
+# Check client_max_body_size in nginx (should be 50M+)
+```
+
+### WebSocket Issues
+
+If real-time updates aren't working over HTTPS:
+
+1. **Verify WebSocket support enabled** in your reverse proxy
+2. **Disable "Cache Assets"** in Nginx Proxy Manager (breaks WebSocket)
+3. **Check browser console** (F12) for WebSocket connection errors
+4. **Verify upgrade headers** are configured in nginx
+
+**Browser Console Check:**
+- Should see: `✅ WebSocket connected successfully`
+- Not: `❌ WebSocket error` or close code 1006
+
+**Nginx configuration must include:**
+```nginx
+proxy_set_header Upgrade $http_upgrade;
+proxy_set_header Connection 'upgrade';
+proxy_cache_bypass $http_upgrade;
+```
+
+### Authentication Issues
+
+**Can't log in:**
+```bash
+# Verify credentials in .env
+cat .env
+
+# Check JWT secret is set
+docker exec job-board-app printenv JWT_SECRET
+
+# Check backend logs for auth errors
+docker logs job-board-app | grep -i auth
+```
+
+## Performance
+
+- **Multi-stage Docker build** reduces image size (~300MB final)
+- **Static assets** served via Express with compression
+- **PDF thumbnails** cached and reused
+- **Lazy loading** for thumbnail images
+- **Production build** optimized with Vite
+- **WebSocket** connection pooling and heartbeat
+
+For scaling considerations, see **[SCALABILITY.md](SCALABILITY.md)**
+
+## Browser Support
+
+- Chrome/Edge 90+
+- Firefox 88+
+- Safari 14+
+- Mobile browsers (iOS Safari 14+, Chrome Mobile)
+
+## Development
+
+### Build Frontend
+```bash
+cd frontend
+npm run build
+```
+
+### Build Docker Image
+```bash
+docker build -t job-board-app .
+```
+
+### Run Tests
+```bash
+# Backend
+cd backend
+npm test
+
+# Frontend
+cd frontend
+npm test
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
 ## License
 
-MIT
-
-## Support
-
-For issues or questions, please open an issue on GitHub.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ## Acknowledgments
 
@@ -503,3 +472,12 @@ For issues or questions, please open an issue on GitHub.
 - PDF processing by pdf-poppler
 - Drag-and-drop by react-dnd
 - Styling by Tailwind CSS
+- WebSocket by ws library
+
+## Support
+
+For issues or questions, please open an issue on GitHub: [https://github.com/Sirwinnybob/JOB-BOARD/issues](https://github.com/Sirwinnybob/JOB-BOARD/issues)
+
+---
+
+**Version 1.0.0** - Production Ready

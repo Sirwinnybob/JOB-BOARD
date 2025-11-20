@@ -11,6 +11,7 @@ function DeliveryScheduleModal({ onClose, isAdmin }) {
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
   const [draggedItem, setDraggedItem] = useState(null); // { slotKey, jobIndex }
   const [dragOverSlot, setDragOverSlot] = useState(null);
+  const [selectedForMove, setSelectedForMove] = useState(null); // { slotKey, jobIndex } for touch/tap mode
 
   const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
   const dayLabels = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
@@ -305,6 +306,90 @@ function DeliveryScheduleModal({ onClose, isAdmin }) {
     setDragOverSlot(null);
   };
 
+  // Touch/tap mode handlers for mobile
+  const handleSelectForMove = (slotKey, jobIndex) => {
+    if (!isAdmin) return;
+
+    // If clicking the same job, deselect it (cancel move)
+    if (selectedForMove?.slotKey === slotKey && selectedForMove?.jobIndex === jobIndex) {
+      setSelectedForMove(null);
+      return;
+    }
+
+    setSelectedForMove({ slotKey, jobIndex });
+  };
+
+  const handleMoveToSlot = async (targetSlotKey) => {
+    if (!selectedForMove || !isAdmin) return;
+
+    const { slotKey: sourceSlotKey, jobIndex: sourceIndex } = selectedForMove;
+
+    // Don't do anything if moving to the same slot
+    if (sourceSlotKey === targetSlotKey) {
+      setSelectedForMove(null);
+      return;
+    }
+
+    try {
+      const sourceSlotData = schedule[sourceSlotKey] || { jobs: [] };
+      const targetSlotData = schedule[targetSlotKey] || { jobs: [] };
+
+      // Get the job being moved
+      const movedJob = sourceSlotData.jobs[sourceIndex];
+
+      // Check if target slot would exceed max capacity
+      if (targetSlotData.jobs.length >= 3) {
+        alert('Cannot add more than 3 jobs to a time slot');
+        setSelectedForMove(null);
+        return;
+      }
+
+      const token = localStorage.getItem('token');
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
+      // Moving between different slots - need to update both
+      const updatedSourceJobs = sourceSlotData.jobs.filter((_, i) => i !== sourceIndex);
+      const updatedTargetJobs = [...targetSlotData.jobs, movedJob];
+
+      // Update source slot first
+      const sourceResponse = await fetch('/api/delivery-schedule', {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({
+          slot: sourceSlotKey,
+          data: { jobs: updatedSourceJobs }
+        })
+      });
+
+      if (sourceResponse.ok) {
+        // Then update target slot
+        const targetResponse = await fetch('/api/delivery-schedule', {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify({
+            slot: targetSlotKey,
+            data: { jobs: updatedTargetJobs }
+          })
+        });
+
+        if (targetResponse.ok) {
+          const updated = await targetResponse.json();
+          setSchedule(updated.schedule);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to move job:', error);
+    }
+
+    setSelectedForMove(null);
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-xl max-w-7xl w-full max-h-[90vh] overflow-hidden transition-colors`}>
@@ -337,6 +422,26 @@ function DeliveryScheduleModal({ onClose, isAdmin }) {
           </button>
         </div>
 
+        {/* Move Mode Banner */}
+        {selectedForMove && (
+          <div className={`${darkMode ? 'bg-yellow-900 border-yellow-700' : 'bg-yellow-100 border-yellow-300'} border-b px-6 py-3 flex justify-between items-center transition-colors`}>
+            <div className="flex items-center gap-2">
+              <svg className="w-5 h-5 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span className={`font-medium ${darkMode ? 'text-yellow-200' : 'text-yellow-800'}`}>
+                Job selected for move - Tap a time slot to place it there
+              </span>
+            </div>
+            <button
+              onClick={() => setSelectedForMove(null)}
+              className={`px-3 py-1 rounded text-sm font-medium ${darkMode ? 'bg-yellow-800 hover:bg-yellow-700 text-yellow-100' : 'bg-yellow-200 hover:bg-yellow-300 text-yellow-900'} transition-colors`}
+            >
+              Cancel
+            </button>
+          </div>
+        )}
+
         {/* Schedule Grid */}
         <div className="p-6 overflow-y-auto max-h-[calc(90vh-80px)]">
           {loading ? (
@@ -358,21 +463,32 @@ function DeliveryScheduleModal({ onClose, isAdmin }) {
                     const slotData = schedule[slotKey] || { jobs: [] };
                     const isEditing = editingSlot === slotKey;
 
+                    const isSelectedSource = selectedForMove?.slotKey === slotKey;
+                    const canMoveHere = selectedForMove && !isSelectedSource && slotData.jobs.length < 3;
+
                     return (
                       <div
                         key={period}
-                        className={`${darkMode ? 'border-gray-600' : 'border-gray-200'} border-t p-3 transition-colors ${dragOverSlot === slotKey ? (darkMode ? 'bg-blue-900 bg-opacity-30' : 'bg-blue-50') : ''}`}
+                        className={`${darkMode ? 'border-gray-600' : 'border-gray-200'} border-t p-3 transition-colors ${
+                          dragOverSlot === slotKey ? (darkMode ? 'bg-blue-900 bg-opacity-30' : 'bg-blue-50') : ''
+                        } ${canMoveHere ? (darkMode ? 'bg-green-900 bg-opacity-20 border-green-500 cursor-pointer' : 'bg-green-50 border-green-400 cursor-pointer') : ''}`}
                         onDragOver={handleDragOver}
                         onDragEnter={() => handleDragEnter(slotKey)}
                         onDragLeave={handleDragLeave}
                         onDrop={(e) => handleDrop(e, slotKey)}
+                        onClick={() => canMoveHere && handleMoveToSlot(slotKey)}
                       >
                         {/* Period Label */}
                         <div className="flex justify-between items-center mb-2">
-                          <span className={`font-semibold text-sm ${darkMode ? 'text-gray-300' : 'text-gray-700'} transition-colors`}>
+                          <span className={`font-semibold text-sm ${darkMode ? 'text-gray-300' : 'text-gray-700'} transition-colors flex items-center gap-1`}>
                             {periodLabels[periods.indexOf(period)]}
+                            {canMoveHere && (
+                              <span className={`text-xs ${darkMode ? 'text-green-400' : 'text-green-600'}`}>
+                                (Tap to place here)
+                              </span>
+                            )}
                           </span>
-                          {isAdmin && !isEditing && (
+                          {isAdmin && !isEditing && !selectedForMove && (
                             <button
                               onClick={() => handleEdit(day, period)}
                               className={`text-xs ${darkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'} transition-colors`}
@@ -442,72 +558,100 @@ function DeliveryScheduleModal({ onClose, isAdmin }) {
                         ) : (
                           <div className="space-y-2">
                             {slotData.jobs && slotData.jobs.length > 0 ? (
-                              slotData.jobs.map((job, index) => (
-                                <div
-                                  key={index}
-                                  draggable={isAdmin}
-                                  onDragStart={(e) => handleDragStart(e, slotKey, index)}
-                                  onDragEnd={handleDragEnd}
-                                  className={`${darkMode ? 'bg-gray-600 border-gray-500' : 'bg-white border-gray-300'} border rounded p-2 transition-colors ${isAdmin ? 'cursor-move hover:shadow-lg' : ''} ${draggedItem?.slotKey === slotKey && draggedItem?.jobIndex === index ? 'opacity-50' : ''}`}
-                                >
-                                  <div className="flex items-start justify-between gap-1">
-                                    <div className="flex-1 min-w-0">
-                                      {isAdmin && (
-                                        <div className={`text-xs mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'} flex items-center gap-1`}>
-                                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
-                                          </svg>
-                                          <span>Drag to move</span>
-                                        </div>
-                                      )}
-                                      <div className={`font-semibold text-sm ${darkMode ? 'text-white' : 'text-gray-900'} truncate transition-colors`}>
-                                        {job.jobNumber}
-                                      </div>
-                                      <div className={`text-xs ${darkMode ? 'text-gray-300' : 'text-gray-600'} line-clamp-2 transition-colors`}>
-                                        {job.description}
-                                      </div>
-                                    </div>
-                                    <div className="flex gap-1">
-                                      {job.address && (
-                                        <>
-                                          <a
-                                            href={job.address.startsWith('http') ? job.address : `https://maps.google.com/?q=${encodeURIComponent(job.address)}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className={`${darkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'} transition-colors`}
-                                            title="Open in maps"
-                                          >
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                              slotData.jobs.map((job, index) => {
+                                const isSelectedForMove = selectedForMove?.slotKey === slotKey && selectedForMove?.jobIndex === index;
+
+                                return (
+                                  <div
+                                    key={index}
+                                    draggable={isAdmin && !selectedForMove}
+                                    onDragStart={(e) => handleDragStart(e, slotKey, index)}
+                                    onDragEnd={handleDragEnd}
+                                    className={`${darkMode ? 'bg-gray-600 border-gray-500' : 'bg-white border-gray-300'} border rounded p-2 transition-colors ${
+                                      isAdmin && !selectedForMove ? 'cursor-move hover:shadow-lg' : ''
+                                    } ${draggedItem?.slotKey === slotKey && draggedItem?.jobIndex === index ? 'opacity-50' : ''} ${
+                                      isSelectedForMove ? (darkMode ? 'ring-2 ring-yellow-500 bg-yellow-900 bg-opacity-20' : 'ring-2 ring-yellow-400 bg-yellow-50') : ''
+                                    }`}
+                                  >
+                                    <div className="flex items-start justify-between gap-1">
+                                      <div className="flex-1 min-w-0">
+                                        {isAdmin && (
+                                          <div className={`text-xs mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'} flex items-center gap-1`}>
+                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
                                             </svg>
-                                          </a>
+                                            <span>{isSelectedForMove ? 'Selected - Tap a slot to place' : 'Drag or tap move icon'}</span>
+                                          </div>
+                                        )}
+                                        <div className={`font-semibold text-sm ${darkMode ? 'text-white' : 'text-gray-900'} truncate transition-colors`}>
+                                          {job.jobNumber}
+                                        </div>
+                                        <div className={`text-xs ${darkMode ? 'text-gray-300' : 'text-gray-600'} line-clamp-2 transition-colors`}>
+                                          {job.description}
+                                        </div>
+                                      </div>
+                                      <div className="flex gap-1 flex-col">
+                                        <div className="flex gap-1">
+                                          {isAdmin && (
+                                            <button
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleSelectForMove(slotKey, index);
+                                              }}
+                                              className={`${
+                                                isSelectedForMove
+                                                  ? (darkMode ? 'text-yellow-400 hover:text-yellow-300' : 'text-yellow-600 hover:text-yellow-700')
+                                                  : (darkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700')
+                                              } transition-colors`}
+                                              title={isSelectedForMove ? "Cancel move" : "Select to move"}
+                                            >
+                                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16V4m0 0L3 8m4-4l4 4m6 0v12m0 0l4-4m-4 4l-4-4" />
+                                              </svg>
+                                            </button>
+                                          )}
+                                          {job.address && (
+                                            <>
+                                              <a
+                                                href={job.address.startsWith('http') ? job.address : `https://maps.google.com/?q=${encodeURIComponent(job.address)}`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className={`${darkMode ? 'text-blue-400 hover:text-blue-300' : 'text-blue-600 hover:text-blue-700'} transition-colors`}
+                                                title="Open in maps"
+                                              >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                </svg>
+                                              </a>
+                                              <button
+                                                onClick={() => copyAddress(job.address)}
+                                                className={`${darkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-600 hover:text-gray-700'} transition-colors`}
+                                                title="Copy address"
+                                              >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                                </svg>
+                                              </button>
+                                            </>
+                                          )}
+                                        </div>
+                                        {isAdmin && (
                                           <button
-                                            onClick={() => copyAddress(job.address)}
-                                            className={`${darkMode ? 'text-gray-400 hover:text-gray-300' : 'text-gray-600 hover:text-gray-700'} transition-colors`}
-                                            title="Copy address"
+                                            onClick={() => handleDeleteJob(day, period, index)}
+                                            className="text-red-500 hover:text-red-600 transition-colors"
+                                            title="Delete this entry"
                                           >
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                             </svg>
                                           </button>
-                                        </>
-                                      )}
-                                      {isAdmin && (
-                                        <button
-                                          onClick={() => handleDeleteJob(day, period, index)}
-                                          className="text-red-500 hover:text-red-600 transition-colors"
-                                          title="Delete this entry"
-                                        >
-                                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                          </svg>
-                                        </button>
-                                      )}
+                                        )}
+                                      </div>
                                     </div>
                                   </div>
-                                </div>
-                              ))
+                                );
+                              })
                             ) : (
                               <div className={`text-xs ${darkMode ? 'text-gray-500' : 'text-gray-400'} italic text-center py-2 transition-colors`}>
                                 No deliveries

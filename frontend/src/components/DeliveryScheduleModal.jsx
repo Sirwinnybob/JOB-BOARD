@@ -20,6 +20,44 @@ function DeliveryScheduleModal({ onClose, isAdmin }) {
 
   useEffect(() => {
     fetchSchedule();
+
+    // Set up WebSocket connection for real-time updates
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}`;
+    const ws = new WebSocket(wsUrl);
+
+    ws.onopen = () => {
+      console.log('📡 WebSocket connected for delivery schedule updates');
+    };
+
+    ws.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data);
+
+        // Listen for delivery schedule updates
+        if (message.type === 'delivery_schedule_updated' && message.data?.schedule) {
+          console.log('📅 Received delivery schedule update via WebSocket');
+          setSchedule(message.data.schedule);
+        }
+      } catch (error) {
+        console.error('Error parsing WebSocket message:', error);
+      }
+    };
+
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
+
+    ws.onclose = () => {
+      console.log('🔌 WebSocket disconnected');
+    };
+
+    // Cleanup on unmount
+    return () => {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.close();
+      }
+    };
   }, []);
 
   const fetchSchedule = async () => {

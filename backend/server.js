@@ -1512,6 +1512,9 @@ app.put('/api/delivery-schedule', authMiddleware, async (req, res) => {
           return res.status(500).json({ error: 'Failed to update delivery schedule' });
         }
 
+        // Broadcast the update to all connected clients
+        broadcastUpdate('delivery_schedule_updated', { schedule: currentSchedule });
+
         res.json({ schedule: currentSchedule });
       }
     );
@@ -1530,6 +1533,9 @@ app.post('/api/delivery-schedule/reset', authMiddleware, async (req, res) => {
         console.error('Error resetting delivery schedule:', err);
         return res.status(500).json({ error: 'Failed to reset delivery schedule' });
       }
+
+      // Broadcast the reset to all connected clients
+      broadcastUpdate('delivery_schedule_updated', { schedule: emptySchedule });
 
       res.json({ schedule: emptySchedule, message: 'Schedule reset successfully' });
     }

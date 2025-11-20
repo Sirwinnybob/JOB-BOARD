@@ -9,6 +9,8 @@ function DeliveryScheduleModal({ onClose, isAdmin }) {
   const [editingSlot, setEditingSlot] = useState(null);
   const [editForm, setEditForm] = useState({ jobs: [] });
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
+  const [draggedItem, setDraggedItem] = useState(null); // { slotKey, jobIndex }
+  const [dragOverSlot, setDragOverSlot] = useState(null);
 
   const days = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday'];
   const dayLabels = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
@@ -179,6 +181,130 @@ function DeliveryScheduleModal({ onClose, isAdmin }) {
     });
   };
 
+  // Drag and drop handlers
+  const handleDragStart = (e, slotKey, jobIndex) => {
+    if (!isAdmin) return;
+    setDraggedItem({ slotKey, jobIndex });
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/html', e.currentTarget);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedItem(null);
+    setDragOverSlot(null);
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDragEnter = (slotKey) => {
+    setDragOverSlot(slotKey);
+  };
+
+  const handleDragLeave = (e) => {
+    // Only clear if we're leaving the slot container, not just moving between children
+    if (e.currentTarget === e.target) {
+      setDragOverSlot(null);
+    }
+  };
+
+  const handleDrop = async (e, targetSlotKey) => {
+    e.preventDefault();
+    if (!draggedItem || !isAdmin) return;
+
+    const { slotKey: sourceSlotKey, jobIndex: sourceIndex } = draggedItem;
+
+    // Don't do anything if dropped in the same position
+    if (sourceSlotKey === targetSlotKey && sourceIndex === 0 && (schedule[targetSlotKey]?.jobs?.length || 0) <= 1) {
+      setDraggedItem(null);
+      setDragOverSlot(null);
+      return;
+    }
+
+    try {
+      const sourceSlotData = schedule[sourceSlotKey] || { jobs: [] };
+      const targetSlotData = schedule[targetSlotKey] || { jobs: [] };
+
+      // Get the job being moved
+      const movedJob = sourceSlotData.jobs[sourceIndex];
+
+      // Check if target slot would exceed max capacity (only if different slots)
+      if (sourceSlotKey !== targetSlotKey && targetSlotData.jobs.length >= 3) {
+        alert('Cannot add more than 3 jobs to a time slot');
+        setDraggedItem(null);
+        setDragOverSlot(null);
+        return;
+      }
+
+      const token = localStorage.getItem('token');
+      const headers = {
+        'Content-Type': 'application/json'
+      };
+
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
+      if (sourceSlotKey === targetSlotKey) {
+        // Reordering within the same slot - just move to the end for simplicity
+        const updatedJobs = sourceSlotData.jobs.filter((_, i) => i !== sourceIndex);
+        updatedJobs.push(movedJob);
+
+        const response = await fetch('/api/delivery-schedule', {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify({
+            slot: sourceSlotKey,
+            data: { jobs: updatedJobs }
+          })
+        });
+
+        if (response.ok) {
+          const updated = await response.json();
+          setSchedule(updated.schedule);
+        }
+      } else {
+        // Moving between different slots - need to update both
+        const updatedSourceJobs = sourceSlotData.jobs.filter((_, i) => i !== sourceIndex);
+        const updatedTargetJobs = [...targetSlotData.jobs, movedJob];
+
+        // Update source slot first
+        const sourceResponse = await fetch('/api/delivery-schedule', {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify({
+            slot: sourceSlotKey,
+            data: { jobs: updatedSourceJobs }
+          })
+        });
+
+        if (sourceResponse.ok) {
+          // Then update target slot
+          const targetResponse = await fetch('/api/delivery-schedule', {
+            method: 'PUT',
+            headers,
+            body: JSON.stringify({
+              slot: targetSlotKey,
+              data: { jobs: updatedTargetJobs }
+            })
+          });
+
+          if (targetResponse.ok) {
+            const updated = await targetResponse.json();
+            setSchedule(updated.schedule);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to move job:', error);
+    }
+
+    setDraggedItem(null);
+    setDragOverSlot(null);
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-xl max-w-7xl w-full max-h-[90vh] overflow-hidden transition-colors`}>
@@ -233,7 +359,14 @@ function DeliveryScheduleModal({ onClose, isAdmin }) {
                     const isEditing = editingSlot === slotKey;
 
                     return (
-                      <div key={period} className={`${darkMode ? 'border-gray-600' : 'border-gray-200'} border-t p-3 transition-colors`}>
+                      <div
+                        key={period}
+                        className={`${darkMode ? 'border-gray-600' : 'border-gray-200'} border-t p-3 transition-colors ${dragOverSlot === slotKey ? (darkMode ? 'bg-blue-900 bg-opacity-30' : 'bg-blue-50') : ''}`}
+                        onDragOver={handleDragOver}
+                        onDragEnter={() => handleDragEnter(slotKey)}
+                        onDragLeave={handleDragLeave}
+                        onDrop={(e) => handleDrop(e, slotKey)}
+                      >
                         {/* Period Label */}
                         <div className="flex justify-between items-center mb-2">
                           <span className={`font-semibold text-sm ${darkMode ? 'text-gray-300' : 'text-gray-700'} transition-colors`}>
@@ -310,9 +443,23 @@ function DeliveryScheduleModal({ onClose, isAdmin }) {
                           <div className="space-y-2">
                             {slotData.jobs && slotData.jobs.length > 0 ? (
                               slotData.jobs.map((job, index) => (
-                                <div key={index} className={`${darkMode ? 'bg-gray-600 border-gray-500' : 'bg-white border-gray-300'} border rounded p-2 transition-colors`}>
+                                <div
+                                  key={index}
+                                  draggable={isAdmin}
+                                  onDragStart={(e) => handleDragStart(e, slotKey, index)}
+                                  onDragEnd={handleDragEnd}
+                                  className={`${darkMode ? 'bg-gray-600 border-gray-500' : 'bg-white border-gray-300'} border rounded p-2 transition-colors ${isAdmin ? 'cursor-move hover:shadow-lg' : ''} ${draggedItem?.slotKey === slotKey && draggedItem?.jobIndex === index ? 'opacity-50' : ''}`}
+                                >
                                   <div className="flex items-start justify-between gap-1">
                                     <div className="flex-1 min-w-0">
+                                      {isAdmin && (
+                                        <div className={`text-xs mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'} flex items-center gap-1`}>
+                                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+                                          </svg>
+                                          <span>Drag to move</span>
+                                        </div>
+                                      )}
                                       <div className={`font-semibold text-sm ${darkMode ? 'text-white' : 'text-gray-900'} truncate transition-colors`}>
                                         {job.jobNumber}
                                       </div>

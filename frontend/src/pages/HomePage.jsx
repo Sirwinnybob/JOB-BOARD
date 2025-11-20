@@ -355,17 +355,16 @@ function HomePage() {
 
       // Update function to apply metadata changes to a PDF
       const updatePdfMetadata = (pdf) => {
-        if (pdf.id === id) {
+        if (pdf && pdf.id === id) {
           return { ...pdf, job_number, construction_method };
         }
         return pdf;
       };
 
-      // Update both working copies and main state
+      // During edit mode, only update working copies (not main state)
+      // This allows the editing admin to see OCR results in real-time
       setWorkingPdfs(prev => prev.map(updatePdfMetadata));
       setWorkingPendingPdfs(prev => prev.map(updatePdfMetadata));
-      setPdfs(prev => prev.map(updatePdfMetadata));
-      setPendingPdfs(prev => prev.map(updatePdfMetadata));
       return;
     }
 
@@ -376,17 +375,16 @@ function HomePage() {
 
       // Update function to apply dark mode images to a PDF
       const updatePdfDarkMode = (pdf) => {
-        if (pdf.id === id) {
+        if (pdf && pdf.id === id) {
           return { ...pdf, dark_mode_images_base };
         }
         return pdf;
       };
 
-      // Update both working copies and main state
+      // During edit mode, only update working copies (not main state)
+      // This allows the editing admin to see dark mode images in real-time
       setWorkingPdfs(prev => prev.map(updatePdfDarkMode));
       setWorkingPendingPdfs(prev => prev.map(updatePdfDarkMode));
-      setPdfs(prev => prev.map(updatePdfDarkMode));
-      setPendingPdfs(prev => prev.map(updatePdfDarkMode));
       return;
     }
 

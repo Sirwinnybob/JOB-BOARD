@@ -97,11 +97,11 @@ function LabelManagementModal({ onClose, onUpdate }) {
 
   return (
     <div
-      className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-3 sm:p-4"
+      className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-3 sm:p-4"
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl p-4 sm:p-6 w-full max-w-2xl max-h-[90vh] flex flex-col"
+        className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl p-4 sm:p-6 w-full max-w-2xl max-h-[calc(100vh-1.5rem)] sm:max-h-[calc(100vh-2rem)] flex flex-col"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex justify-between items-center mb-3 sm:mb-4">

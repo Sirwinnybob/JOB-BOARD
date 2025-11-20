@@ -25,11 +25,11 @@ function SettingsModal({ settings, onClose, onSave }) {
 
   return (
     <div
-      className="fixed inset-0 bg-black/30 z-50 flex items-center justify-center p-3 sm:p-4"
+      className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-3 sm:p-4"
       onClick={onClose}
     >
       <div
-        className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl p-4 sm:p-6 w-full max-w-md max-h-[90vh] overflow-y-auto transition-colors"
+        className="bg-white dark:bg-gray-800 rounded-lg shadow-2xl p-4 sm:p-6 w-full max-w-md max-h-[calc(100vh-1.5rem)] sm:max-h-[calc(100vh-2rem)] overflow-y-auto transition-colors"
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-xl sm:text-2xl font-bold text-gray-900 dark:text-white mb-3 sm:mb-4 transition-colors">Grid Settings</h2>

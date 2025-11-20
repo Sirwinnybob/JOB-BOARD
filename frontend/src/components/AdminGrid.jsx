@@ -2,7 +2,7 @@ import React from 'react';
 import DraggableGridItem from './DraggableGridItem';
 import MobileActionBar from './MobileActionBar';
 
-function AdminGrid({ pdfs, rows, cols, aspectWidth, aspectHeight, editMode, onReorder, onDelete, onLabelClick, onMetadataUpdate, onSlotMenuOpen, showSlotMenu, onSlotMenuClose, onAddPlaceholder, onUploadToSlot, onUploadCustomToSlot, onMoveToPending, onEditPlaceholder, isTransitioning, isMobile, selectedMobileCardId, onMobileCardSelect, onMobileTapToMove }) {
+function AdminGrid({ pdfs, rows, cols, aspectWidth, aspectHeight, editMode, onReorder, onDelete, onLabelClick, onMetadataUpdate, onSlotMenuOpen, showSlotMenu, onSlotMenuClose, onAddPlaceholder, onUploadToSlot, onUploadCustomToSlot, onMoveToPending, onEditPlaceholder, isTransitioning, isMobile, selectedMobileCardId, onMobileCardSelect, onMobileTapToMove, jobHighlights = {} }) {
   const totalSlots = rows * cols;
 
   // Responsive columns: Cap at 4 for better mobile experience
@@ -84,6 +84,7 @@ function AdminGrid({ pdfs, rows, cols, aspectWidth, aspectHeight, editMode, onRe
             inMoveMode={inMoveMode}
             onSelect={() => pdf && onMobileCardSelect(`pdf-${pdf.id}`)}
             onTapDestination={() => onMobileTapToMove && onMobileTapToMove(index)}
+            highlightType={pdf ? jobHighlights[pdf.id] : null}
           />
         );
       })}

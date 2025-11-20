@@ -439,11 +439,11 @@ function DeliveryScheduleModal({ onClose, isAdmin, schedule: propSchedule, onSch
 
   return (
     <div
-      className="fixed inset-0 bg-black/30 flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
       onClick={onClose}
     >
       <div
-        className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-xl max-w-7xl w-full max-h-[90vh] overflow-hidden transition-colors`}
+        className={`${darkMode ? 'bg-gray-800' : 'bg-white'} rounded-lg shadow-xl max-w-7xl w-full max-h-[calc(100vh-2rem)] overflow-hidden transition-colors`}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}

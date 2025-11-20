@@ -50,6 +50,10 @@ const wss = new WebSocket.Server({
 // Map: deviceId -> WebSocket connection
 const deviceConnections = new Map();
 
+// Track the currently editing admin's WebSocket connection
+// Only one admin can edit at a time (via edit lock)
+let editingAdminConnection = null;
+
 // Helper function to generate a unique device identifier
 function getDeviceId(req) {
   const ip = req.socket.remoteAddress;
@@ -95,6 +99,13 @@ wss.on('connection', (ws, req) => {
     if (ws.deviceId && deviceConnections.get(ws.deviceId) === ws) {
       deviceConnections.delete(ws.deviceId);
     }
+
+    // Clear editing admin connection if this was the editing admin
+    if (editingAdminConnection === ws) {
+      editingAdminConnection = null;
+      console.log('🔓 Editing admin disconnected - edit lock released');
+    }
+
     console.log('🔌 WebSocket client disconnected. Total unique devices:', deviceConnections.size);
   });
 
@@ -108,8 +119,15 @@ wss.on('connection', (ws, req) => {
       const data = JSON.parse(message);
 
       // Relay edit lock messages to all clients
-      if (data.type === 'edit_lock_acquired' || data.type === 'edit_lock_released') {
+      if (data.type === 'edit_lock_acquired') {
         console.log(`📢 Relaying ${data.type} from ${data.data?.sessionId?.substring(0, 10)}...`);
+        // Store this connection as the editing admin
+        editingAdminConnection = ws;
+        broadcastUpdate(data.type, data.data);
+      } else if (data.type === 'edit_lock_released') {
+        console.log(`📢 Relaying ${data.type} from ${data.data?.sessionId?.substring(0, 10)}...`);
+        // Clear the editing admin connection
+        editingAdminConnection = null;
         broadcastUpdate(data.type, data.data);
       }
     } catch (error) {
@@ -256,6 +274,24 @@ async function sendPushNotifications(type, data, adminOnly = false) {
       resolve();
     });
   });
+}
+
+// Helper function to send updates only to the currently editing admin
+// Used for board uploads during edit mode - updates are sent to the editing admin
+// but not broadcast to other clients until Save is clicked
+function sendToEditingAdmin(type, data = {}) {
+  if (editingAdminConnection && editingAdminConnection.readyState === WebSocket.OPEN) {
+    try {
+      const message = JSON.stringify({ type, data, timestamp: Date.now() });
+      editingAdminConnection.send(message);
+      console.log(`Sent ${type} to editing admin only (board upload in edit mode)`);
+      return true;
+    } catch (error) {
+      console.error('Error sending to editing admin:', error);
+      return false;
+    }
+  }
+  return false;
 }
 
 // Middleware
@@ -584,20 +620,22 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
 
                     // Only broadcast if we actually updated something
                     if (this.changes > 0) {
-                      // Only broadcast immediately for pending uploads (isPending === 1)
-                      // Board uploads (isPending === 0) should not broadcast until Save is clicked
-                      if (isPending === 1) {
-                        // Broadcast metadata update to all clients
-                        // OCR updates happen in background and should update UI in real-time
-                        broadcastUpdate('pdf_metadata_updated', {
-                          id: pdfId,
-                          job_number: metadata.job_number,
-                          construction_method: metadata.construction_method
-                        });
+                      const updateData = {
+                        id: pdfId,
+                        job_number: metadata.job_number,
+                        construction_method: metadata.construction_method
+                      };
 
+                      if (isPending === 1) {
+                        // Pending uploads: broadcast to all clients immediately
+                        broadcastUpdate('pdf_metadata_updated', updateData);
                         console.log(`[OCR] Metadata updated and broadcast for PDF ${pdfId}`);
                       } else {
-                        console.log(`[OCR] Metadata updated for PDF ${pdfId} (board upload - will broadcast on save)`);
+                        // Board uploads: send only to editing admin (not broadcast to all)
+                        // This allows the editing admin to see OCR results while editing
+                        // Other clients will receive the update when Save is clicked
+                        sendToEditingAdmin('pdf_metadata_updated', updateData);
+                        console.log(`[OCR] Metadata updated for PDF ${pdfId} (sent to editing admin only)`);
                       }
                     } else {
                       console.log(`[OCR] Skipped update for PDF ${pdfId} (already has manual values)`);
@@ -634,19 +672,21 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
                         return;
                       }
 
-                      // Only broadcast immediately for pending uploads (isPending === 1)
-                      // Board uploads (isPending === 0) should not broadcast until Save is clicked
-                      if (isPending === 1) {
-                        // Broadcast dark mode update to all clients
-                        // Dark mode images happen in background and should update UI in real-time
-                        broadcastUpdate('pdf_dark_mode_ready', {
-                          id: pdfId,
-                          dark_mode_images_base: darkModeBaseFilename
-                        });
+                      const updateData = {
+                        id: pdfId,
+                        dark_mode_images_base: darkModeBaseFilename
+                      };
 
+                      if (isPending === 1) {
+                        // Pending uploads: broadcast to all clients immediately
+                        broadcastUpdate('pdf_dark_mode_ready', updateData);
                         console.log(`[Dark Mode] Images ready and broadcast for PDF ${pdfId}`);
                       } else {
-                        console.log(`[Dark Mode] Images ready for PDF ${pdfId} (board upload - will broadcast on save)`);
+                        // Board uploads: send only to editing admin (not broadcast to all)
+                        // This allows the editing admin to see dark mode images while editing
+                        // Other clients will receive the update when Save is clicked
+                        sendToEditingAdmin('pdf_dark_mode_ready', updateData);
+                        console.log(`[Dark Mode] Images ready for PDF ${pdfId} (sent to editing admin only)`);
                       }
                     }
                   );

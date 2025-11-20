@@ -3,7 +3,7 @@ import { useDraggable, useDroppable } from '@dnd-kit/core';
 import DraggableCoverSheetCard from './DraggableCoverSheetCard';
 import PlaceholderCard from './PlaceholderCard';
 
-function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10, editMode, onDelete, onLabelClick, onMoveToPending, onMetadataUpdate, onSlotMenuOpen, showSlotMenu, onSlotMenuClose, onAddPlaceholder, onUploadToSlot, onUploadCustomToSlot, onEditPlaceholder, isTransitioning, animationDelay, isMobile, isSelected, isDimmed, inMoveMode, onSelect, onTapDestination }) {
+function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10, editMode, onDelete, onLabelClick, onMoveToPending, onMetadataUpdate, onSlotMenuOpen, showSlotMenu, onSlotMenuClose, onAddPlaceholder, onUploadToSlot, onUploadCustomToSlot, onEditPlaceholder, isTransitioning, animationDelay, isMobile, isSelected, isDimmed, inMoveMode, onSelect, onTapDestination, highlightType = null }) {
   // Log animation timing for first few items
   React.useEffect(() => {
     if (isTransitioning && index < 3) {
@@ -98,6 +98,7 @@ function DraggableGridItem({ id, pdf, index, aspectWidth = 11, aspectHeight = 10
               isDimmed={isDimmed}
               onSelect={onSelect}
               onTapDestination={onTapDestination}
+              highlightType={highlightType}
             />
           )}
         </div>

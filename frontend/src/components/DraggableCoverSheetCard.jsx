@@ -12,6 +12,7 @@ function DraggableCoverSheetCard({
   onMetadataUpdate,
   colorTransitionDelay,
   isHighlighted = false,
+  highlightType = null, // 'new' | 'moved' | null
   isMobile = false,
   isSelected = false,
   isDimmed = false,
@@ -309,6 +310,8 @@ function DraggableCoverSheetCard({
         } ${isDragging ? 'opacity-50' : ''} ${
           isDimmed ? 'opacity-50' : ''
         } ${isHighlighted ? 'notification-glow' : ''} ${
+          highlightType === 'new' ? 'new-job-glow' : highlightType === 'moved' ? 'moved-job-glow' : ''
+        } ${
           editMode && isSelected ? 'ring-4 ring-blue-500' : ''
         }`}
         style={getColorTransitionStyle(['background-color', 'border-color'])}

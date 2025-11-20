@@ -71,6 +71,7 @@ function HomePage() {
   const [highlightedJobId, setHighlightedJobId] = useState(null);
   const [selectedMobileCardId, setSelectedMobileCardId] = useState(null);
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
+  const [jobHighlights, setJobHighlights] = useState({}); // { jobId: 'new' | 'moved' }
   const navigate = useNavigate();
 
   // Configure drag sensors - only use touch sensor on desktop
@@ -98,6 +99,83 @@ function HomePage() {
     window.addEventListener('resize', handleResize);
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  // Job board caching and change detection functions
+  const CACHE_KEY = 'job_board_state';
+  const HIGHLIGHT_DURATION = 5000; // 5 seconds
+
+  const getCachedJobState = () => {
+    try {
+      const cached = localStorage.getItem(CACHE_KEY);
+      return cached ? JSON.parse(cached) : null;
+    } catch (error) {
+      console.error('Error reading cached job state:', error);
+      return null;
+    }
+  };
+
+  const cacheJobState = useCallback((jobs) => {
+    try {
+      // Only cache active board jobs (not pending)
+      const activeJobs = jobs.filter(job => job && !job.is_pending);
+      const jobState = activeJobs.map(job => ({
+        id: job.id,
+        position: job.position,
+        job_number: job.job_number,
+      }));
+      localStorage.setItem(CACHE_KEY, JSON.stringify(jobState));
+    } catch (error) {
+      console.error('Error caching job state:', error);
+    }
+  }, []);
+
+  const detectJobChanges = useCallback((currentJobs) => {
+    const cached = getCachedJobState();
+    if (!cached || cached.length === 0) {
+      // No cached state, cache current state but don't highlight anything
+      cacheJobState(currentJobs);
+      return;
+    }
+
+    const highlights = {};
+
+    // Only check active board jobs (not pending)
+    const activeJobs = currentJobs.filter(job => job && !job.is_pending);
+
+    // Create maps for easy lookup
+    const cachedMap = new Map(cached.map(job => [job.id, job]));
+    const currentMap = new Map(activeJobs.map(job => [job.id, job]));
+
+    // Detect new jobs (in current but not in cached)
+    activeJobs.forEach(job => {
+      if (!cachedMap.has(job.id)) {
+        highlights[job.id] = 'new';
+        console.log(`[Job Board] New job detected: ${job.job_number || job.id}`);
+      }
+    });
+
+    // Detect moved jobs (position changed)
+    activeJobs.forEach(job => {
+      const cachedJob = cachedMap.get(job.id);
+      if (cachedJob && cachedJob.position !== job.position && !highlights[job.id]) {
+        highlights[job.id] = 'moved';
+        console.log(`[Job Board] Moved job detected: ${job.job_number || job.id} (${cachedJob.position} → ${job.position})`);
+      }
+    });
+
+    if (Object.keys(highlights).length > 0) {
+      console.log('[Job Board] Highlighting changes:', highlights);
+      setJobHighlights(highlights);
+
+      // Clear highlights after duration
+      setTimeout(() => {
+        setJobHighlights({});
+      }, HIGHLIGHT_DURATION);
+    }
+
+    // Update cache with current state
+    cacheJobState(currentJobs);
+  }, [cacheJobState]);
 
   // Request notification permission on mount for all users
   useEffect(() => {
@@ -154,6 +232,14 @@ function HomePage() {
   useEffect(() => {
     loadData();
   }, [loadData]);
+
+  // Detect job changes when pdfs state updates (including on initial load)
+  useEffect(() => {
+    if (pdfs.length > 0 && !editMode) {
+      // Only detect changes when not in edit mode
+      detectJobChanges(pdfs);
+    }
+  }, [pdfs, editMode, detectJobChanges]);
 
   // Check URL parameter for highlightJob on mount
   useEffect(() => {
@@ -257,6 +343,7 @@ function HomePage() {
       }
     } else if (message.type === 'pdfs_reordered') {
       showJobsMovedNotification();
+      // Trigger job board highlighting on reorder (handled by loadData and useEffect)
     } else if (message.type === 'custom_alert') {
       showCustomAlertNotification(message.data?.message || 'Admin Alert');
     }
@@ -1217,6 +1304,7 @@ function HomePage() {
           selectedMobileCardId={selectedMobileCardId}
           onMobileCardSelect={setSelectedMobileCardId}
           onMobileTapToMove={handleMobileTapToMove}
+          jobHighlights={jobHighlights}
         />
       );
     }
@@ -1231,6 +1319,7 @@ function HomePage() {
         onPdfClick={handlePdfClick}
         isTransitioning={shouldAnimate}
         highlightedJobId={highlightedJobId}
+        jobHighlights={jobHighlights}
       />
     );
   };

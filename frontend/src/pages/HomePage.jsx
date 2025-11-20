@@ -274,6 +274,27 @@ function HomePage() {
       return;
     }
 
+    // Handle dark mode updates even during edit mode
+    if (editMode && message.type === 'pdf_dark_mode_ready') {
+      console.log('Updating dark mode images during edit mode:', message.data);
+      const { id, dark_mode_images_base } = message.data;
+
+      // Update function to apply dark mode images to a PDF
+      const updatePdfDarkMode = (pdf) => {
+        if (pdf.id === id) {
+          return { ...pdf, dark_mode_images_base };
+        }
+        return pdf;
+      };
+
+      // Update both working copies and main state
+      setWorkingPdfs(prev => prev.map(updatePdfDarkMode));
+      setWorkingPendingPdfs(prev => prev.map(updatePdfDarkMode));
+      setPdfs(prev => prev.map(updatePdfDarkMode));
+      setPendingPdfs(prev => prev.map(updatePdfDarkMode));
+      return;
+    }
+
     // During edit mode, mark that external changes occurred but still apply them
     const relevantTypes = [
       'pdf_uploaded',

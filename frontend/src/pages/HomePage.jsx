@@ -507,13 +507,10 @@ function HomePage() {
             if (!workingPdf) return;
 
             const originalPdf = [...pdfs, ...pendingPdfs].find(p => p && p.id === workingPdf.id);
-            if (originalPdf) {
-              const metadataChanged =
-                originalPdf.job_number !== workingPdf.job_number ||
-                originalPdf.construction_method !== workingPdf.construction_method ||
-                originalPdf.placeholder_text !== workingPdf.placeholder_text;
 
-              if (metadataChanged) {
+            // If no original PDF found, this is a newly uploaded job - save metadata if any exists
+            if (!originalPdf) {
+              if (workingPdf.job_number || workingPdf.construction_method || workingPdf.placeholder_text) {
                 metadataUpdates.push(
                   pdfAPI.updateMetadata(workingPdf.id, {
                     job_number: workingPdf.job_number,
@@ -522,6 +519,23 @@ function HomePage() {
                   })
                 );
               }
+              return;
+            }
+
+            // Compare existing PDF for changes
+            const metadataChanged =
+              originalPdf.job_number !== workingPdf.job_number ||
+              originalPdf.construction_method !== workingPdf.construction_method ||
+              originalPdf.placeholder_text !== workingPdf.placeholder_text;
+
+            if (metadataChanged) {
+              metadataUpdates.push(
+                pdfAPI.updateMetadata(workingPdf.id, {
+                  job_number: workingPdf.job_number,
+                  construction_method: workingPdf.construction_method,
+                  placeholder_text: workingPdf.placeholder_text
+                })
+              );
             }
           });
 

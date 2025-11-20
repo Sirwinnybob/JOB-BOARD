@@ -209,7 +209,7 @@ function DraggableCoverSheetCard({
         </div>
         <div className="min-w-0">
           <div className="flex items-center gap-1">
-            {pdf.construction_method !== 'REMAKE' && (
+            {pdf.construction_method !== 'REMAKE' && ['Frameless', 'Face Frame', 'Both', ''].includes(pdf.construction_method) && (
               <span
                 className={`font-semibold hidden md:inline ${pdf.construction_method ? 'text-white' : 'text-gray-600 dark:text-gray-400'}`}
                 style={getColorTransitionStyle(['color'])}

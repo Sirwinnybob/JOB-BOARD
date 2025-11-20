@@ -439,7 +439,7 @@ function DeliveryScheduleModal({ onClose, isAdmin, schedule: propSchedule, onSch
 
   return (
     <div
-      className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+      className="fixed inset-0 bg-black bg-opacity-30 flex items-center justify-center z-50 p-4"
       onClick={onClose}
     >
       <div
@@ -447,7 +447,7 @@ function DeliveryScheduleModal({ onClose, isAdmin, schedule: propSchedule, onSch
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className={`${darkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-100 border-gray-200'} px-6 py-4 border-b flex justify-between items-center transition-colors`}>
+        <div className={`${darkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-100 border-gray-200'} px-6 pt-6 pb-4 border-b flex justify-between items-center transition-colors`}>
           <div className="flex items-center gap-4">
             <h2 className={`text-2xl font-bold ${darkMode ? 'text-white' : 'text-gray-900'} transition-colors`}>
               This Week's Delivery Schedule

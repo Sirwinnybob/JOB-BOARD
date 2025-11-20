@@ -2,9 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useDarkMode } from '../contexts/DarkModeContext';
 import ConfirmModal from './ConfirmModal';
 
-function DeliveryScheduleModal({ onClose, isAdmin }) {
+function DeliveryScheduleModal({ onClose, isAdmin, schedule: propSchedule, onScheduleUpdate }) {
   const { darkMode } = useDarkMode();
-  const [schedule, setSchedule] = useState({});
+  const [schedule, setSchedule] = useState(propSchedule || {});
   const [loading, setLoading] = useState(true);
   const [editingSlot, setEditingSlot] = useState(null);
   const [editForm, setEditForm] = useState({ jobs: [] });
@@ -22,12 +22,23 @@ function DeliveryScheduleModal({ onClose, isAdmin }) {
     fetchSchedule();
   }, []);
 
+  // Sync with prop schedule updates from HomePage WebSocket
+  useEffect(() => {
+    if (propSchedule && Object.keys(propSchedule).length > 0) {
+      setSchedule(propSchedule);
+    }
+  }, [propSchedule]);
+
   const fetchSchedule = async () => {
     try {
       const response = await fetch('/api/delivery-schedule');
       if (response.ok) {
         const data = await response.json();
-        setSchedule(data.schedule || {});
+        const scheduleData = data.schedule || {};
+        setSchedule(scheduleData);
+        if (onScheduleUpdate) {
+          onScheduleUpdate(scheduleData);
+        }
       }
     } catch (error) {
       console.error('Failed to fetch delivery schedule:', error);
@@ -66,6 +77,9 @@ function DeliveryScheduleModal({ onClose, isAdmin }) {
       if (response.ok) {
         const updated = await response.json();
         setSchedule(updated.schedule);
+        if (onScheduleUpdate) {
+          onScheduleUpdate(updated.schedule);
+        }
         setEditingSlot(null);
         setEditForm({ jobs: [] });
       } else {
@@ -128,7 +142,11 @@ function DeliveryScheduleModal({ onClose, isAdmin }) {
 
           if (response.ok) {
             const updated = await response.json();
-            setSchedule(updated.schedule || {});
+            const scheduleData = updated.schedule || {};
+            setSchedule(scheduleData);
+            if (onScheduleUpdate) {
+              onScheduleUpdate(scheduleData);
+            }
           } else {
             console.error('Failed to reset delivery schedule:', response.status, response.statusText);
           }
@@ -172,6 +190,9 @@ function DeliveryScheduleModal({ onClose, isAdmin }) {
           if (response.ok) {
             const updated = await response.json();
             setSchedule(updated.schedule);
+            if (onScheduleUpdate) {
+              onScheduleUpdate(updated.schedule);
+            }
           } else {
             console.error('Failed to delete job:', response.status, response.statusText);
           }
@@ -265,6 +286,9 @@ function DeliveryScheduleModal({ onClose, isAdmin }) {
         if (response.ok) {
           const updated = await response.json();
           setSchedule(updated.schedule);
+          if (onScheduleUpdate) {
+            onScheduleUpdate(updated.schedule);
+          }
         }
       } else {
         // Moving between different slots - need to update both
@@ -295,6 +319,9 @@ function DeliveryScheduleModal({ onClose, isAdmin }) {
           if (targetResponse.ok) {
             const updated = await targetResponse.json();
             setSchedule(updated.schedule);
+            if (onScheduleUpdate) {
+              onScheduleUpdate(updated.schedule);
+            }
           }
         }
       }
@@ -324,25 +351,12 @@ function DeliveryScheduleModal({ onClose, isAdmin }) {
 
     const { slotKey: sourceSlotKey, jobIndex: sourceIndex } = selectedForMove;
 
-    // Don't do anything if moving to the same slot
-    if (sourceSlotKey === targetSlotKey) {
-      setSelectedForMove(null);
-      return;
-    }
-
     try {
       const sourceSlotData = schedule[sourceSlotKey] || { jobs: [] };
       const targetSlotData = schedule[targetSlotKey] || { jobs: [] };
 
       // Get the job being moved
       const movedJob = sourceSlotData.jobs[sourceIndex];
-
-      // Check if target slot would exceed max capacity
-      if (targetSlotData.jobs.length >= 3) {
-        alert('Cannot add more than 3 jobs to a time slot');
-        setSelectedForMove(null);
-        return;
-      }
 
       const token = localStorage.getItem('token');
       const headers = {
@@ -353,34 +367,67 @@ function DeliveryScheduleModal({ onClose, isAdmin }) {
         headers.Authorization = `Bearer ${token}`;
       }
 
-      // Moving between different slots - need to update both
-      const updatedSourceJobs = sourceSlotData.jobs.filter((_, i) => i !== sourceIndex);
-      const updatedTargetJobs = [...targetSlotData.jobs, movedJob];
+      if (sourceSlotKey === targetSlotKey) {
+        // Reordering within the same slot - move to the end
+        const updatedJobs = sourceSlotData.jobs.filter((_, i) => i !== sourceIndex);
+        updatedJobs.push(movedJob);
 
-      // Update source slot first
-      const sourceResponse = await fetch('/api/delivery-schedule', {
-        method: 'PUT',
-        headers,
-        body: JSON.stringify({
-          slot: sourceSlotKey,
-          data: { jobs: updatedSourceJobs }
-        })
-      });
-
-      if (sourceResponse.ok) {
-        // Then update target slot
-        const targetResponse = await fetch('/api/delivery-schedule', {
+        const response = await fetch('/api/delivery-schedule', {
           method: 'PUT',
           headers,
           body: JSON.stringify({
-            slot: targetSlotKey,
-            data: { jobs: updatedTargetJobs }
+            slot: sourceSlotKey,
+            data: { jobs: updatedJobs }
           })
         });
 
-        if (targetResponse.ok) {
-          const updated = await targetResponse.json();
+        if (response.ok) {
+          const updated = await response.json();
           setSchedule(updated.schedule);
+          if (onScheduleUpdate) {
+            onScheduleUpdate(updated.schedule);
+          }
+        }
+      } else {
+        // Check if target slot would exceed max capacity (only for different slots)
+        if (targetSlotData.jobs.length >= 3) {
+          alert('Cannot add more than 3 jobs to a time slot');
+          setSelectedForMove(null);
+          return;
+        }
+
+        // Moving between different slots - need to update both
+        const updatedSourceJobs = sourceSlotData.jobs.filter((_, i) => i !== sourceIndex);
+        const updatedTargetJobs = [...targetSlotData.jobs, movedJob];
+
+        // Update source slot first
+        const sourceResponse = await fetch('/api/delivery-schedule', {
+          method: 'PUT',
+          headers,
+          body: JSON.stringify({
+            slot: sourceSlotKey,
+            data: { jobs: updatedSourceJobs }
+          })
+        });
+
+        if (sourceResponse.ok) {
+          // Then update target slot
+          const targetResponse = await fetch('/api/delivery-schedule', {
+            method: 'PUT',
+            headers,
+            body: JSON.stringify({
+              slot: targetSlotKey,
+              data: { jobs: updatedTargetJobs }
+            })
+          });
+
+          if (targetResponse.ok) {
+            const updated = await targetResponse.json();
+            setSchedule(updated.schedule);
+            if (onScheduleUpdate) {
+              onScheduleUpdate(updated.schedule);
+            }
+          }
         }
       }
     } catch (error) {
@@ -464,7 +511,10 @@ function DeliveryScheduleModal({ onClose, isAdmin }) {
                     const isEditing = editingSlot === slotKey;
 
                     const isSelectedSource = selectedForMove?.slotKey === slotKey;
-                    const canMoveHere = selectedForMove && !isSelectedSource && slotData.jobs.length < 3;
+                    const canMoveHere = selectedForMove && (
+                      (isSelectedSource && slotData.jobs.length > 1) ||
+                      (!isSelectedSource && slotData.jobs.length < 3)
+                    );
 
                     return (
                       <div
@@ -484,7 +534,7 @@ function DeliveryScheduleModal({ onClose, isAdmin }) {
                             {periodLabels[periods.indexOf(period)]}
                             {canMoveHere && (
                               <span className={`text-xs ${darkMode ? 'text-green-400' : 'text-green-600'}`}>
-                                (Tap to place here)
+                                {isSelectedSource ? '(Tap to reorder)' : '(Tap to place here)'}
                               </span>
                             )}
                           </span>
@@ -575,14 +625,6 @@ function DeliveryScheduleModal({ onClose, isAdmin }) {
                                   >
                                     <div className="flex items-start justify-between gap-1">
                                       <div className="flex-1 min-w-0">
-                                        {isAdmin && (
-                                          <div className={`text-xs mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-500'} flex items-center gap-1`}>
-                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
-                                            </svg>
-                                            <span>{isSelectedForMove ? 'Selected - Tap a slot to place' : 'Drag or tap move icon'}</span>
-                                          </div>
-                                        )}
                                         <div className={`font-semibold text-sm ${darkMode ? 'text-white' : 'text-gray-900'} truncate transition-colors`}>
                                           {job.jobNumber}
                                         </div>

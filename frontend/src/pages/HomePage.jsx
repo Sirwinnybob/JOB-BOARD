@@ -43,6 +43,7 @@ function HomePage() {
   const [showLabelManagement, setShowLabelManagement] = useState(false);
   const [showAlertModal, setShowAlertModal] = useState(false);
   const [showDeliverySchedule, setShowDeliverySchedule] = useState(false);
+  const [deliverySchedule, setDeliverySchedule] = useState({});
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, title: '', message: '', onConfirm: null });
   const [selectedPdfForLabels, setSelectedPdfForLabels] = useState(null);
   const [showPlaceholderEdit, setShowPlaceholderEdit] = useState(false);
@@ -213,6 +214,13 @@ function HomePage() {
   // WebSocket connection for live updates
   const handleWebSocketMessage = useCallback((message) => {
     console.log('Received update:', message.type);
+
+    // Handle delivery schedule updates
+    if (message.type === 'delivery_schedule_updated' && message.data?.schedule) {
+      console.log('📅 Received delivery schedule update via WebSocket');
+      setDeliverySchedule(message.data.schedule);
+      return;
+    }
 
     // Handle edit lock messages
     if (message.type === 'edit_lock_acquired') {
@@ -1599,6 +1607,8 @@ function HomePage() {
         <DeliveryScheduleModal
           onClose={() => setShowDeliverySchedule(false)}
           isAdmin={isAuthenticated}
+          schedule={deliverySchedule}
+          onScheduleUpdate={setDeliverySchedule}
         />
       )}
 

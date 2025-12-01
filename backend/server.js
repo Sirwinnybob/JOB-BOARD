@@ -14,7 +14,7 @@ const { exec } = require('child_process');
 const { promisify } = require('util');
 const webpush = require('web-push');
 const db = require('./db');
-const authMiddleware = require('./middleware/auth');
+const { createAuthMiddleware } = require('./middleware/auth');
 const { generateThumbnail, generatePdfImages, generateImageFile, generateDarkModeImages } = require('./utils/thumbnail');
 const { extractMetadata } = require('./utils/textExtraction');
 
@@ -50,15 +50,15 @@ const wss = new WebSocket.Server({
 // Map: deviceId -> WebSocket connection
 const deviceConnections = new Map();
 
-// Track admin sessions - Map: username -> Set of WebSocket connections
-// Used to notify all devices when an admin is logged out
-const adminSessions = new Map();
+// Track admin device sessions - Map: deviceId -> { username, createdAt, lastActivity, websocket }
+// Each login creates a unique device session (device-specific, not username-specific)
+const deviceSessions = new Map();
 
 // Track the currently editing admin's WebSocket connection
 // Only one admin can edit at a time (via edit lock)
 let editingAdminConnection = null;
 
-// Helper function to generate a unique device identifier
+// Helper function to generate a unique device identifier for WebSocket
 function getDeviceId(req) {
   const ip = req.socket.remoteAddress;
   const userAgent = req.headers['user-agent'] || 'unknown';
@@ -66,6 +66,14 @@ function getDeviceId(req) {
   const deviceString = `${ip}|${userAgent}`;
   return deviceString;
 }
+
+// Generate a unique device session ID for login
+function generateDeviceSessionId() {
+  return `device_${Date.now()}_${Math.random().toString(36).substr(2, 16)}`;
+}
+
+// Create auth middleware with access to device sessions
+const authMiddleware = createAuthMiddleware(deviceSessions);
 
 // WebSocket connection handler
 wss.on('connection', (ws, req) => {
@@ -104,17 +112,12 @@ wss.on('connection', (ws, req) => {
       deviceConnections.delete(ws.deviceId);
     }
 
-    // Remove from admin sessions if this was an admin
-    if (ws.username) {
-      const userConnections = adminSessions.get(ws.username);
-      if (userConnections) {
-        userConnections.delete(ws);
-        if (userConnections.size === 0) {
-          adminSessions.delete(ws.username);
-          console.log(`👤 All sessions closed for admin: ${ws.username}`);
-        } else {
-          console.log(`👤 Admin session closed for ${ws.username} (${userConnections.size} remaining)`);
-        }
+    // Remove websocket from device session if this was an admin
+    if (ws.deviceSessionId && deviceSessions.has(ws.deviceSessionId)) {
+      const session = deviceSessions.get(ws.deviceSessionId);
+      if (session.websocket === ws) {
+        session.websocket = null;
+        console.log(`👤 WebSocket disconnected for device session: ${ws.deviceSessionId.substring(0, 20)}...`);
       }
     }
 
@@ -136,16 +139,17 @@ wss.on('connection', (ws, req) => {
     try {
       const data = JSON.parse(message);
 
-      // Register admin connection for logout notifications
-      if (data.type === 'admin_register') {
-        const username = data.data?.username;
-        if (username) {
-          if (!adminSessions.has(username)) {
-            adminSessions.set(username, new Set());
-          }
-          adminSessions.get(username).add(ws);
-          ws.username = username; // Store username on the WebSocket object
-          console.log(`👤 Admin registered: ${username} (total sessions: ${adminSessions.get(username).size})`);
+      // Register device session with websocket for logout notifications
+      if (data.type === 'device_register') {
+        const deviceSessionId = data.data?.deviceSessionId;
+        if (deviceSessionId && deviceSessions.has(deviceSessionId)) {
+          const session = deviceSessions.get(deviceSessionId);
+          session.websocket = ws;
+          session.lastActivity = Date.now();
+          ws.deviceSessionId = deviceSessionId; // Store on WebSocket object
+          console.log(`👤 Device session registered: ${deviceSessionId.substring(0, 20)}... (user: ${session.username})`);
+        } else {
+          console.warn(`⚠️  Device session not found: ${deviceSessionId?.substring(0, 20)}...`);
         }
       }
       // Relay edit lock messages to all clients
@@ -422,13 +426,28 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
+    // Generate unique device session ID for this login
+    const deviceSessionId = generateDeviceSessionId();
+
+    // Create JWT with deviceSessionId
     const token = jwt.sign(
-      { username },
+      { username, deviceSessionId },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
 
-    res.json({ token, username });
+    // Store device session
+    deviceSessions.set(deviceSessionId, {
+      username,
+      createdAt: Date.now(),
+      lastActivity: Date.now(),
+      websocket: null
+    });
+
+    console.log(`✅ Login successful - Device session created: ${deviceSessionId.substring(0, 20)}...`);
+    console.log(`   Total active sessions: ${deviceSessions.size}`);
+
+    res.json({ token, username, deviceSessionId });
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -441,36 +460,42 @@ app.get('/api/auth/verify', authMiddleware, (req, res) => {
   res.json({ valid: true, username: req.user.username });
 });
 
-// Logout endpoint - notifies all devices of this user
+// Logout endpoint - logs out only this specific device
 app.post('/api/auth/logout', authMiddleware, (req, res) => {
   try {
+    const deviceSessionId = req.user.deviceSessionId;
     const username = req.user.username;
-    console.log(`🚪 Admin logout requested for: ${username}`);
 
-    // Get all websocket connections for this user
-    const userConnections = adminSessions.get(username);
+    if (!deviceSessionId) {
+      // Old token without deviceSessionId - just return success
+      console.log(`🚪 Logout for old token (no device session): ${username}`);
+      return res.json({ success: true, message: 'Logged out successfully' });
+    }
 
-    if (userConnections && userConnections.size > 0) {
-      console.log(`📢 Notifying ${userConnections.size} device(s) of logout`);
+    console.log(`🚪 Device logout requested: ${deviceSessionId.substring(0, 20)}... (user: ${username})`);
 
-      // Broadcast logout message to all devices of this user
-      const logoutMessage = JSON.stringify({
-        type: 'admin_logged_out',
-        data: {
-          username,
-          message: 'You have been logged out',
-          timestamp: new Date().toISOString()
-        }
-      });
+    // Get the device session
+    const session = deviceSessions.get(deviceSessionId);
 
-      userConnections.forEach(ws => {
-        if (ws.readyState === WebSocket.OPEN) {
-          ws.send(logoutMessage);
-        }
-      });
+    if (session) {
+      // Send logout message to this specific device's websocket
+      if (session.websocket && session.websocket.readyState === WebSocket.OPEN) {
+        console.log(`📢 Notifying device of logout via websocket`);
+        session.websocket.send(JSON.stringify({
+          type: 'device_logged_out',
+          data: {
+            deviceSessionId,
+            message: 'You have been logged out',
+            timestamp: new Date().toISOString()
+          }
+        }));
+      }
 
-      // Clear the admin session
-      adminSessions.delete(username);
+      // Remove the device session
+      deviceSessions.delete(deviceSessionId);
+      console.log(`✅ Device session removed. Remaining sessions: ${deviceSessions.size}`);
+    } else {
+      console.log(`⚠️  Device session not found (may already be logged out)`);
     }
 
     res.json({ success: true, message: 'Logged out successfully' });

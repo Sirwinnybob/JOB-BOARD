@@ -29,6 +29,7 @@ api.interceptors.response.use(
         // Clear auth data locally
         localStorage.removeItem('token');
         localStorage.removeItem('username');
+        localStorage.removeItem('deviceSessionId');
 
         // Notify the app that user has been logged out
         if (onUnauthorizedCallback) {
@@ -54,11 +55,13 @@ export const authAPI = {
     // Always clear local storage
     localStorage.removeItem('token');
     localStorage.removeItem('username');
+    localStorage.removeItem('deviceSessionId');
   },
   // Clear only local storage without notifying server
   clearLocalAuth: () => {
     localStorage.removeItem('token');
     localStorage.removeItem('username');
+    localStorage.removeItem('deviceSessionId');
   },
   isAuthenticated: () => !!localStorage.getItem('token'),
   // Verify token is still valid on server

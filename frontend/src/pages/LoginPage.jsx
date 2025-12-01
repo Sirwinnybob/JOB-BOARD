@@ -20,6 +20,7 @@ function LoginPage({ onLogin }) {
       const response = await authAPI.login(username, password);
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('username', response.data.username);
+      localStorage.setItem('deviceSessionId', response.data.deviceSessionId);
       onLogin();
       navigate('/admin');
     } catch (err) {

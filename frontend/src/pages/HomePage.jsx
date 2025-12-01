@@ -310,9 +310,9 @@ function HomePage() {
   const handleWebSocketMessage = useCallback((message) => {
     console.log('Received update:', message.type);
 
-    // Handle admin logout message
-    if (message.type === 'admin_logged_out') {
-      console.log('🚪 Received admin logout notification');
+    // Handle device-specific logout message
+    if (message.type === 'device_logged_out') {
+      console.log('🚪 Received device logout notification');
       // Clear auth state locally (don't call server again)
       authAPI.clearLocalAuth();
       setIsAuthenticated(false);
@@ -467,15 +467,15 @@ function HomePage() {
 
   const { send: sendWebSocketMessage } = useWebSocket(handleWebSocketMessage, true);
 
-  // Register admin with websocket when authenticated
+  // Register device session with websocket when authenticated
   useEffect(() => {
     if (isAuthenticated && sendWebSocketMessage) {
-      const username = localStorage.getItem('username');
-      if (username) {
-        console.log('👤 Registering admin with websocket:', username);
+      const deviceSessionId = localStorage.getItem('deviceSessionId');
+      if (deviceSessionId) {
+        console.log('👤 Registering device session with websocket:', deviceSessionId.substring(0, 20) + '...');
         sendWebSocketMessage({
-          type: 'admin_register',
-          data: { username }
+          type: 'device_register',
+          data: { deviceSessionId }
         });
       }
     }

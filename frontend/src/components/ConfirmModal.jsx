@@ -5,7 +5,7 @@ import { useDarkMode } from '../contexts/DarkModeContext';
  * ConfirmModal - Reusable confirmation dialog
  * Replaces browser's native confirm() with a styled modal
  */
-function ConfirmModal({ isOpen, title, message, onConfirm, onCancel, confirmText = 'Confirm', cancelText = 'Cancel', confirmStyle = 'danger' }) {
+function ConfirmModal({ isOpen, title, message, onConfirm, onCancel, confirmText = 'Confirm', cancelText = 'Cancel', confirmStyle = 'danger', showCancel = true }) {
   const { darkMode } = useDarkMode();
 
   if (!isOpen) return null;
@@ -34,17 +34,19 @@ function ConfirmModal({ isOpen, title, message, onConfirm, onCancel, confirmText
         </div>
 
         {/* Actions */}
-        <div className={`${darkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'} px-6 py-4 border-t flex gap-3 justify-end transition-colors`}>
-          <button
-            onClick={onCancel}
-            className={`px-4 py-2 rounded font-medium ${
-              darkMode
-                ? 'bg-gray-600 text-white hover:bg-gray-500'
-                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-            } transition-colors`}
-          >
-            {cancelText}
-          </button>
+        <div className={`${darkMode ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'} px-6 py-4 border-t flex gap-3 ${showCancel ? 'justify-end' : 'justify-center'} transition-colors`}>
+          {showCancel && (
+            <button
+              onClick={onCancel}
+              className={`px-4 py-2 rounded font-medium ${
+                darkMode
+                  ? 'bg-gray-600 text-white hover:bg-gray-500'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              } transition-colors`}
+            >
+              {cancelText}
+            </button>
+          )}
           <button
             onClick={onConfirm}
             className={`px-4 py-2 rounded font-medium text-white ${confirmButtonClass} transition-colors`}

@@ -50,6 +50,10 @@ const wss = new WebSocket.Server({
 // Map: deviceId -> WebSocket connection
 const deviceConnections = new Map();
 
+// Track admin sessions - Map: username -> Set of WebSocket connections
+// Used to notify all devices when an admin is logged out
+const adminSessions = new Map();
+
 // Track the currently editing admin's WebSocket connection
 // Only one admin can edit at a time (via edit lock)
 let editingAdminConnection = null;
@@ -100,6 +104,20 @@ wss.on('connection', (ws, req) => {
       deviceConnections.delete(ws.deviceId);
     }
 
+    // Remove from admin sessions if this was an admin
+    if (ws.username) {
+      const userConnections = adminSessions.get(ws.username);
+      if (userConnections) {
+        userConnections.delete(ws);
+        if (userConnections.size === 0) {
+          adminSessions.delete(ws.username);
+          console.log(`👤 All sessions closed for admin: ${ws.username}`);
+        } else {
+          console.log(`👤 Admin session closed for ${ws.username} (${userConnections.size} remaining)`);
+        }
+      }
+    }
+
     // Clear editing admin connection if this was the editing admin
     if (editingAdminConnection === ws) {
       editingAdminConnection = null;
@@ -118,8 +136,20 @@ wss.on('connection', (ws, req) => {
     try {
       const data = JSON.parse(message);
 
+      // Register admin connection for logout notifications
+      if (data.type === 'admin_register') {
+        const username = data.data?.username;
+        if (username) {
+          if (!adminSessions.has(username)) {
+            adminSessions.set(username, new Set());
+          }
+          adminSessions.get(username).add(ws);
+          ws.username = username; // Store username on the WebSocket object
+          console.log(`👤 Admin registered: ${username} (total sessions: ${adminSessions.get(username).size})`);
+        }
+      }
       // Relay edit lock messages to all clients
-      if (data.type === 'edit_lock_acquired') {
+      else if (data.type === 'edit_lock_acquired') {
         console.log(`📢 Relaying ${data.type} from ${data.data?.sessionId?.substring(0, 10)}...`);
         // Store this connection as the editing admin
         editingAdminConnection = ws;
@@ -401,6 +431,51 @@ app.post('/api/auth/login', async (req, res) => {
     res.json({ token, username });
   } catch (error) {
     console.error('Login error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Verify token is still valid
+app.get('/api/auth/verify', authMiddleware, (req, res) => {
+  // If we got here, the token is valid (authMiddleware passed)
+  res.json({ valid: true, username: req.user.username });
+});
+
+// Logout endpoint - notifies all devices of this user
+app.post('/api/auth/logout', authMiddleware, (req, res) => {
+  try {
+    const username = req.user.username;
+    console.log(`🚪 Admin logout requested for: ${username}`);
+
+    // Get all websocket connections for this user
+    const userConnections = adminSessions.get(username);
+
+    if (userConnections && userConnections.size > 0) {
+      console.log(`📢 Notifying ${userConnections.size} device(s) of logout`);
+
+      // Broadcast logout message to all devices of this user
+      const logoutMessage = JSON.stringify({
+        type: 'admin_logged_out',
+        data: {
+          username,
+          message: 'You have been logged out',
+          timestamp: new Date().toISOString()
+        }
+      });
+
+      userConnections.forEach(ws => {
+        if (ws.readyState === WebSocket.OPEN) {
+          ws.send(logoutMessage);
+        }
+      });
+
+      // Clear the admin session
+      adminSessions.delete(username);
+    }
+
+    res.json({ success: true, message: 'Logged out successfully' });
+  } catch (error) {
+    console.error('Logout error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

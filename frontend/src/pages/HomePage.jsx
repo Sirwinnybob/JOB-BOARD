@@ -310,6 +310,30 @@ function HomePage() {
   const handleWebSocketMessage = useCallback((message) => {
     console.log('Received update:', message.type);
 
+    // Handle admin logout message
+    if (message.type === 'admin_logged_out') {
+      console.log('🚪 Received admin logout notification');
+      // Clear auth state locally (don't call server again)
+      authAPI.clearLocalAuth();
+      setIsAuthenticated(false);
+      setEditMode(false);
+      setHasUnsavedChanges(false);
+      // Show logout warning
+      setConfirmDialog({
+        isOpen: true,
+        title: 'Logged Out',
+        message: message.data?.message || 'You have been logged out. Please log in again to continue.',
+        onConfirm: () => {
+          setConfirmDialog({ isOpen: false, title: '', message: '', onConfirm: null });
+          navigate('/login');
+        },
+        confirmText: 'Go to Login',
+        showCancel: false,
+        confirmStyle: 'primary',
+      });
+      return;
+    }
+
     // Handle delivery schedule updates
     if (message.type === 'delivery_schedule_updated' && message.data?.schedule) {
       console.log('📅 Received delivery schedule update via WebSocket');
@@ -443,6 +467,43 @@ function HomePage() {
 
   const { send: sendWebSocketMessage } = useWebSocket(handleWebSocketMessage, true);
 
+  // Register admin with websocket when authenticated
+  useEffect(() => {
+    if (isAuthenticated && sendWebSocketMessage) {
+      const username = localStorage.getItem('username');
+      if (username) {
+        console.log('👤 Registering admin with websocket:', username);
+        sendWebSocketMessage({
+          type: 'admin_register',
+          data: { username }
+        });
+      }
+    }
+  }, [isAuthenticated, sendWebSocketMessage]);
+
+  // Setup 401 unauthorized callback
+  useEffect(() => {
+    authAPI.onUnauthorized((message) => {
+      console.log('🚪 Unauthorized - clearing auth state');
+      setIsAuthenticated(false);
+      setEditMode(false);
+      setHasUnsavedChanges(false);
+      // Show warning
+      setConfirmDialog({
+        isOpen: true,
+        title: 'Session Expired',
+        message,
+        onConfirm: () => {
+          setConfirmDialog({ isOpen: false, title: '', message: '', onConfirm: null });
+          navigate('/login');
+        },
+        confirmText: 'Go to Login',
+        showCancel: false,
+        confirmStyle: 'primary',
+      });
+    });
+  }, [navigate]);
+
   // Pull-to-refresh functionality
   useEffect(() => {
     let touchStartY = 0;
@@ -516,8 +577,15 @@ function HomePage() {
     };
   }, [viewMode, editMode, pullToRefresh, loadData]);
 
-  const handleLogout = () => {
-    authAPI.logout();
+  const handleLogout = async () => {
+    try {
+      // Call server logout endpoint to notify all devices
+      await authAPI.logout();
+    } catch (error) {
+      console.error('Error during logout:', error);
+      // Continue with local logout even if server call fails
+      authAPI.logout();
+    }
     setIsAuthenticated(false);
     setEditMode(false);
     setHasUnsavedChanges(false);
@@ -690,6 +758,17 @@ function HomePage() {
       setEditMode(false);
       setHasUnsavedChanges(false);
     } else {
+      // Verify token is still valid before entering edit mode
+      try {
+        console.log('🔐 Verifying authentication before entering edit mode...');
+        await authAPI.verifyToken();
+        console.log('✅ Token verified successfully');
+      } catch (error) {
+        console.error('❌ Token verification failed:', error);
+        // The 401 interceptor will handle logout and show the warning
+        return;
+      }
+
       // Check if edit mode is locked by another admin
       if (editLock && editLock.lockedBy !== sessionId) {
         // Check if lock is stale (more than 6 minutes old)

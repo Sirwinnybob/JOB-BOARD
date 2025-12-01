@@ -72,6 +72,39 @@ function generateDeviceSessionId() {
   return `device_${Date.now()}_${Math.random().toString(36).substr(2, 16)}`;
 }
 
+// Calculate seconds until next Friday at 6 PM
+function getSecondsUntilFridayEvening() {
+  const now = new Date();
+  const targetTime = new Date(now);
+
+  // Get current day (0 = Sunday, 5 = Friday)
+  const currentDay = now.getDay();
+  const currentHour = now.getHours();
+
+  // Friday evening is 6 PM (18:00)
+  const FRIDAY = 5;
+  const EVENING_HOUR = 18;
+
+  if (currentDay === FRIDAY && currentHour < EVENING_HOUR) {
+    // Today is Friday and it's before 6 PM - expire tonight at 6 PM
+    targetTime.setHours(EVENING_HOUR, 0, 0, 0);
+  } else {
+    // Find next Friday
+    let daysUntilFriday = FRIDAY - currentDay;
+    if (daysUntilFriday <= 0) {
+      daysUntilFriday += 7; // Next week's Friday
+    }
+
+    targetTime.setDate(now.getDate() + daysUntilFriday);
+    targetTime.setHours(EVENING_HOUR, 0, 0, 0);
+  }
+
+  const secondsUntilExpiry = Math.floor((targetTime - now) / 1000);
+  console.log(`🕐 Token will expire on: ${targetTime.toLocaleString()} (in ${Math.floor(secondsUntilExpiry / 3600)} hours)`);
+
+  return secondsUntilExpiry;
+}
+
 // Create auth middleware with access to device sessions
 const authMiddleware = createAuthMiddleware(deviceSessions);
 
@@ -429,11 +462,14 @@ app.post('/api/auth/login', async (req, res) => {
     // Generate unique device session ID for this login
     const deviceSessionId = generateDeviceSessionId();
 
+    // Calculate expiration time (next Friday evening at 6 PM)
+    const expiresInSeconds = getSecondsUntilFridayEvening();
+
     // Create JWT with deviceSessionId
     const token = jwt.sign(
       { username, deviceSessionId },
       process.env.JWT_SECRET,
-      { expiresIn: '24h' }
+      { expiresIn: expiresInSeconds }
     );
 
     // Store device session

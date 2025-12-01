@@ -7,6 +7,9 @@ const api = axios.create({
   baseURL: API_BASE,
 });
 
+// Callback for handling forced logout
+let onUnauthorizedCallback = null;
+
 // Add token to requests
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
@@ -16,14 +19,57 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Handle 401 responses (unauthorized)
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 401) {
+      // Only handle if this is not a logout endpoint call
+      if (!error.config?.url?.includes('/auth/logout')) {
+        // Clear auth data locally
+        localStorage.removeItem('token');
+        localStorage.removeItem('username');
+        localStorage.removeItem('deviceSessionId');
+
+        // Notify the app that user has been logged out
+        if (onUnauthorizedCallback) {
+          onUnauthorizedCallback('Your session has expired or you have been logged out. Please log in again.');
+        }
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export const authAPI = {
   login: (username, password) =>
     api.post('/auth/login', { username, password }),
-  logout: () => {
+  logout: async () => {
+    // Try to notify server (will fail if already logged out)
+    try {
+      await api.post('/auth/logout');
+    } catch (error) {
+      // Ignore errors - we're logging out anyway
+      console.log('Server logout call failed (may already be logged out)');
+    }
+    // Always clear local storage
     localStorage.removeItem('token');
     localStorage.removeItem('username');
+    localStorage.removeItem('deviceSessionId');
+  },
+  // Clear only local storage without notifying server
+  clearLocalAuth: () => {
+    localStorage.removeItem('token');
+    localStorage.removeItem('username');
+    localStorage.removeItem('deviceSessionId');
   },
   isAuthenticated: () => !!localStorage.getItem('token'),
+  // Verify token is still valid on server
+  verifyToken: () => api.get('/auth/verify'),
+  // Register callback for unauthorized errors
+  onUnauthorized: (callback) => {
+    onUnauthorizedCallback = callback;
+  },
 };
 
 export const pdfAPI = {

@@ -986,18 +986,23 @@ function HomePage() {
     setShowPlaceholderEdit(true);
   };
 
-  const handleSavePlaceholder = async (newText) => {
+  const handleSavePlaceholder = (newText) => {
     if (!selectedPlaceholder) return;
 
-    try {
-      await pdfAPI.updateMetadata(selectedPlaceholder.id, { placeholder_text: newText });
-      setShowPlaceholderEdit(false);
-      setSelectedPlaceholder(null);
-      await loadData(); // Reload to show the updated text
-    } catch (error) {
-      console.error('Error updating placeholder text:', error);
-      alert('Failed to update placeholder text');
-    }
+    // Update the placeholder text in workingPdfs (local state only)
+    // The actual backend update will happen when the main Save button is clicked
+    const updatePlaceholderText = (pdf) => {
+      if (pdf && pdf.id === selectedPlaceholder.id) {
+        return { ...pdf, placeholder_text: newText };
+      }
+      return pdf;
+    };
+
+    setWorkingPdfs(prev => prev.map(updatePlaceholderText));
+    setWorkingPendingPdfs(prev => prev.map(updatePlaceholderText));
+    setHasUnsavedChanges(true); // Mark that there are unsaved changes
+    setShowPlaceholderEdit(false);
+    setSelectedPlaceholder(null);
   };
 
   const handleUploadToSlot = (position) => {

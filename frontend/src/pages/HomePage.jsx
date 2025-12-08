@@ -384,12 +384,12 @@ function HomePage() {
     // Handle metadata updates even during edit mode (OCR results)
     if (editMode && message.type === 'pdf_metadata_updated') {
       console.log('Updating metadata during edit mode:', message.data);
-      const { id, job_number, construction_method } = message.data;
+      const { id, job_number, construction_method, placeholder_text } = message.data;
 
       // Update function to apply metadata changes to a PDF
       const updatePdfMetadata = (pdf) => {
         if (pdf && pdf.id === id) {
-          return { ...pdf, job_number, construction_method };
+          return { ...pdf, job_number, construction_method, placeholder_text };
         }
         return pdf;
       };

@@ -220,7 +220,15 @@ function DraggableCoverSheetCard({
             )}
             {editMode && editing === 'construction_method' ? (
               // Show both text input and dropdown when editing
-              <div className="flex flex-col gap-1">
+              <div
+                className="flex flex-col gap-1"
+                onBlur={(e) => {
+                  // Only close if focus is leaving the entire container
+                  if (!e.currentTarget.contains(e.relatedTarget)) {
+                    handleSaveEdit('construction_method');
+                  }
+                }}
+              >
                 <input
                   type="text"
                   value={editValue}
@@ -229,7 +237,6 @@ function DraggableCoverSheetCard({
                     if (e.key === 'Enter') handleSaveEdit('construction_method');
                     if (e.key === 'Escape') handleCancelEdit();
                   }}
-                  onBlur={() => handleSaveEdit('construction_method')}
                   className="flex-1 px-1 py-0.5 border border-blue-500 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-xs focus:outline-none"
                   style={getColorTransitionStyle(['background-color', 'color', 'border-color'])}
                   placeholder="Type or select below"

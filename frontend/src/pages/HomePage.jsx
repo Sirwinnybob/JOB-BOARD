@@ -465,11 +465,12 @@ function HomePage() {
     }
   }, [editMode, loadData, viewMode]);
 
-  const { send: sendWebSocketMessage } = useWebSocket(handleWebSocketMessage, true);
+  const { send: sendWebSocketMessage, isConnected } = useWebSocket(handleWebSocketMessage, true);
 
-  // Register device session with websocket when authenticated
+  // Register device session with websocket when authenticated and connected
+  // Re-register whenever WebSocket reconnects to ensure logout notifications work
   useEffect(() => {
-    if (isAuthenticated && sendWebSocketMessage) {
+    if (isAuthenticated && isConnected && sendWebSocketMessage) {
       const deviceSessionId = localStorage.getItem('deviceSessionId');
       if (deviceSessionId) {
         console.log('👤 Registering device session with websocket:', deviceSessionId.substring(0, 20) + '...');
@@ -479,7 +480,7 @@ function HomePage() {
         });
       }
     }
-  }, [isAuthenticated, sendWebSocketMessage]);
+  }, [isAuthenticated, isConnected, sendWebSocketMessage]);
 
   // Setup 401 unauthorized callback
   useEffect(() => {

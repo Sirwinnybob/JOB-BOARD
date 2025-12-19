@@ -89,8 +89,8 @@ export function DarkModeProvider({ children }) {
       document.documentElement.style.setProperty('--transition-name-old', 'none');
     } else {
       // Going TO light mode: animate the OLD dark view retracting to reveal NEW light view
-      console.log('[DarkMode] Setting light mode animations: new=none, old=circle-retract');
-      document.documentElement.style.setProperty('--transition-name-new', 'none');
+      console.log('[DarkMode] Setting light mode animations: new=stay-visible, old=circle-retract');
+      document.documentElement.style.setProperty('--transition-name-new', 'stay-visible');
       document.documentElement.style.setProperty('--transition-name-old', 'circle-retract');
     }
 

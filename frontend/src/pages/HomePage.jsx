@@ -1646,6 +1646,9 @@ function HomePage() {
 
   const deliveryBoardContent = () => {
     const shouldAnimate = isTransitioning && viewMode === 'grid';
+    // Calculate animation offset so delivery board starts after main board
+    const mainBoardSlots = settings.grid_rows * settings.grid_cols;
+    const animationIndexOffset = mainBoardSlots; // Start after main board's last slot
 
     if (isAuthenticated && editMode) {
       return (
@@ -1675,6 +1678,7 @@ function HomePage() {
           onMobileTapToMove={handleMobileTapToMoveDelivery}
           jobHighlights={jobHighlights}
           boardSection={1}
+          animationIndexOffset={animationIndexOffset}
         />
       );
     }
@@ -1690,6 +1694,7 @@ function HomePage() {
         isTransitioning={shouldAnimate}
         highlightedJobId={highlightedJobId}
         jobHighlights={jobHighlights}
+        animationIndexOffset={animationIndexOffset}
       />
     );
   };

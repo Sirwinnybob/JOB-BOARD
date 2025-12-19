@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { pdfAPI } from '../utils/api';
 
-function UploadModal({ onClose, onSuccess, targetPosition = null, uploadToPending = true, skipOcr = false }) {
+function UploadModal({ onClose, onSuccess, targetPosition = null, uploadToPending = true, skipOcr = false, boardSection = 0 }) {
   const [file, setFile] = useState(null);
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -54,7 +54,7 @@ function UploadModal({ onClose, onSuccess, targetPosition = null, uploadToPendin
           (progressEvent.loaded * 100) / progressEvent.total
         );
         setProgress(percentCompleted);
-      }, uploadToPending, targetPosition, skipOcr);
+      }, uploadToPending, targetPosition, skipOcr, boardSection);
       // Pass the uploaded PDF data to the success callback
       onSuccess(response.data);
     } catch (err) {

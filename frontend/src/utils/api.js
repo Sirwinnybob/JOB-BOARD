@@ -74,7 +74,7 @@ export const authAPI = {
 
 export const pdfAPI = {
   getAll: (includePending = false) => api.get('/pdfs', { params: { includePending } }),
-  upload: (file, onProgress, uploadToPending = true, targetPosition = null, skipOcr = false) => {
+  upload: (file, onProgress, uploadToPending = true, targetPosition = null, skipOcr = false, boardSection = 0) => {
     const formData = new FormData();
     formData.append('pdf', file);
     if (!uploadToPending) {
@@ -85,6 +85,9 @@ export const pdfAPI = {
     }
     if (skipOcr) {
       formData.append('skip_ocr', '1');
+    }
+    if (boardSection !== undefined && boardSection !== 0) {
+      formData.append('board_section', boardSection.toString());
     }
     return api.post('/pdfs', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },

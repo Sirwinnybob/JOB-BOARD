@@ -610,6 +610,7 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
 
     // Get is_pending from request body (default to 1 if not provided)
     const isPending = req.body.is_pending !== undefined ? parseInt(req.body.is_pending) : 1;
+    const boardSection = req.body.board_section !== undefined ? parseInt(req.body.board_section) : 0;
     const targetPosition = req.body.position !== undefined ? parseInt(req.body.position) : null;
     const skipOcr = req.body.skip_ocr === '1' || req.body.skip_ocr === 'true';
 
@@ -648,8 +649,8 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
     // Initially store with null job_number, construction_method, and dark_mode_images_base
     // Dark mode will be generated in background
     db.run(
-      'INSERT INTO pdfs (filename, original_name, thumbnail, position, is_pending, page_count, images_base, dark_mode_images_base, job_number, construction_method) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [null, originalName, thumbnailName, newPosition, isPending, pageCount, imagesBase, null, null, null],
+      'INSERT INTO pdfs (filename, original_name, thumbnail, position, is_pending, page_count, images_base, dark_mode_images_base, job_number, construction_method, board_section) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [null, originalName, thumbnailName, newPosition, isPending, pageCount, imagesBase, null, null, null, boardSection],
       function (err) {
         if (err) {
           console.error('Database error:', err);

@@ -408,6 +408,7 @@ function HomePage() {
       // This allows the editing admin to see OCR results in real-time
       setWorkingPdfs(prev => prev.map(updatePdfMetadata));
       setWorkingPendingPdfs(prev => prev.map(updatePdfMetadata));
+      setWorkingDeliveryPdfs(prev => prev.map(updatePdfMetadata));
       return;
     }
 
@@ -428,6 +429,7 @@ function HomePage() {
       // This allows the editing admin to see dark mode images in real-time
       setWorkingPdfs(prev => prev.map(updatePdfDarkMode));
       setWorkingPendingPdfs(prev => prev.map(updatePdfDarkMode));
+      setWorkingDeliveryPdfs(prev => prev.map(updatePdfDarkMode));
       return;
     }
 
@@ -858,6 +860,7 @@ function HomePage() {
           if (editMode) {
             setWorkingPdfs(workingPdfs.filter((pdf) => pdf && pdf.id !== id));
             setWorkingPendingPdfs(workingPendingPdfs.filter((pdf) => pdf && pdf.id !== id));
+            setWorkingDeliveryPdfs(workingDeliveryPdfs.filter((pdf) => pdf && pdf.id !== id));
 
             // Also update main state for pending PDFs to keep in sync
             if (isPendingPdf) {
@@ -871,6 +874,7 @@ function HomePage() {
           } else {
             setPdfs(pdfs.filter((pdf) => pdf && pdf.id !== id));
             setPendingPdfs(pendingPdfs.filter((pdf) => pdf && pdf.id !== id));
+            setDeliveryPdfs(deliveryPdfs.filter((pdf) => pdf && pdf.id !== id));
           }
         } catch (error) {
           console.error('Error deleting PDF:', error);
@@ -960,6 +964,9 @@ function HomePage() {
     setWorkingPendingPdfs(prevWorking =>
       prevWorking.map(pdf => (pdf && pdf.id === pdfId) ? { ...pdf, ...metadata } : pdf)
     );
+    setWorkingDeliveryPdfs(prevWorking =>
+      prevWorking.map(pdf => (pdf && pdf.id === pdfId) ? { ...pdf, ...metadata } : pdf)
+    );
 
     if (!editMode) {
       setPdfs(prevPdfs =>
@@ -967,6 +974,9 @@ function HomePage() {
       );
       setPendingPdfs(prevPending =>
         prevPending.map(pdf => (pdf && pdf.id === pdfId) ? { ...pdf, ...metadata } : pdf)
+      );
+      setDeliveryPdfs(prevDelivery =>
+        prevDelivery.map(pdf => (pdf && pdf.id === pdfId) ? { ...pdf, ...metadata } : pdf)
       );
     } else {
       // Pending PDF metadata updates are independent and save immediately
@@ -2027,12 +2037,14 @@ function HomePage() {
                 setShowUpload(false);
                 setUploadTargetPosition(null);
                 setUploadToPending(true);
+                setUploadTargetBoard(0);
                 setSkipOcr(false);
               }}
               onSuccess={handleUploadSuccess}
               targetPosition={uploadTargetPosition}
               uploadToPending={uploadToPending}
               skipOcr={skipOcr}
+              boardSection={uploadTargetBoard}
             />
           )}
 

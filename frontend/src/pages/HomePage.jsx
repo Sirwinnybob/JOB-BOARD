@@ -1025,7 +1025,7 @@ function HomePage() {
 
   const handleAddPlaceholder = async (position) => {
     try {
-      const response = await pdfAPI.createPlaceholder(position + 1);
+      const response = await pdfAPI.createPlaceholder(position + 1, 0, editMode);
       const placeholder = response.data;
       setShowSlotMenu(null);
 
@@ -1045,7 +1045,7 @@ function HomePage() {
 
   const handleAddPlaceholderDelivery = async (position) => {
     try {
-      const response = await pdfAPI.createPlaceholder(position + 1, 1); // board_section = 1
+      const response = await pdfAPI.createPlaceholder(position + 1, 1, editMode); // board_section = 1
       const placeholder = response.data;
       setShowSlotMenu(null);
 

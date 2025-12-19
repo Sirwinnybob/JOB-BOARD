@@ -936,7 +936,7 @@ app.put('/api/pdfs/reorder', authMiddleware, async (req, res) => {
 
 app.post('/api/pdfs/placeholder', authMiddleware, async (req, res) => {
   try {
-    const { position, board_section } = req.body;
+    const { position, board_section, skipBroadcast } = req.body;
 
     if (position === undefined || position === null) {
       return res.status(400).json({ error: 'Position is required' });
@@ -965,8 +965,10 @@ app.post('/api/pdfs/placeholder', authMiddleware, async (req, res) => {
           board_section: boardSection
         };
 
-        // Broadcast update to all clients
-        broadcastUpdate('pdf_uploaded', placeholder);
+        // Broadcast update to all clients (skip if in edit mode)
+        if (!skipBroadcast) {
+          broadcastUpdate('pdf_uploaded', placeholder);
+        }
 
         res.json(placeholder);
       }

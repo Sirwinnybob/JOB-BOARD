@@ -98,7 +98,7 @@ export const pdfAPI = {
   reorder: (pdfs) => api.put('/pdfs/reorder', { pdfs }),
   updateLabels: (id, labels) => api.put(`/pdfs/${id}/labels`, { labels }),
   updateMetadata: (id, metadata) => api.put(`/pdfs/${id}/metadata`, metadata),
-  createPlaceholder: (position, board_section = 0) => api.post('/pdfs/placeholder', { position, board_section }),
+  createPlaceholder: (position, board_section = 0, skipBroadcast = false) => api.post('/pdfs/placeholder', { position, board_section, skipBroadcast }),
   updateStatus: (id, is_pending, board_section = undefined) => {
     const data = { is_pending };
     if (board_section !== undefined) {

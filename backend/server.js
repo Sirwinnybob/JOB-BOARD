@@ -677,7 +677,8 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
               images_base: imagesBase,
               dark_mode_images_base: null,
               job_number: null,
-              construction_method: null
+              construction_method: null,
+              board_section: boardSection
             },
             timestamp: Date.now()
           });
@@ -706,7 +707,8 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
           images_base: imagesBase,
           dark_mode_images_base: null, // Will be generated in background
           job_number: null,
-          construction_method: null
+          construction_method: null,
+          board_section: boardSection
         });
 
         // Process OCR and Dark Mode in background (don't wait for response)

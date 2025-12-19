@@ -888,6 +888,7 @@ function HomePage() {
     setShowUpload(false);
     setUploadTargetPosition(null);
     setUploadToPending(true);
+    setUploadTargetBoard(0);
 
     if (editMode && uploadedPdf) {
       // Uploads to pending are independent and don't require "Save"
@@ -906,12 +907,25 @@ function HomePage() {
         // Don't mark as having unsaved changes - pending uploads are independent
       } else {
         // Uploads to board positions still require saving
+        // Check which board this upload is for
+        const isDeliveryBoard = uploadedPdf.board_section === 1;
+
         if (uploadTargetPosition !== null) {
-          const newWorkingPdfs = [...workingPdfs];
-          newWorkingPdfs.splice(uploadTargetPosition - 1, 0, uploadedPdf);
-          setWorkingPdfs(newWorkingPdfs);
+          if (isDeliveryBoard) {
+            const newWorkingDeliveryPdfs = [...workingDeliveryPdfs];
+            newWorkingDeliveryPdfs.splice(uploadTargetPosition - 1, 0, uploadedPdf);
+            setWorkingDeliveryPdfs(newWorkingDeliveryPdfs);
+          } else {
+            const newWorkingPdfs = [...workingPdfs];
+            newWorkingPdfs.splice(uploadTargetPosition - 1, 0, uploadedPdf);
+            setWorkingPdfs(newWorkingPdfs);
+          }
         } else {
-          setWorkingPdfs([...workingPdfs, uploadedPdf]);
+          if (isDeliveryBoard) {
+            setWorkingDeliveryPdfs([...workingDeliveryPdfs, uploadedPdf]);
+          } else {
+            setWorkingPdfs([...workingPdfs, uploadedPdf]);
+          }
         }
         setHasUnsavedChanges(true);
       }
@@ -923,6 +937,7 @@ function HomePage() {
   const handleUploadToPending = () => {
     setUploadTargetPosition(null);
     setUploadToPending(true);
+    setUploadTargetBoard(0);
     setSkipOcr(false);
     setShowUpload(true);
   };

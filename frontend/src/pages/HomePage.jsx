@@ -29,8 +29,10 @@ function HomePage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [pdfs, setPdfs] = useState([]);
   const [pendingPdfs, setPendingPdfs] = useState([]);
+  const [deliveryPdfs, setDeliveryPdfs] = useState([]);
   const [workingPdfs, setWorkingPdfs] = useState([]);
   const [workingPendingPdfs, setWorkingPendingPdfs] = useState([]);
+  const [workingDeliveryPdfs, setWorkingDeliveryPdfs] = useState([]);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [settings, setSettings] = useState({
     grid_rows: 6,
@@ -38,12 +40,14 @@ function HomePage() {
     aspect_ratio_width: 11,
     aspect_ratio_height: 10,
     companyName: 'Job Board',
-    companyShortName: 'Job Board'
+    companyShortName: 'Job Board',
+    delivery_board_rows: 2
   });
   const [editMode, setEditMode] = useState(false);
   const [showUpload, setShowUpload] = useState(false);
   const [uploadTargetPosition, setUploadTargetPosition] = useState(null);
   const [uploadToPending, setUploadToPending] = useState(true);
+  const [uploadTargetBoard, setUploadTargetBoard] = useState(0); // 0 = main board, 1 = delivery board
   const [skipOcr, setSkipOcr] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showLabelModal, setShowLabelModal] = useState(false);
@@ -213,14 +217,19 @@ function HomePage() {
       const allPdfs = allPdfsRes.data;
 
       if (isAuthenticated) {
-        // Separate pending and visible PDFs for admins
-        const visible = allPdfs.filter(pdf => !pdf.is_pending);
+        // Separate PDFs: pending (approval), main board, delivery board
         const pending = allPdfs.filter(pdf => pdf.is_pending);
-        setPdfs(visible);
+        const mainBoard = allPdfs.filter(pdf => !pdf.is_pending && (pdf.board_section === 0 || pdf.board_section === null || pdf.board_section === undefined));
+        const deliveryBoard = allPdfs.filter(pdf => !pdf.is_pending && pdf.board_section === 1);
+        setPdfs(mainBoard);
         setPendingPdfs(pending);
+        setDeliveryPdfs(deliveryBoard);
       } else {
-        // Only show published PDFs for public
-        setPdfs(allPdfs);
+        // For public view, show main board and delivery board
+        const mainBoard = allPdfs.filter(pdf => pdf.board_section === 0 || pdf.board_section === null || pdf.board_section === undefined);
+        const deliveryBoard = allPdfs.filter(pdf => pdf.board_section === 1);
+        setPdfs(mainBoard);
+        setDeliveryPdfs(deliveryBoard);
       }
 
       setSettings({
@@ -230,6 +239,7 @@ function HomePage() {
         aspect_ratio_height: parseFloat(settingsRes.data.aspect_ratio_height || 10),
         companyName: settingsRes.data.companyName || 'Job Board',
         companyShortName: settingsRes.data.companyShortName || 'Job Board',
+        delivery_board_rows: parseInt(settingsRes.data.delivery_board_rows || 2),
       });
     } catch (error) {
       console.error('Error loading data:', error);
@@ -608,6 +618,12 @@ function HomePage() {
     trackActivity();
   };
 
+  const handleReorderDelivery = (newPdfs) => {
+    setWorkingDeliveryPdfs(newPdfs);
+    setHasUnsavedChanges(true);
+    trackActivity();
+  };
+
   const handleCancelEdit = () => {
     const performCancel = () => {
       // Release edit lock
@@ -628,6 +644,7 @@ function HomePage() {
       setHasUnsavedChanges(false);
       setWorkingPdfs([]);
       setWorkingPendingPdfs([]);
+      setWorkingDeliveryPdfs([]);
     };
 
     if (hasUnsavedChanges) {
@@ -652,14 +669,26 @@ function HomePage() {
         try {
           const allPdfs = [];
 
-          // Board PDFs - compact by removing gaps (undefined/null entries)
+          // Main Board PDFs - compact by removing gaps (undefined/null entries)
           // Filter out empty slots and assign sequential positions
           const compactedBoardPdfs = workingPdfs.filter(pdf => pdf);
           compactedBoardPdfs.forEach((pdf, index) => {
             allPdfs.push({
               id: pdf.id,
               position: index + 1, // Sequential position starting from 1
-              is_pending: 0
+              is_pending: 0,
+              board_section: 0
+            });
+          });
+
+          // Delivery Board PDFs - compact and assign sequential positions
+          const compactedDeliveryPdfs = workingDeliveryPdfs.filter(pdf => pdf);
+          compactedDeliveryPdfs.forEach((pdf, index) => {
+            allPdfs.push({
+              id: pdf.id,
+              position: index + 1, // Sequential position starting from 1
+              is_pending: 0,
+              board_section: 1
             });
           });
 
@@ -669,21 +698,27 @@ function HomePage() {
               allPdfs.push({
                 id: pdf.id,
                 position: allPdfs.length + index + 1,
-                is_pending: 1
+                is_pending: 1,
+                board_section: 0 // Default to main board section
               });
             }
           });
 
-          // Save positions
-          await pdfAPI.reorder(allPdfs.map(p => ({ id: p.id, position: p.position })));
+          // Save positions and board sections
+          await pdfAPI.reorder(allPdfs.map(p => ({ id: p.id, position: p.position, board_section: p.board_section })));
 
           // Update status for all PDFs that changed
           const statusUpdates = [];
 
           allPdfs.forEach(pdfUpdate => {
-            const originalPdf = [...pdfs, ...pendingPdfs].find(p => p && p.id === pdfUpdate.id);
-            if (originalPdf && originalPdf.is_pending !== pdfUpdate.is_pending) {
-              statusUpdates.push(pdfAPI.updateStatus(pdfUpdate.id, pdfUpdate.is_pending));
+            const originalPdf = [...pdfs, ...pendingPdfs, ...deliveryPdfs].find(p => p && p.id === pdfUpdate.id);
+            if (originalPdf) {
+              const statusChanged = originalPdf.is_pending !== pdfUpdate.is_pending;
+              const boardSectionChanged = (originalPdf.board_section || 0) !== pdfUpdate.board_section;
+
+              if (statusChanged || boardSectionChanged) {
+                statusUpdates.push(pdfAPI.updateStatus(pdfUpdate.id, pdfUpdate.is_pending, pdfUpdate.board_section));
+              }
             }
           });
 
@@ -693,12 +728,12 @@ function HomePage() {
 
           // Update metadata for all PDFs that changed
           const metadataUpdates = [];
-          const workingAllPdfs = [...workingPdfs, ...workingPendingPdfs];
+          const workingAllPdfs = [...workingPdfs, ...workingPendingPdfs, ...workingDeliveryPdfs];
 
           workingAllPdfs.forEach(workingPdf => {
             if (!workingPdf) return;
 
-            const originalPdf = [...pdfs, ...pendingPdfs].find(p => p && p.id === workingPdf.id);
+            const originalPdf = [...pdfs, ...pendingPdfs, ...deliveryPdfs].find(p => p && p.id === workingPdf.id);
 
             // If no original PDF found, this is a newly uploaded job - save metadata if any exists
             if (!originalPdf) {
@@ -791,6 +826,7 @@ function HomePage() {
       setEditMode(true);
       setWorkingPdfs([...pdfs]);
       setWorkingPendingPdfs([...pendingPdfs]);
+      setWorkingDeliveryPdfs([...deliveryPdfs]);
       setHasUnsavedChanges(false);
       lastActivityRef.current = Date.now();
 
@@ -982,6 +1018,26 @@ function HomePage() {
     }
   };
 
+  const handleAddPlaceholderDelivery = async (position) => {
+    try {
+      const response = await pdfAPI.createPlaceholder(position + 1, 1); // board_section = 1
+      const placeholder = response.data;
+      setShowSlotMenu(null);
+
+      if (editMode && placeholder) {
+        const newWorkingDeliveryPdfs = [...workingDeliveryPdfs];
+        newWorkingDeliveryPdfs[position] = placeholder;
+        setWorkingDeliveryPdfs(newWorkingDeliveryPdfs);
+        setHasUnsavedChanges(true);
+      } else {
+        await loadData();
+      }
+    } catch (error) {
+      console.error('Error creating placeholder:', error);
+      alert('Failed to create placeholder');
+    }
+  };
+
   const handleEditPlaceholder = (placeholder) => {
     setSelectedPlaceholder(placeholder);
     setShowPlaceholderEdit(true);
@@ -1001,6 +1057,7 @@ function HomePage() {
 
     setWorkingPdfs(prev => prev.map(updatePlaceholderText));
     setWorkingPendingPdfs(prev => prev.map(updatePlaceholderText));
+    setWorkingDeliveryPdfs(prev => prev.map(updatePlaceholderText));
     setHasUnsavedChanges(true); // Mark that there are unsaved changes
     setShowPlaceholderEdit(false);
     setSelectedPlaceholder(null);
@@ -1009,6 +1066,7 @@ function HomePage() {
   const handleUploadToSlot = (position) => {
     setUploadTargetPosition(position + 1);
     setUploadToPending(false);
+    setUploadTargetBoard(0);
     setSkipOcr(false);
     setShowSlotMenu(null);
     setShowUpload(true);
@@ -1017,6 +1075,25 @@ function HomePage() {
   const handleUploadCustomToSlot = (position) => {
     setUploadTargetPosition(position + 1);
     setUploadToPending(false);
+    setUploadTargetBoard(0);
+    setSkipOcr(true); // Skip OCR for custom uploads
+    setShowSlotMenu(null);
+    setShowUpload(true);
+  };
+
+  const handleUploadToSlotDelivery = (position) => {
+    setUploadTargetPosition(position + 1);
+    setUploadToPending(false);
+    setUploadTargetBoard(1);
+    setSkipOcr(false);
+    setShowSlotMenu(null);
+    setShowUpload(true);
+  };
+
+  const handleUploadCustomToSlotDelivery = (position) => {
+    setUploadTargetPosition(position + 1);
+    setUploadToPending(false);
+    setUploadTargetBoard(1);
     setSkipOcr(true); // Skip OCR for custom uploads
     setShowSlotMenu(null);
     setShowUpload(true);
@@ -1092,6 +1169,9 @@ function HomePage() {
       if (overId.startsWith('board-')) {
         destContainer = 'board';
         destIndex = parseInt(overId.split('-')[1]);
+      } else if (overId.startsWith('delivery-board-')) {
+        destContainer = 'delivery-board';
+        destIndex = parseInt(overId.split('-')[2]);
       } else if (overId === 'pending-container') {
         destContainer = 'pending';
         destIndex = workingPendingPdfs.length;
@@ -1185,6 +1265,105 @@ function HomePage() {
       setWorkingPendingPdfs(newPendingPdfs);
       setHasUnsavedChanges(true);
     }
+    // Handle dragging within delivery board
+    else if (sourceContainer === 'delivery-board' && destContainer === 'delivery-board') {
+      if (sourceIndex === destIndex) {
+        return;
+      }
+
+      const newPdfs = [...workingDeliveryPdfs];
+      const movedItem = newPdfs[sourceIndex];
+
+      if (!newPdfs[destIndex]) {
+        newPdfs[destIndex] = movedItem;
+        newPdfs[sourceIndex] = undefined;
+      } else {
+        newPdfs[sourceIndex] = undefined;
+
+        const itemsToShift = [];
+        for (let i = destIndex; i < newPdfs.length; i++) {
+          if (newPdfs[i] !== undefined) {
+            itemsToShift.push(newPdfs[i]);
+          }
+        }
+
+        newPdfs[destIndex] = movedItem;
+
+        for (let i = 0; i < itemsToShift.length; i++) {
+          newPdfs[destIndex + 1 + i] = itemsToShift[i];
+        }
+
+        for (let i = destIndex + 1 + itemsToShift.length; i < newPdfs.length; i++) {
+          newPdfs[i] = undefined;
+        }
+      }
+
+      setWorkingDeliveryPdfs(newPdfs);
+      setHasUnsavedChanges(true);
+    }
+    // Handle dragging from board to delivery board
+    else if (sourceContainer === 'board' && destContainer === 'delivery-board') {
+      const newBoardPdfs = [...workingPdfs];
+      newBoardPdfs[sourceIndex] = undefined;
+
+      const newDeliveryPdfs = [...workingDeliveryPdfs];
+      const updatedPdf = { ...sourcePdf, board_section: 1 };
+      newDeliveryPdfs[destIndex] = updatedPdf;
+
+      setWorkingPdfs(newBoardPdfs);
+      setWorkingDeliveryPdfs(newDeliveryPdfs);
+      setHasUnsavedChanges(true);
+    }
+    // Handle dragging from delivery board to board
+    else if (sourceContainer === 'delivery-board' && destContainer === 'board') {
+      const newDeliveryPdfs = [...workingDeliveryPdfs];
+      newDeliveryPdfs[sourceIndex] = undefined;
+
+      const newBoardPdfs = [...workingPdfs];
+      const updatedPdf = { ...sourcePdf, board_section: 0 };
+      newBoardPdfs[destIndex] = updatedPdf;
+
+      setWorkingDeliveryPdfs(newDeliveryPdfs);
+      setWorkingPdfs(newBoardPdfs);
+      setHasUnsavedChanges(true);
+    }
+    // Handle dragging from pending to delivery board
+    else if (sourceContainer === 'pending' && destContainer === 'delivery-board') {
+      const newPendingPdfs = [...workingPendingPdfs];
+      newPendingPdfs.splice(sourceIndex, 1);
+
+      const newDeliveryPdfs = [...workingDeliveryPdfs];
+      const updatedPdf = { ...sourcePdf, is_pending: 0, board_section: 1 };
+      const destPdfItem = newDeliveryPdfs[destIndex];
+
+      newDeliveryPdfs[destIndex] = updatedPdf;
+
+      if (destPdfItem) {
+        newDeliveryPdfs.push(destPdfItem);
+      }
+
+      setWorkingPendingPdfs(newPendingPdfs);
+      setWorkingDeliveryPdfs(newDeliveryPdfs);
+      setHasUnsavedChanges(true);
+    }
+    // Handle dragging from delivery board to pending
+    else if (sourceContainer === 'delivery-board' && destContainer === 'pending') {
+      if (sourcePdf.is_placeholder) {
+        console.log('Cannot move placeholder to pending');
+        return;
+      }
+
+      const newDeliveryPdfs = [...workingDeliveryPdfs];
+      newDeliveryPdfs[sourceIndex] = undefined;
+
+      const newPendingPdfs = [...workingPendingPdfs];
+      const updatedPdf = { ...sourcePdf, is_pending: 1, board_section: 0 };
+      newPendingPdfs.push(updatedPdf);
+
+      setWorkingDeliveryPdfs(newDeliveryPdfs);
+      setWorkingPendingPdfs(newPendingPdfs);
+      setHasUnsavedChanges(true);
+    }
   };
 
   const handleDragCancel = () => {
@@ -1245,6 +1424,55 @@ function HomePage() {
     }
 
     setWorkingPdfs(newPdfs);
+    setHasUnsavedChanges(true);
+    setSelectedMobileCardId(null); // Deselect after moving
+  };
+
+  const handleMobileTapToMoveDelivery = (targetIndex) => {
+    if (!editMode || !selectedMobileCardId) {
+      return;
+    }
+
+    // Find the source index of the selected card in delivery board
+    const sourceIndex = workingDeliveryPdfs.findIndex(pdf => pdf && `pdf-${pdf.id}` === selectedMobileCardId);
+
+    if (sourceIndex === -1 || sourceIndex === targetIndex) {
+      // Deselect if tapping the same card
+      setSelectedMobileCardId(null);
+      return;
+    }
+
+    const newPdfs = [...workingDeliveryPdfs];
+    const movedItem = newPdfs[sourceIndex];
+
+    // Check if destination is empty or occupied
+    if (!newPdfs[targetIndex]) {
+      // Destination is empty - simple move, leaving source empty
+      newPdfs[targetIndex] = movedItem;
+      newPdfs[sourceIndex] = undefined;
+    } else {
+      // Destination is occupied - smart shift that fills existing gaps
+      newPdfs[sourceIndex] = undefined;
+
+      const itemsToShift = [];
+      for (let i = targetIndex; i < newPdfs.length; i++) {
+        if (newPdfs[i] !== undefined) {
+          itemsToShift.push(newPdfs[i]);
+        }
+      }
+
+      newPdfs[targetIndex] = movedItem;
+
+      for (let i = 0; i < itemsToShift.length; i++) {
+        newPdfs[targetIndex + 1 + i] = itemsToShift[i];
+      }
+
+      for (let i = targetIndex + 1 + itemsToShift.length; i < newPdfs.length; i++) {
+        newPdfs[i] = undefined;
+      }
+    }
+
+    setWorkingDeliveryPdfs(newPdfs);
     setHasUnsavedChanges(true);
     setSelectedMobileCardId(null); // Deselect after moving
   };
@@ -1405,6 +1633,56 @@ function HomePage() {
       <PDFGrid
         pdfs={pdfs}
         rows={settings.grid_rows}
+        cols={settings.grid_cols}
+        aspectWidth={settings.aspect_ratio_width}
+        aspectHeight={settings.aspect_ratio_height}
+        onPdfClick={handlePdfClick}
+        isTransitioning={shouldAnimate}
+        highlightedJobId={highlightedJobId}
+        jobHighlights={jobHighlights}
+      />
+    );
+  };
+
+  const deliveryBoardContent = () => {
+    const shouldAnimate = isTransitioning && viewMode === 'grid';
+
+    if (isAuthenticated && editMode) {
+      return (
+        <AdminGrid
+          pdfs={workingDeliveryPdfs}
+          rows={settings.delivery_board_rows}
+          cols={settings.grid_cols}
+          aspectWidth={settings.aspect_ratio_width}
+          aspectHeight={settings.aspect_ratio_height}
+          editMode={editMode}
+          onReorder={handleReorderDelivery}
+          onDelete={handleDelete}
+          onLabelClick={handleLabelClick}
+          onMetadataUpdate={handleMetadataUpdate}
+          onSlotMenuOpen={handleSlotMenuOpen}
+          showSlotMenu={showSlotMenu}
+          onSlotMenuClose={handleSlotMenuClose}
+          onAddPlaceholder={handleAddPlaceholderDelivery}
+          onUploadToSlot={handleUploadToSlotDelivery}
+          onUploadCustomToSlot={handleUploadCustomToSlotDelivery}
+          onMoveToPending={handleMovePdfToPending}
+          onEditPlaceholder={handleEditPlaceholder}
+          isTransitioning={shouldAnimate}
+          isMobile={isMobile}
+          selectedMobileCardId={selectedMobileCardId}
+          onMobileCardSelect={setSelectedMobileCardId}
+          onMobileTapToMove={handleMobileTapToMoveDelivery}
+          jobHighlights={jobHighlights}
+          boardSection={1}
+        />
+      );
+    }
+
+    return (
+      <PDFGrid
+        pdfs={deliveryPdfs}
+        rows={settings.delivery_board_rows}
         cols={settings.grid_cols}
         aspectWidth={settings.aspect_ratio_width}
         aspectHeight={settings.aspect_ratio_height}
@@ -1659,6 +1937,14 @@ function HomePage() {
             />
 
             {gridContent()}
+
+            {/* Delivery Board Section */}
+            <div className="mt-8">
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4 transition-colors">
+                Jobs Pending Delivery
+              </h2>
+              {deliveryBoardContent()}
+            </div>
           </DndContext>
         ) : (
           <>
@@ -1691,6 +1977,14 @@ function HomePage() {
                   }}
                 >
                   {gridContent()}
+
+                  {/* Delivery Board Section */}
+                  <div className="mt-8">
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4 transition-colors">
+                      Jobs Pending Delivery
+                    </h2>
+                    {deliveryBoardContent()}
+                  </div>
                 </div>
 
                 {/* Show slideshow when in slideshow mode, or when closing (overlay on top) */}

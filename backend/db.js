@@ -116,6 +116,17 @@ db.serialize(() => {
     }
   });
 
+  // Add board_section column to existing tables (migration)
+  // 0 = main board, 1 = pending delivery board
+  db.run(`
+    ALTER TABLE pdfs ADD COLUMN board_section INTEGER DEFAULT 0
+  `, (err) => {
+    // Ignore error if column already exists
+    if (err && !err.message.includes('duplicate column name')) {
+      console.error('Error adding board_section column:', err);
+    }
+  });
+
   // Settings table
   db.run(`
     CREATE TABLE IF NOT EXISTS settings (
@@ -136,6 +147,12 @@ db.serialize(() => {
   db.run(`
     INSERT OR IGNORE INTO settings (key, value)
     VALUES ('aspect_ratio_width', '11'), ('aspect_ratio_height', '10')
+  `);
+
+  // Add pending delivery board settings (rows only, cols inherited from main board)
+  db.run(`
+    INSERT OR IGNORE INTO settings (key, value)
+    VALUES ('delivery_board_rows', '2')
   `);
 
   // Labels table

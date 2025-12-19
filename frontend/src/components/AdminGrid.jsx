@@ -2,11 +2,14 @@ import React from 'react';
 import DraggableGridItem from './DraggableGridItem';
 import MobileActionBar from './MobileActionBar';
 
-function AdminGrid({ pdfs, rows, cols, aspectWidth, aspectHeight, editMode, onReorder, onDelete, onLabelClick, onMetadataUpdate, onSlotMenuOpen, showSlotMenu, onSlotMenuClose, onAddPlaceholder, onUploadToSlot, onUploadCustomToSlot, onMoveToPending, onEditPlaceholder, isTransitioning, isMobile, selectedMobileCardId, onMobileCardSelect, onMobileTapToMove, jobHighlights = {} }) {
+function AdminGrid({ pdfs, rows, cols, aspectWidth, aspectHeight, editMode, onReorder, onDelete, onLabelClick, onMetadataUpdate, onSlotMenuOpen, showSlotMenu, onSlotMenuClose, onAddPlaceholder, onUploadToSlot, onUploadCustomToSlot, onMoveToPending, onEditPlaceholder, isTransitioning, isMobile, selectedMobileCardId, onMobileCardSelect, onMobileTapToMove, jobHighlights = {}, boardSection = 0 }) {
   const totalSlots = rows * cols;
 
   // Responsive columns: Cap at 4 for better mobile experience
   const responsiveCols = Math.min(cols, 4);
+
+  // Container name for drag and drop
+  const containerName = boardSection === 1 ? 'delivery-board' : 'board';
 
   const gridStyle = {
     gridTemplateColumns: `repeat(${responsiveCols}, minmax(0, 1fr))`,
@@ -58,10 +61,11 @@ function AdminGrid({ pdfs, rows, cols, aspectWidth, aspectHeight, editMode, onRe
 
         return (
           <DraggableGridItem
-            key={`board-${index}`}
-            id={`board-${index}`}
+            key={`${containerName}-${index}`}
+            id={`${containerName}-${index}`}
             pdf={pdf}
             index={index}
+            container={containerName}
             aspectWidth={aspectWidth}
             aspectHeight={aspectHeight}
             editMode={editMode}

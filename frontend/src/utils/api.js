@@ -95,8 +95,14 @@ export const pdfAPI = {
   reorder: (pdfs) => api.put('/pdfs/reorder', { pdfs }),
   updateLabels: (id, labels) => api.put(`/pdfs/${id}/labels`, { labels }),
   updateMetadata: (id, metadata) => api.put(`/pdfs/${id}/metadata`, metadata),
-  createPlaceholder: (position) => api.post('/pdfs/placeholder', { position }),
-  updateStatus: (id, is_pending) => api.put(`/pdfs/${id}/status`, { is_pending }),
+  createPlaceholder: (position, board_section = 0) => api.post('/pdfs/placeholder', { position, board_section }),
+  updateStatus: (id, is_pending, board_section = undefined) => {
+    const data = { is_pending };
+    if (board_section !== undefined) {
+      data.board_section = board_section;
+    }
+    return api.put(`/pdfs/${id}/status`, data);
+  },
 };
 
 export const labelAPI = {

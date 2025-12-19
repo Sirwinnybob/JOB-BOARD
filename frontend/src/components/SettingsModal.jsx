@@ -3,12 +3,17 @@ import React, { useState } from 'react';
 function SettingsModal({ settings, onClose, onSave }) {
   const [rows, setRows] = useState(settings.grid_rows);
   const [cols, setCols] = useState(settings.grid_cols);
+  const [deliveryRows, setDeliveryRows] = useState(settings.delivery_board_rows || 2);
   const [aspectWidth, setAspectWidth] = useState(settings.aspect_ratio_width || 11);
   const [aspectHeight, setAspectHeight] = useState(settings.aspect_ratio_height || 10);
 
   const handleSave = () => {
     if (rows < 1 || rows > 20 || cols < 1 || cols > 20) {
       alert('Rows and columns must be between 1 and 20');
+      return;
+    }
+    if (deliveryRows < 1 || deliveryRows > 20) {
+      alert('Delivery board rows must be between 1 and 20');
       return;
     }
     if (aspectWidth < 1 || aspectWidth > 50 || aspectHeight < 1 || aspectHeight > 50) {
@@ -18,6 +23,7 @@ function SettingsModal({ settings, onClose, onSave }) {
     onSave({
       grid_rows: rows,
       grid_cols: cols,
+      delivery_board_rows: deliveryRows,
       aspect_ratio_width: aspectWidth,
       aspect_ratio_height: aspectHeight
     });
@@ -73,8 +79,37 @@ function SettingsModal({ settings, onClose, onSave }) {
 
           <div className="bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3 transition-colors">
             <p className="text-sm text-blue-800 dark:text-blue-200 transition-colors">
-              Total slots: <strong>{rows * cols}</strong>
+              Main Board Total slots: <strong>{rows * cols}</strong>
             </p>
+          </div>
+
+          <div className="border-t border-gray-300 dark:border-gray-600 pt-4 mt-4 transition-colors">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-3 transition-colors">Delivery Board</h3>
+            <div>
+              <label
+                htmlFor="deliveryRows"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 transition-colors"
+              >
+                Delivery Board Rows (1-20)
+              </label>
+              <input
+                type="number"
+                id="deliveryRows"
+                min="1"
+                max="20"
+                value={deliveryRows}
+                onChange={(e) => setDeliveryRows(parseInt(e.target.value))}
+                className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-white rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
+              />
+            </div>
+            <div className="bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg p-3 mt-3 transition-colors">
+              <p className="text-sm text-green-800 dark:text-green-200 transition-colors">
+                Delivery Board Total slots: <strong>{deliveryRows * cols}</strong>
+              </p>
+              <p className="text-xs text-green-700 dark:text-green-300 mt-1 transition-colors">
+                Columns are inherited from main board
+              </p>
+            </div>
           </div>
 
           <div className="border-t border-gray-300 dark:border-gray-600 pt-4 transition-colors">

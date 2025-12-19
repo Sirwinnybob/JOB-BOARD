@@ -610,6 +610,7 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
 
     // Get is_pending from request body (default to 1 if not provided)
     const isPending = req.body.is_pending !== undefined ? parseInt(req.body.is_pending) : 1;
+    const boardSection = req.body.board_section !== undefined ? parseInt(req.body.board_section) : 0;
     const targetPosition = req.body.position !== undefined ? parseInt(req.body.position) : null;
     const skipOcr = req.body.skip_ocr === '1' || req.body.skip_ocr === 'true';
 
@@ -648,8 +649,8 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
     // Initially store with null job_number, construction_method, and dark_mode_images_base
     // Dark mode will be generated in background
     db.run(
-      'INSERT INTO pdfs (filename, original_name, thumbnail, position, is_pending, page_count, images_base, dark_mode_images_base, job_number, construction_method) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      [null, originalName, thumbnailName, newPosition, isPending, pageCount, imagesBase, null, null, null],
+      'INSERT INTO pdfs (filename, original_name, thumbnail, position, is_pending, page_count, images_base, dark_mode_images_base, job_number, construction_method, board_section) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [null, originalName, thumbnailName, newPosition, isPending, pageCount, imagesBase, null, null, null, boardSection],
       function (err) {
         if (err) {
           console.error('Database error:', err);
@@ -676,7 +677,8 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
               images_base: imagesBase,
               dark_mode_images_base: null,
               job_number: null,
-              construction_method: null
+              construction_method: null,
+              board_section: boardSection
             },
             timestamp: Date.now()
           });
@@ -705,7 +707,8 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
           images_base: imagesBase,
           dark_mode_images_base: null, // Will be generated in background
           job_number: null,
-          construction_method: null
+          construction_method: null,
+          board_section: boardSection
         });
 
         // Process OCR and Dark Mode in background (don't wait for response)
@@ -902,16 +905,16 @@ app.delete('/api/pdfs/:id', authMiddleware, async (req, res) => {
 
 app.put('/api/pdfs/reorder', authMiddleware, async (req, res) => {
   try {
-    const { pdfs } = req.body; // Array of {id, position}
+    const { pdfs } = req.body; // Array of {id, position, board_section (optional)}
 
     if (!Array.isArray(pdfs)) {
       return res.status(400).json({ error: 'Invalid data format' });
     }
 
-    const stmt = db.prepare('UPDATE pdfs SET position = ? WHERE id = ?');
+    const stmt = db.prepare('UPDATE pdfs SET position = ?, board_section = COALESCE(?, board_section) WHERE id = ?');
 
-    pdfs.forEach(({ id, position }) => {
-      stmt.run(position, id);
+    pdfs.forEach(({ id, position, board_section }) => {
+      stmt.run(position, board_section, id);
     });
 
     stmt.finalize((err) => {
@@ -933,15 +936,17 @@ app.put('/api/pdfs/reorder', authMiddleware, async (req, res) => {
 
 app.post('/api/pdfs/placeholder', authMiddleware, async (req, res) => {
   try {
-    const { position } = req.body;
+    const { position, board_section, skipBroadcast } = req.body;
 
     if (position === undefined || position === null) {
       return res.status(400).json({ error: 'Position is required' });
     }
 
+    const boardSection = board_section !== undefined ? board_section : 0;
+
     db.run(
-      'INSERT INTO pdfs (filename, original_name, thumbnail, position, is_placeholder, is_pending, placeholder_text) VALUES (?, ?, ?, ?, ?, ?, ?)',
-      [null, null, null, position, 1, 0, 'PLACEHOLDER'],
+      'INSERT INTO pdfs (filename, original_name, thumbnail, position, is_placeholder, is_pending, placeholder_text, board_section) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [null, null, null, position, 1, 0, 'PLACEHOLDER', boardSection],
       function (err) {
         if (err) {
           console.error('Database error:', err);
@@ -956,11 +961,14 @@ app.post('/api/pdfs/placeholder', authMiddleware, async (req, res) => {
           position: position,
           is_placeholder: 1,
           is_pending: 0,
-          placeholder_text: 'PLACEHOLDER'
+          placeholder_text: 'PLACEHOLDER',
+          board_section: boardSection
         };
 
-        // Broadcast update to all clients
-        broadcastUpdate('pdf_uploaded', placeholder);
+        // Broadcast update to all clients (skip if in edit mode)
+        if (!skipBroadcast) {
+          broadcastUpdate('pdf_uploaded', placeholder);
+        }
 
         res.json(placeholder);
       }
@@ -974,7 +982,7 @@ app.post('/api/pdfs/placeholder', authMiddleware, async (req, res) => {
 app.put('/api/pdfs/:id/status', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
-    const { is_pending } = req.body;
+    const { is_pending, board_section } = req.body;
 
     if (is_pending === undefined || is_pending === null) {
       return res.status(400).json({ error: 'is_pending is required' });
@@ -994,30 +1002,36 @@ app.put('/api/pdfs/:id/status', authMiddleware, async (req, res) => {
       const oldIsPending = row.is_pending;
       const newIsPending = is_pending ? 1 : 0;
 
-      db.run(
-        'UPDATE pdfs SET is_pending = ? WHERE id = ?',
-        [newIsPending, id],
-        function (err) {
-          if (err) {
-            console.error('Database error:', err);
-            return res.status(500).json({ error: 'Database error' });
-          }
+      // Build update query based on whether board_section is provided
+      let query, params;
+      if (board_section !== undefined) {
+        query = 'UPDATE pdfs SET is_pending = ?, board_section = ? WHERE id = ?';
+        params = [newIsPending, board_section, id];
+      } else {
+        query = 'UPDATE pdfs SET is_pending = ? WHERE id = ?';
+        params = [newIsPending, id];
+      }
 
-          if (this.changes === 0) {
-            return res.status(404).json({ error: 'PDF not found' });
-          }
-
-          // If moving from pending to active, send job_activated event
-          if (oldIsPending === 1 && newIsPending === 0) {
-            broadcastUpdate('job_activated', { id, is_pending: newIsPending });
-          } else {
-            // Otherwise, send regular status update
-            broadcastUpdate('pdf_status_updated', { id, is_pending: newIsPending });
-          }
-
-          res.json({ success: true, id, is_pending: newIsPending });
+      db.run(query, params, function (err) {
+        if (err) {
+          console.error('Database error:', err);
+          return res.status(500).json({ error: 'Database error' });
         }
-      );
+
+        if (this.changes === 0) {
+          return res.status(404).json({ error: 'PDF not found' });
+        }
+
+        // If moving from pending to active, send job_activated event
+        if (oldIsPending === 1 && newIsPending === 0) {
+          broadcastUpdate('job_activated', { id, is_pending: newIsPending, board_section });
+        } else {
+          // Otherwise, send regular status update
+          broadcastUpdate('pdf_status_updated', { id, is_pending: newIsPending, board_section });
+        }
+
+        res.json({ success: true, id, is_pending: newIsPending, board_section });
+      });
     });
   } catch (error) {
     console.error('Error updating PDF status:', error);
@@ -1408,7 +1422,7 @@ app.get('/api/settings', async (req, res) => {
 
 app.put('/api/settings', authMiddleware, async (req, res) => {
   try {
-    const { grid_rows, grid_cols, aspect_ratio_width, aspect_ratio_height } = req.body;
+    const { grid_rows, grid_cols, aspect_ratio_width, aspect_ratio_height, delivery_board_rows } = req.body;
 
     if (!grid_rows || !grid_cols) {
       return res.status(400).json({ error: 'grid_rows and grid_cols required' });
@@ -1418,9 +1432,14 @@ app.put('/api/settings', authMiddleware, async (req, res) => {
     const cols = parseInt(grid_cols);
     const aspectWidth = aspect_ratio_width ? parseFloat(aspect_ratio_width) : null;
     const aspectHeight = aspect_ratio_height ? parseFloat(aspect_ratio_height) : null;
+    const deliveryRows = delivery_board_rows !== undefined ? parseInt(delivery_board_rows) : null;
 
     if (rows < 1 || rows > 20 || cols < 1 || cols > 20) {
       return res.status(400).json({ error: 'Rows and columns must be between 1 and 20' });
+    }
+
+    if (deliveryRows !== null && (deliveryRows < 1 || deliveryRows > 20)) {
+      return res.status(400).json({ error: 'Delivery board rows must be between 1 and 20' });
     }
 
     if (aspectWidth !== null && (aspectWidth < 1 || aspectWidth > 50)) {
@@ -1466,6 +1485,16 @@ app.put('/api/settings', authMiddleware, async (req, res) => {
         });
       }));
       responseData.aspect_ratio_height = aspectHeight;
+    }
+
+    if (deliveryRows !== null) {
+      updates.push(new Promise((resolve, reject) => {
+        db.run('UPDATE settings SET value = ? WHERE key = ?', [deliveryRows, 'delivery_board_rows'], (err) => {
+          if (err) reject(err);
+          else resolve();
+        });
+      }));
+      responseData.delivery_board_rows = deliveryRows;
     }
 
     Promise.all(updates)

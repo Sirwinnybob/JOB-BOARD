@@ -3,7 +3,7 @@ import DraggableCoverSheetCard from './DraggableCoverSheetCard';
 import PublicPlaceholder from './PublicPlaceholder';
 import EmptySlot from './EmptySlot';
 
-function PDFGrid({ pdfs, rows, cols, aspectWidth = 11, aspectHeight = 10, onPdfClick, isTransitioning, highlightedJobId, jobHighlights = {} }) {
+function PDFGrid({ pdfs, rows, cols, aspectWidth = 11, aspectHeight = 10, onPdfClick, isTransitioning, highlightedJobId, jobHighlights = {}, animationIndexOffset = 0 }) {
   const totalSlots = rows * cols;
 
   // Responsive columns: 1 on mobile, 2 on small tablets, full cols on larger screens
@@ -23,10 +23,11 @@ function PDFGrid({ pdfs, rows, cols, aspectWidth = 11, aspectHeight = 10, onPdfC
         // With View Transitions API: circular reveal animates 0-0.8s
         // Grid items start fading in sync, cascading from top-left
         // Each item starts 150ms after the previous for visible cascade
-        const animationDelay = isTransitioning ? `${index * 0.15}s` : '0s';
+        // Apply offset to continue cascade from previous board
+        const animationDelay = isTransitioning ? `${(index + animationIndexOffset) * 0.15}s` : '0s';
         // Color changes at each item's opacity midpoint (0.3s into 0.6s animation)
         // DOM class changes immediately with View Transitions, so delay is just animation delay + midpoint
-        const colorTransitionDelay = isTransitioning ? `${index * 0.15 + 0.3}s` : '0s';
+        const colorTransitionDelay = isTransitioning ? `${(index + animationIndexOffset) * 0.15 + 0.3}s` : '0s';
 
         return (
           <div

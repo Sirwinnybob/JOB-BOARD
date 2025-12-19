@@ -83,15 +83,19 @@ export function DarkModeProvider({ children }) {
     // Set animation direction: expand for dark, retract for light
     // View Transitions API uses separate animations for new and old views
     if (newDarkMode) {
-      // Going TO dark mode: animate the NEW dark view expanding
+      // Going TO dark mode: animate the NEW dark view expanding on top
       console.log('[DarkMode] Setting dark mode animations: new=circle-expand, old=none');
       document.documentElement.style.setProperty('--transition-name-new', 'circle-expand');
       document.documentElement.style.setProperty('--transition-name-old', 'none');
+      document.documentElement.style.setProperty('--transition-z-new', '2');
+      document.documentElement.style.setProperty('--transition-z-old', '1');
     } else {
-      // Going TO light mode: animate the OLD dark view retracting to reveal NEW light view
-      console.log('[DarkMode] Setting light mode animations: new=stay-visible, old=circle-retract');
-      document.documentElement.style.setProperty('--transition-name-new', 'stay-visible');
+      // Going TO light mode: retract OLD dark view on top, reveal NEW light underneath
+      console.log('[DarkMode] Setting light mode animations: new=none, old=circle-retract');
+      document.documentElement.style.setProperty('--transition-name-new', 'none');
       document.documentElement.style.setProperty('--transition-name-old', 'circle-retract');
+      document.documentElement.style.setProperty('--transition-z-new', '1');
+      document.documentElement.style.setProperty('--transition-z-old', '2');
     }
 
     console.log('[DarkMode] CSS Variables:', {

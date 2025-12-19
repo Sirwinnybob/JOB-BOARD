@@ -27,6 +27,7 @@ body {
   animation-duration: 0.8s;
   animation-timing-function: cubic-bezier(0.4, 0.0, 0.2, 1);
   animation-fill-mode: both;
+  z-index: var(--transition-z-new, 2);
 }
 
 /* Retracting to light mode - animate the OLD dark theme retracting */
@@ -35,6 +36,7 @@ body {
   animation-duration: 0.8s;
   animation-timing-function: cubic-bezier(0.4, 0.0, 0.2, 1);
   animation-fill-mode: both;
+  z-index: var(--transition-z-old, 1);
 }
 
 @keyframes circle-expand {

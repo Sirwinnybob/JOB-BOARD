@@ -451,9 +451,23 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // For production, you should hash the password in .env and use bcrypt.compare
-    // For simplicity, we're doing direct comparison (you can enhance this)
-    const isValid = password === process.env.ADMIN_PASSWORD;
+    let isValid = false;
+
+    // Check if the environment variable is a bcrypt hash (starts with $2a$ or $2b$ and has correct length)
+    // Common bcrypt hash length is 60 chars
+    const adminPassword = process.env.ADMIN_PASSWORD || '';
+    const isHash = (adminPassword.startsWith('$2a$') || adminPassword.startsWith('$2b$')) && adminPassword.length === 60;
+
+    if (isHash) {
+      isValid = await bcrypt.compare(password, adminPassword);
+    } else {
+      // Fallback to plain text comparison with security warning
+      if (adminPassword && password === adminPassword) {
+        console.warn('⚠️ SECURITY WARNING: You are using a plain text password in ADMIN_PASSWORD.');
+        console.warn('   Please use the included utility to hash your password: node hash-password.js');
+        isValid = true;
+      }
+    }
 
     if (!isValid) {
       return res.status(401).json({ error: 'Invalid credentials' });

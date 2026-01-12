@@ -122,6 +122,12 @@ JWT_SECRET=$(openssl rand -base64 32)
 
 # Set admin credentials
 ADMIN_USERNAME=your_admin_username
+
+# Generate bcrypt hash for password (RECOMMENDED)
+node backend/scripts/hash-password.js your_secure_password
+# Copy the output hash to ADMIN_PASSWORD in .env
+
+# Or use plain text (NOT recommended for production)
 ADMIN_PASSWORD=your_secure_password
 ```
 
@@ -326,13 +332,58 @@ Docker volumes ensure data persists across container restarts:
 
 ## Security Considerations
 
-1. **Change default credentials** in `.env`
-2. **Use strong JWT secret** (32+ characters, generated with `openssl rand -base64 32`)
-3. **Enable HTTPS** via reverse proxy
-4. **Rate limiting** enabled (100 requests/15 minutes per IP)
-5. **File upload restrictions**: PDF only, max 50MB
-6. **Helmet.js** security headers enabled
-7. **CORS** properly configured for production
+### Password Security
+
+**IMPORTANT: Use bcrypt-hashed passwords for production!**
+
+1. **Generate a hashed password**:
+   ```bash
+   node backend/scripts/hash-password.js your_secure_password
+   ```
+
+2. **Copy the bcrypt hash to your .env file**:
+   ```bash
+   ADMIN_PASSWORD=$2b$10$abc123...xyz789
+   ```
+
+3. The system will automatically detect if the password is hashed or plain text
+   - Hashed passwords (recommended): No security warnings
+   - Plain text passwords (legacy): Security warning in logs
+
+### Authentication & Session Security
+
+1. **JWT Secret**: Use a strong, randomly generated secret (32+ characters)
+   ```bash
+   openssl rand -base64 32
+   ```
+
+2. **Session Management**:
+   - Device-specific sessions prevent token sharing across devices
+   - Automatic session timeout after 30 minutes of inactivity
+   - Server-side session validation on every request
+   - Periodic token validation (every 5 minutes) on client
+   - WebSocket-based real-time logout notifications
+
+3. **Login Protection**:
+   - Rate limiting: 10 login attempts per IP per 15 minutes
+   - Failed login attempts are logged
+   - Automatic account lockout prevention
+
+### Infrastructure Security
+
+4. **Enable HTTPS** via reverse proxy (required for production)
+5. **Rate limiting**: 500 requests/15 minutes per IP (general), 10/15 min for login
+6. **File upload restrictions**: PDF and images only, max 50MB
+7. **Helmet.js** security headers enabled
+8. **CORS** properly configured for production
+
+### Best Practices
+
+- Never commit `.env` files to version control
+- Rotate JWT secrets periodically
+- Keep dependencies updated
+- Monitor authentication logs for suspicious activity
+- Use strong, unique passwords (12+ characters, mixed case, numbers, symbols)
 
 ## Troubleshooting
 

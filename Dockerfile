@@ -69,7 +69,8 @@ ARG CACHE_BUST
 RUN echo "Cache bust: $CACHE_BUST"
 
 # Install backend dependencies (bypass platform checks but include optional deps)
-RUN npm ci --omit=dev --force || npm install --omit=dev --force
+# Note: Using npm install directly as this repo uses workspaces
+RUN npm install --omit=dev --force
 
 # Copy backend source (after npm install to avoid overwriting node_modules)
 COPY backend/*.js ./
@@ -83,8 +84,13 @@ COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
 # Create non-root user for security (principle of least privilege)
 # UID 1000 is a standard non-root user ID
-RUN addgroup -g 1000 appuser && \
-    adduser -D -u 1000 -G appuser appuser
+# Check if group with GID 1000 exists, if not create it
+RUN if ! getent group 1000 > /dev/null 2>&1; then \
+        addgroup -g 1000 appuser; \
+    else \
+        echo "Group with GID 1000 already exists, using it"; \
+    fi && \
+    adduser -D -u 1000 -G $(getent group 1000 | cut -d: -f1) appuser
 
 # Create data directories for persistent storage with proper ownership
 RUN mkdir -p data/uploads data/thumbnails data/ocr-test && \

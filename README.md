@@ -131,12 +131,25 @@ node backend/scripts/hash-password.js your_secure_password
 ADMIN_PASSWORD=your_secure_password
 ```
 
-3. **Deploy with Docker Compose**:
+3. **Set up data directory with correct permissions**:
+```bash
+# Create data directory
+mkdir -p ./data/{uploads,thumbnails,ocr-test}
+
+# Set ownership for non-root user (UID 1000)
+sudo chown -R 1000:1000 ./data
+
+# Or allow your current user and UID 1000
+sudo chown -R $USER:1000 ./data
+chmod -R 775 ./data
+```
+
+4. **Deploy with Docker Compose**:
 ```bash
 docker-compose up -d
 ```
 
-4. **Access the application**:
+5. **Access the application**:
    - Application: http://localhost:3000
    - Admin Panel: http://localhost:3000/admin
 
@@ -371,11 +384,17 @@ Docker volumes ensure data persists across container restarts:
 
 ### Infrastructure Security
 
-4. **Enable HTTPS** via reverse proxy (required for production)
-5. **Rate limiting**: 500 requests/15 minutes per IP (general), 10/15 min for login
-6. **File upload restrictions**: PDF and images only, max 50MB
-7. **Helmet.js** security headers enabled
-8. **CORS** properly configured for production
+4. **Non-Root Execution**: Container runs as non-root user (UID 1000)
+   - Principle of least privilege
+   - Limited file system access
+   - Cannot install packages or modify system
+   - See `SECURITY_HARDENING.md` for details
+
+5. **Enable HTTPS** via reverse proxy (required for production)
+6. **Rate limiting**: 500 requests/15 minutes per IP (general), 10/15 min for login
+7. **File upload restrictions**: PDF and images only, max 50MB
+8. **Helmet.js** security headers enabled
+9. **CORS** properly configured for production
 
 ### Best Practices
 

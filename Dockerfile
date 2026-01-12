@@ -83,26 +83,40 @@ COPY backend/scripts ./scripts
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
 # Create non-root user for security (principle of least privilege)
-# UID 1000 is a standard non-root user ID
-# Check if group with GID 1000 exists, if not create it
-RUN if ! getent group 1000 > /dev/null 2>&1; then \
-        addgroup -g 1000 appuser; \
+# Check what user/group has UID/GID 1000 (if any)
+RUN echo "Checking existing UID 1000..." && \
+    getent passwd 1000 || echo "UID 1000 is available" && \
+    echo "Checking existing GID 1000..." && \
+    getent group 1000 || echo "GID 1000 is available"
+
+# Create user - Alpine will assign available GID to the group
+# If UID 1000 exists, we'll handle it differently
+RUN if getent passwd 1000 > /dev/null 2>&1; then \
+      echo "UID 1000 already exists, will use existing user"; \
+      USERNAME=$(getent passwd 1000 | cut -d: -f1); \
+      echo "Existing user: $USERNAME"; \
+      if [ "$USERNAME" != "appuser" ]; then \
+        echo "Creating symlink from appuser to $USERNAME"; \
+        ln -s /home/$USERNAME /home/appuser 2>/dev/null || true; \
+      fi; \
     else \
-        echo "Group with GID 1000 already exists, using it"; \
-    fi && \
-    adduser -D -u 1000 -G $(getent group 1000 | cut -d: -f1) appuser
+      echo "Creating new user appuser with UID 1000"; \
+      adduser -D -u 1000 appuser; \
+    fi
 
 # Create data directories for persistent storage with proper ownership
+# Use UID 1000 directly in chown to avoid username issues
 RUN mkdir -p data/uploads data/thumbnails data/ocr-test && \
-    chown -R appuser:appuser /app && \
+    chown -R 1000:1000 /app && \
     chmod -R 755 /app/data
 
 # Set environment variable for frontend path
 ENV FRONTEND_PATH=/app/frontend/dist
 
 # Switch to non-root user
-# After this point, all commands run as appuser (UID 1000)
-USER appuser
+# Use numeric UID to ensure we run as UID 1000 regardless of username
+# After this point, all commands run as UID 1000
+USER 1000
 
 # Expose port
 EXPOSE 3000

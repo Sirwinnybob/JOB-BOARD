@@ -207,6 +207,34 @@ function HomePage() {
     setIsAuthenticated(authAPI.isAuthenticated());
   }, []);
 
+  // Periodic token validation - verify with server every 5 minutes
+  useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
+
+    // Verify immediately on first load
+    const verifyToken = async () => {
+      try {
+        await authAPI.verifyToken();
+        console.log('🔐 Token validated with server');
+      } catch (error) {
+        console.error('❌ Token validation failed:', error);
+        // The 401 interceptor in api.js will handle logout automatically
+      }
+    };
+
+    // Initial verification
+    verifyToken();
+
+    // Set up interval to check every 5 minutes
+    const validationInterval = setInterval(verifyToken, 5 * 60 * 1000);
+
+    return () => {
+      clearInterval(validationInterval);
+    };
+  }, [isAuthenticated]);
+
   const loadData = useCallback(async () => {
     try {
       const [allPdfsRes, settingsRes] = await Promise.all([

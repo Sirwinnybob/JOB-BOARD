@@ -122,15 +122,34 @@ JWT_SECRET=$(openssl rand -base64 32)
 
 # Set admin credentials
 ADMIN_USERNAME=your_admin_username
+
+# Generate bcrypt hash for password (RECOMMENDED)
+node backend/scripts/hash-password.js your_secure_password
+# Copy the output hash to ADMIN_PASSWORD in .env
+
+# Or use plain text (NOT recommended for production)
 ADMIN_PASSWORD=your_secure_password
 ```
 
-3. **Deploy with Docker Compose**:
+3. **Set up data directory with correct permissions**:
+```bash
+# Create data directory
+mkdir -p ./data/{uploads,thumbnails,ocr-test}
+
+# Set ownership for non-root user (UID 1000)
+sudo chown -R 1000:1000 ./data
+
+# Or allow your current user and UID 1000
+sudo chown -R $USER:1000 ./data
+chmod -R 775 ./data
+```
+
+4. **Deploy with Docker Compose**:
 ```bash
 docker-compose up -d
 ```
 
-4. **Access the application**:
+5. **Access the application**:
    - Application: http://localhost:3000
    - Admin Panel: http://localhost:3000/admin
 
@@ -326,13 +345,64 @@ Docker volumes ensure data persists across container restarts:
 
 ## Security Considerations
 
-1. **Change default credentials** in `.env`
-2. **Use strong JWT secret** (32+ characters, generated with `openssl rand -base64 32`)
-3. **Enable HTTPS** via reverse proxy
-4. **Rate limiting** enabled (100 requests/15 minutes per IP)
-5. **File upload restrictions**: PDF only, max 50MB
-6. **Helmet.js** security headers enabled
-7. **CORS** properly configured for production
+### Password Security
+
+**IMPORTANT: Use bcrypt-hashed passwords for production!**
+
+1. **Generate a hashed password**:
+   ```bash
+   node backend/scripts/hash-password.js your_secure_password
+   ```
+
+2. **Copy the bcrypt hash to your .env file**:
+   ```bash
+   ADMIN_PASSWORD=$2b$10$abc123...xyz789
+   ```
+
+3. The system will automatically detect if the password is hashed or plain text
+   - Hashed passwords (recommended): No security warnings
+   - Plain text passwords (legacy): Security warning in logs
+
+### Authentication & Session Security
+
+1. **JWT Secret**: Use a strong, randomly generated secret (32+ characters)
+   ```bash
+   openssl rand -base64 32
+   ```
+
+2. **Session Management**:
+   - Device-specific sessions prevent token sharing across devices
+   - Automatic session timeout after 30 minutes of inactivity
+   - Server-side session validation on every request
+   - Periodic token validation (every 5 minutes) on client
+   - WebSocket-based real-time logout notifications
+
+3. **Login Protection**:
+   - Rate limiting: 10 login attempts per IP per 15 minutes
+   - Failed login attempts are logged
+   - Automatic account lockout prevention
+
+### Infrastructure Security
+
+4. **Non-Root Execution**: Container runs as non-root user (UID 1000)
+   - Principle of least privilege
+   - Limited file system access
+   - Cannot install packages or modify system
+   - See `SECURITY_HARDENING.md` for details
+
+5. **Enable HTTPS** via reverse proxy (required for production)
+6. **Rate limiting**: 500 requests/15 minutes per IP (general), 10/15 min for login
+7. **File upload restrictions**: PDF and images only, max 50MB
+8. **Helmet.js** security headers enabled
+9. **CORS** properly configured for production
+
+### Best Practices
+
+- Never commit `.env` files to version control
+- Rotate JWT secrets periodically
+- Keep dependencies updated
+- Monitor authentication logs for suspicious activity
+- Use strong, unique passwords (12+ characters, mixed case, numbers, symbols)
 
 ## Troubleshooting
 

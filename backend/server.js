@@ -58,6 +58,10 @@ const deviceSessions = new Map();
 // Only one admin can edit at a time (via edit lock)
 let editingAdminConnection = null;
 
+// Session timeout configuration (30 minutes of inactivity)
+const SESSION_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
+const SESSION_CLEANUP_INTERVAL_MS = 5 * 60 * 1000; // Check every 5 minutes
+
 // Helper function to generate a unique device identifier for WebSocket
 function getDeviceId(req) {
   const ip = req.socket.remoteAddress;
@@ -107,6 +111,50 @@ function getSecondsUntilFridayEvening() {
 
 // Create auth middleware with access to device sessions
 const authMiddleware = createAuthMiddleware(deviceSessions);
+
+// Session cleanup - automatically remove expired sessions
+const sessionCleanupInterval = setInterval(() => {
+  const now = Date.now();
+  let expiredCount = 0;
+
+  for (const [deviceSessionId, session] of deviceSessions.entries()) {
+    const timeSinceLastActivity = now - session.lastActivity;
+
+    if (timeSinceLastActivity > SESSION_TIMEOUT_MS) {
+      console.log(`⏱️  Session expired: ${deviceSessionId.substring(0, 20)}... (inactive for ${Math.floor(timeSinceLastActivity / 60000)} minutes)`);
+
+      // Notify the client via WebSocket if still connected
+      if (session.websocket && session.websocket.readyState === WebSocket.OPEN) {
+        try {
+          session.websocket.send(JSON.stringify({
+            type: 'device_logged_out',
+            data: {
+              deviceSessionId,
+              message: 'Session expired due to inactivity',
+              timestamp: new Date().toISOString()
+            }
+          }));
+        } catch (error) {
+          console.error('Error sending session expiry notification:', error);
+        }
+      }
+
+      // Remove the expired session
+      deviceSessions.delete(deviceSessionId);
+      expiredCount++;
+    }
+  }
+
+  if (expiredCount > 0) {
+    console.log(`🧹 Cleaned up ${expiredCount} expired session(s). Active sessions: ${deviceSessions.size}`);
+  }
+}, SESSION_CLEANUP_INTERVAL_MS);
+
+// Clean up interval on server shutdown
+process.on('SIGTERM', () => {
+  clearInterval(sessionCleanupInterval);
+  clearInterval(heartbeatInterval);
+});
 
 // WebSocket connection handler
 wss.on('connection', (ws, req) => {
@@ -437,8 +485,18 @@ const upload = multer({
   limits: { fileSize: 50 * 1024 * 1024 } // 50MB max
 });
 
+// Login rate limiter - more strict to prevent brute force attacks
+const loginLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // Max 10 attempts per IP per 15 minutes
+  message: { error: 'Too many login attempts. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skipSuccessfulRequests: false, // Count both successful and failed attempts
+});
+
 // Auth Routes
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', loginLimiter, async (req, res) => {
   try {
     const { username, password } = req.body;
 
@@ -451,9 +509,21 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    // For production, you should hash the password in .env and use bcrypt.compare
-    // For simplicity, we're doing direct comparison (you can enhance this)
-    const isValid = password === process.env.ADMIN_PASSWORD;
+    // Check if password in .env is a bcrypt hash or plain text
+    const envPassword = process.env.ADMIN_PASSWORD;
+    let isValid = false;
+
+    // Bcrypt hashes always start with $2a$, $2b$, or $2y$
+    if (envPassword && envPassword.match(/^\$2[aby]\$/)) {
+      // Password is already hashed - use bcrypt.compare
+      isValid = await bcrypt.compare(password, envPassword);
+    } else {
+      // Password is plain text (legacy) - direct comparison
+      // Log a warning for security
+      console.warn('⚠️  WARNING: ADMIN_PASSWORD is stored in plain text. Please hash it using bcrypt.');
+      console.warn('   Run: node backend/scripts/hash-password.js <your-password>');
+      isValid = password === envPassword;
+    }
 
     if (!isValid) {
       return res.status(401).json({ error: 'Invalid credentials' });

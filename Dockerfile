@@ -76,15 +76,27 @@ COPY backend/*.js ./
 COPY backend/*.json ./
 COPY backend/middleware ./middleware
 COPY backend/utils ./utils
+COPY backend/scripts ./scripts
 
 # Copy built frontend from previous stage
 COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 
-# Create data directory for persistent storage
-RUN mkdir -p data && chmod 755 data
+# Create non-root user for security (principle of least privilege)
+# UID 1000 is a standard non-root user ID
+RUN addgroup -g 1000 appuser && \
+    adduser -D -u 1000 -G appuser appuser
+
+# Create data directories for persistent storage with proper ownership
+RUN mkdir -p data/uploads data/thumbnails data/ocr-test && \
+    chown -R appuser:appuser /app && \
+    chmod -R 755 /app/data
 
 # Set environment variable for frontend path
 ENV FRONTEND_PATH=/app/frontend/dist
+
+# Switch to non-root user
+# After this point, all commands run as appuser (UID 1000)
+USER appuser
 
 # Expose port
 EXPOSE 3000
@@ -93,5 +105,5 @@ EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD node -e "require('http').get('http://localhost:3000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"
 
-# Start the application
+# Start the application as non-root user
 CMD ["node", "server.js"]

@@ -617,6 +617,24 @@ app.get('/api/pdfs', async (req, res) => {
     const { includePending } = req.query;
     const shouldIncludePending = includePending === 'true';
 
+    // Security check: Only allow access to pending PDFs if authenticated
+    if (shouldIncludePending) {
+      const token = req.headers.authorization?.split(' ')[1];
+      if (!token) {
+        return res.status(401).json({ error: 'Authentication required for pending jobs' });
+      }
+
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        // Also verify device session if present (consistent with authMiddleware)
+        if (decoded.deviceSessionId && !deviceSessions.has(decoded.deviceSessionId)) {
+          return res.status(401).json({ error: 'Session expired' });
+        }
+      } catch (authError) {
+        return res.status(401).json({ error: 'Invalid or expired token' });
+      }
+    }
+
     // Build query based on whether to include pending PDFs
     const query = shouldIncludePending
       ? 'SELECT * FROM pdfs ORDER BY position ASC'

@@ -418,7 +418,18 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
   crossOriginOpenerPolicy: false, // Disable COOP to avoid HTTP issues
   crossOriginEmbedderPolicy: false, // Disable COEP
-  contentSecurityPolicy: false // Disable CSP for now
+  contentSecurityPolicy: {
+    useDefaults: false,
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"], // unsafe-inline needed for some React dev tools/runtimes
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "blob:"],
+      connectSrc: ["'self'", "ws:", "wss:"], // Allow WebSocket connections
+      objectSrc: ["'none'"], // Prevent malicious plugin execution
+      upgradeInsecureRequests: [], // Optional: force HTTPS
+    },
+  },
 }));
 app.use(cors());
 app.use(express.json());

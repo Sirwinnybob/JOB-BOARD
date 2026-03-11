@@ -1,10 +1,10 @@
-const { exec } = require('child_process');
+const { execFile } = require('child_process');
 const { promisify } = require('util');
 const fs = require('fs').promises;
 const path = require('path');
 const db = require('../db');
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 /**
  * Extract text from PDF using OCR (tesseract)
@@ -26,7 +26,7 @@ async function extractTextWithOCR(pdfPath, region = null, existingImagePath = nu
 
       // Convert PDF to PNG images (first page only, 300 DPI to match display images)
       // -singlefile creates single file without page numbers
-      await execAsync(`pdftocairo -png -f 1 -l 1 -singlefile -r 300 "${pdfPath}" "${imageBase}"`);
+      await execFileAsync('pdftocairo', ['-png', '-f', '1', '-l', '1', '-singlefile', '-r', '300', pdfPath, imageBase]);
 
       // With -singlefile, pdftocairo creates imageBase.png (no page number suffix)
       const generatedImagePath = `${imageBase}.png`;
@@ -43,13 +43,13 @@ async function extractTextWithOCR(pdfPath, region = null, existingImagePath = nu
     if (region && region.width > 0 && region.height > 0) {
       // Extract from specific region using ImageMagick crop + tesseract
       const croppedImage = path.join('/tmp', `ocr-crop-${Date.now()}.png`);
-      const cropCommand = `magick "${imagePath}" -crop ${region.width}x${region.height}+${region.x}+${region.y} "${croppedImage}"`;
-      console.log(`Cropping image: ${cropCommand}`);
-      await execAsync(cropCommand);
+      const cropArgs = [imagePath, '-crop', `${region.width}x${region.height}+${region.x}+${region.y}`, croppedImage];
+      console.log(`Cropping image: magick ${cropArgs.join(' ')}`);
+      await execFileAsync('magick', cropArgs);
 
-      const ocrCommand = `tesseract "${croppedImage}" stdout`;
-      console.log(`Running region OCR: ${ocrCommand}`);
-      const { stdout } = await execAsync(ocrCommand);
+      const ocrArgs = [croppedImage, 'stdout'];
+      console.log(`Running region OCR: tesseract ${ocrArgs.join(' ')}`);
+      const { stdout } = await execFileAsync('tesseract', ocrArgs);
       ocrText = stdout;
 
       // Clean up cropped image
@@ -60,9 +60,9 @@ async function extractTextWithOCR(pdfPath, region = null, existingImagePath = nu
       }
     } else {
       // Full page OCR
-      const ocrCommand = `tesseract "${imagePath}" stdout`;
-      console.log(`Running full-page OCR: ${ocrCommand}`);
-      const { stdout } = await execAsync(ocrCommand);
+      const ocrArgs = [imagePath, 'stdout'];
+      console.log(`Running full-page OCR: tesseract ${ocrArgs.join(' ')}`);
+      const { stdout } = await execFileAsync('tesseract', ocrArgs);
       ocrText = stdout;
     }
 

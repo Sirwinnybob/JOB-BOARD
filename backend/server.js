@@ -10,7 +10,7 @@ const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs').promises;
-const { exec } = require('child_process');
+const { execFile } = require('child_process');
 const { promisify } = require('util');
 const webpush = require('web-push');
 const db = require('./db');
@@ -18,7 +18,7 @@ const { createAuthMiddleware } = require('./middleware/auth');
 const { generateThumbnail, generatePdfImages, generateImageFile, generateDarkModeImages } = require('./utils/thumbnail');
 const { extractMetadata } = require('./utils/textExtraction');
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 // Configure Web Push with VAPID keys
 if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY && process.env.VAPID_SUBJECT) {
@@ -1716,10 +1716,10 @@ app.post('/api/ocr-test-image', authMiddleware, ocrTestUpload.single('image'), a
     const outputBase = path.join(OCR_TEST_DIR, 'test-image');
 
     // Use same DPI as job board display images (300dpi) for consistency with OCR regions
-    const command = `pdftocairo -png -f 1 -l 1 -singlefile -r 300 "${pdfPath}" "${outputBase}"`;
-    console.log(`Running pdftocairo command: ${command}`);
+    const args = ['-png', '-f', '1', '-l', '1', '-singlefile', '-r', '300', pdfPath, outputBase];
+    console.log(`Running pdftocairo command: pdftocairo ${args.join(' ')}`);
 
-    const { stdout, stderr } = await execAsync(command);
+    const { stdout, stderr } = await execFileAsync('pdftocairo', args);
     if (stdout) console.log(`pdftocairo stdout: ${stdout}`);
     if (stderr) console.log(`pdftocairo stderr: ${stderr}`);
 

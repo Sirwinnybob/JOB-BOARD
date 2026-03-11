@@ -1,9 +1,9 @@
-const { exec } = require('child_process');
+const { execFile } = require('child_process');
 const { promisify } = require('util');
 const path = require('path');
 const fs = require('fs').promises;
 
-const execAsync = promisify(exec);
+const execFileAsync = promisify(execFile);
 
 const PYTHON_DARK_MODE_SCRIPT = path.join(__dirname, 'pdfDarkMode.py');
 
@@ -17,10 +17,10 @@ async function convertToDarkMode(pdfPath, outputPath) {
   try {
     console.log(`Converting PDF to dark mode: ${pdfPath} -> ${outputPath}`);
 
-    const command = `python3 "${PYTHON_DARK_MODE_SCRIPT}" "${pdfPath}" "${outputPath}"`;
-    console.log(`Running dark mode conversion: ${command}`);
+    const args = [PYTHON_DARK_MODE_SCRIPT, pdfPath, outputPath];
+    console.log(`Running dark mode conversion: python3 ${args.join(' ')}`);
 
-    const { stdout, stderr } = await execAsync(command);
+    const { stdout, stderr } = await execFileAsync('python3', args);
     if (stdout) console.log(`Dark mode stdout: ${stdout}`);
     if (stderr) console.log(`Dark mode stderr: ${stderr}`);
 
@@ -45,8 +45,8 @@ async function generateThumbnail(filePath, outputDir, baseFilename, isImage = fa
 
     if (isImage) {
       // For images, just copy/convert to PNG using ImageMagick
-      const command = `magick "${filePath}" -resize 800x800\\> "${finalPath}"`;
-      await execAsync(command);
+      const args = [filePath, '-resize', '800x800>', finalPath];
+      await execFileAsync('magick', args);
     } else {
       // Use pdftocairo for PDFs
       // -png: output as PNG
@@ -54,8 +54,8 @@ async function generateThumbnail(filePath, outputDir, baseFilename, isImage = fa
       // -singlefile: don't add page numbers to filename
       // -r 200: resolution 200 DPI for better thumbnail quality
       const outputBase = finalPath.replace('.png', '');
-      const command = `pdftocairo -png -f 1 -l 1 -singlefile -r 200 "${filePath}" "${outputBase}"`;
-      await execAsync(command);
+      const args = ['-png', '-f', '1', '-l', '1', '-singlefile', '-r', '200', filePath, outputBase];
+      await execFileAsync('pdftocairo', args);
     }
 
     // Verify the file was created
@@ -82,10 +82,10 @@ async function generateImageFile(imagePath, outputDir, baseFilename, isCustomUpl
     // Use lower resolution for custom uploads
     const maxDimension = isCustomUpload ? 1200 : 3000;
     const targetPath = path.join(outputDir, `${baseFilename}-1.png`);
-    const command = `magick "${imagePath}" -resize ${maxDimension}x${maxDimension}\\> "${targetPath}"`;
+    const args = [imagePath, '-resize', `${maxDimension}x${maxDimension}>`, targetPath];
 
-    console.log(`Running ImageMagick command: ${command}`);
-    await execAsync(command);
+    console.log(`Running ImageMagick command: magick ${args.join(' ')}`);
+    await execFileAsync('magick', args);
 
     // Verify the file was created
     const fileExists = await fs.access(targetPath).then(() => true).catch(() => false);
@@ -113,10 +113,10 @@ async function generatePdfImages(pdfPath, outputDir, baseFilename, isCustomUploa
     console.log(`Is custom upload: ${isCustomUpload}`);
 
     // First, get the page count
-    const pageCountCommand = `pdfinfo "${pdfPath}" | grep Pages: | awk '{print $2}'`;
-    console.log(`Running page count command: ${pageCountCommand}`);
-    const { stdout: pageCountStr } = await execAsync(pageCountCommand);
-    const pageCount = parseInt(pageCountStr.trim(), 10);
+    console.log(`Running pdfinfo for page count: pdfinfo ${pdfPath}`);
+    const { stdout: pdfinfoOutput } = await execFileAsync('pdfinfo', [pdfPath]);
+    const match = pdfinfoOutput.match(/Pages:\s+(\d+)/);
+    const pageCount = match ? parseInt(match[1], 10) : null;
     console.log(`Total page count: ${pageCount}`);
 
     if (!pageCount || pageCount < 1) {
@@ -131,10 +131,10 @@ async function generatePdfImages(pdfPath, outputDir, baseFilename, isCustomUploa
     // -singlefile: don't add page numbers to filename
     const dpi = isCustomUpload ? 100 : 300;
     const outputBase = path.join(outputDir, baseFilename);
-    const command = `pdftocairo -png -f 1 -l 1 -singlefile -r ${dpi} "${pdfPath}" "${outputBase}"`;
-    console.log(`Running pdftocairo command (first page only, ${dpi} DPI): ${command}`);
+    const args = ['-png', '-f', '1', '-l', '1', '-singlefile', '-r', dpi.toString(), pdfPath, outputBase];
+    console.log(`Running pdftocairo command (first page only, ${dpi} DPI): pdftocairo ${args.join(' ')}`);
 
-    const { stdout, stderr } = await execAsync(command);
+    const { stdout, stderr } = await execFileAsync('pdftocairo', args);
     if (stdout) console.log(`pdftocairo stdout: ${stdout}`);
     if (stderr) console.log(`pdftocairo stderr: ${stderr}`);
 
@@ -197,10 +197,10 @@ async function generateDarkModeImages(pdfPath, outputDir, baseFilename) {
     // Generate PNG from dark mode PDF
     const darkModeBaseFilename = `${baseFilename}-dark`;
     const darkModeOutputBase = path.join(outputDir, darkModeBaseFilename);
-    const darkModeCommand = `pdftocairo -png -f 1 -l 1 -singlefile -r 300 "${darkModePdfPath}" "${darkModeOutputBase}"`;
+    const args = ['-png', '-f', '1', '-l', '1', '-singlefile', '-r', '300', darkModePdfPath, darkModeOutputBase];
     console.log(`[Dark Mode] Generating PNG from dark PDF...`);
 
-    await execAsync(darkModeCommand);
+    await execFileAsync('pdftocairo', args);
 
     // Rename dark mode image
     const darkModeGeneratedPath = path.join(outputDir, `${darkModeBaseFilename}.png`);

@@ -654,6 +654,7 @@ app.get('/api/pdfs', async (req, res) => {
       // Instead of querying labels for each PDF individually (N queries),
       // fetch all relevant labels in bulk queries and map them in memory.
       // We chunk the IDs into groups of 500 to safely stay under SQLite's parameter limits.
+      console.time('⚡ Bolt: fetchLabelsBulk');
       const pdfIds = rows.map(pdf => pdf.id);
       const CHUNK_SIZE = 500;
       const chunks = [];
@@ -699,9 +700,11 @@ app.get('/api/pdfs', async (req, res) => {
             labels: labelsByPdfId[pdf.id] || []
           }));
 
+          console.timeEnd('⚡ Bolt: fetchLabelsBulk');
           res.json(pdfsWithLabels);
         })
         .catch(err => {
+          console.timeEnd('⚡ Bolt: fetchLabelsBulk');
           console.error('Error fetching labels in bulk:', err);
           // On error, just return PDFs without labels to fail gracefully
           res.json(rows.map(pdf => ({ ...pdf, labels: [] })));
@@ -1028,22 +1031,31 @@ app.put('/api/pdfs/reorder', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'Invalid data format' });
     }
 
-    const stmt = db.prepare('UPDATE pdfs SET position = ?, board_section = COALESCE(?, board_section) WHERE id = ?');
+    db.serialize(() => {
+      db.run('BEGIN TRANSACTION');
+      const stmt = db.prepare('UPDATE pdfs SET position = ?, board_section = COALESCE(?, board_section) WHERE id = ?');
 
-    pdfs.forEach(({ id, position, board_section }) => {
-      stmt.run(position, board_section, id);
-    });
+      pdfs.forEach(({ id, position, board_section }) => {
+        stmt.run(position, board_section, id);
+      });
 
-    stmt.finalize((err) => {
-      if (err) {
-        console.error('Database error:', err);
-        return res.status(500).json({ error: 'Database error' });
-      }
+      stmt.finalize((err) => {
+        if (err) {
+          db.run('ROLLBACK');
+          console.error('Database error during reorder:', err);
+          return res.status(500).json({ error: 'Database error' });
+        }
 
-      // Broadcast update to all clients
-      broadcastUpdate('pdfs_reordered', { pdfs });
-
-      res.json({ success: true });
+        db.run('COMMIT', (err) => {
+          if (err) {
+            console.error('Database error during commit:', err);
+            return res.status(500).json({ error: 'Database error' });
+          }
+          // Broadcast update to all clients
+          broadcastUpdate('pdfs_reordered', { pdfs });
+          res.json({ success: true });
+        });
+      });
     });
   } catch (error) {
     console.error('Error reordering PDFs:', error);
@@ -1362,36 +1374,54 @@ app.put('/api/pdfs/:id/labels', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'labels must be an array' });
     }
 
-    // First, remove all existing labels for this PDF
-    db.run('DELETE FROM pdf_labels WHERE pdf_id = ?', [id], (err) => {
-      if (err) {
-        console.error('Database error:', err);
-        return res.status(500).json({ error: 'Database error' });
-      }
+    db.serialize(() => {
+      db.run('BEGIN TRANSACTION');
 
-      // Then, add the new labels with expiration
-      if (labels.length === 0) {
-        // Broadcast update to all clients
-        broadcastUpdate('pdf_labels_updated', { pdfId: id, labels: [] });
-        return res.json({ success: true });
-      }
-
-      const stmt = db.prepare('INSERT INTO pdf_labels (pdf_id, label_id, expires_at) VALUES (?, ?, ?)');
-
-      labels.forEach(label => {
-        stmt.run(id, label.labelId, label.expiresAt || null);
-      });
-
-      stmt.finalize((err) => {
+      // First, remove all existing labels for this PDF
+      db.run('DELETE FROM pdf_labels WHERE pdf_id = ?', [id], (err) => {
         if (err) {
-          console.error('Database error:', err);
+          db.run('ROLLBACK');
+          console.error('Database error deleting labels:', err);
           return res.status(500).json({ error: 'Database error' });
         }
 
-        // Broadcast update to all clients
-        broadcastUpdate('pdf_labels_updated', { pdfId: id, labels });
+        // Then, add the new labels with expiration
+        if (labels.length === 0) {
+          db.run('COMMIT', (err) => {
+            if (err) {
+              console.error('Database error during commit:', err);
+              return res.status(500).json({ error: 'Database error' });
+            }
+            // Broadcast update to all clients
+            broadcastUpdate('pdf_labels_updated', { pdfId: id, labels: [] });
+            return res.json({ success: true });
+          });
+          return;
+        }
 
-        res.json({ success: true });
+        const stmt = db.prepare('INSERT INTO pdf_labels (pdf_id, label_id, expires_at) VALUES (?, ?, ?)');
+
+        labels.forEach(label => {
+          stmt.run(id, label.labelId, label.expiresAt || null);
+        });
+
+        stmt.finalize((err) => {
+          if (err) {
+            db.run('ROLLBACK');
+            console.error('Database error inserting labels:', err);
+            return res.status(500).json({ error: 'Database error' });
+          }
+
+          db.run('COMMIT', (err) => {
+            if (err) {
+              console.error('Database error during commit:', err);
+              return res.status(500).json({ error: 'Database error' });
+            }
+            // Broadcast update to all clients
+            broadcastUpdate('pdf_labels_updated', { pdfId: id, labels });
+            res.json({ success: true });
+          });
+        });
       });
     });
   } catch (error) {

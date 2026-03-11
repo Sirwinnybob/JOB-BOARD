@@ -38,18 +38,20 @@ function ConfirmModal({ isOpen, title, message, onConfirm, onCancel, confirmText
           {showCancel && (
             <button
               onClick={onCancel}
+              aria-label={cancelText}
               className={`px-4 py-2 rounded font-medium ${
                 darkMode
                   ? 'bg-gray-600 text-white hover:bg-gray-500'
                   : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-              } transition-colors`}
+              } transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none`}
             >
               {cancelText}
             </button>
           )}
           <button
             onClick={onConfirm}
-            className={`px-4 py-2 rounded font-medium text-white ${confirmButtonClass} transition-colors`}
+            aria-label={confirmText}
+            className={`px-4 py-2 rounded font-medium text-white ${confirmButtonClass} transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:outline-none`}
           >
             {confirmText}
           </button>

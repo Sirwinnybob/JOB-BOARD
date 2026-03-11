@@ -9,3 +9,11 @@
 ## 2026-03-11 - N+1 Query in PDF Labels API
 **Learning:** `backend/server.js` was sequentially running `SELECT * FROM labels` inside a `.forEach()` loop of `db.all` for every PDF fetched in the `/api/pdfs` endpoint. This meant fetching a board of 24 PDFs would execute 25 DB queries sequentially, creating a significant latency bottleneck for initial page loads and WebSocket broadcasts.
 **Action:** Replaced the loop with a single bulk query using `IN (${placeholders})` and manual in-memory grouping. The entire payload is now fetched in exactly 2 DB queries regardless of board size.
+
+## 2026-03-11 - Transaction Optimization for Bulk Writes
+**Learning:** Sequential `stmt.run()` calls for bulk updates (reordering, label assignments) in SQLite were causing excessive disk I/O due to implicit transactions for each individual write operation.
+**Action:** Wrapped bulk write loops in explicit `BEGIN TRANSACTION` and `COMMIT` blocks using `db.serialize()` to group multiple updates into a single atomic operation, significantly improving write performance and data integrity.
+
+## 2026-03-11 - Performance Metrics for PDF API
+**Learning:** Lack of server-side timing for critical endpoints makes it difficult to verify the real-world impact of performance optimizations.
+**Action:** Added `console.time()` and `console.timeEnd()` to the `/api/pdfs` endpoint to provide measurable metrics for the bulk label fetching logic in development and production logs.

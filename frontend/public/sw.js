@@ -8,11 +8,9 @@ const STATIC_CACHE = [
 
 // Install event - cache static assets
 self.addEventListener('install', (event) => {
-  console.log('[SW] Installing service worker...');
   event.waitUntil(
     caches.open(CACHE_NAME)
       .then((cache) => {
-        console.log('[SW] Caching static assets');
         return cache.addAll(STATIC_CACHE);
       })
       .then(() => self.skipWaiting())
@@ -21,7 +19,6 @@ self.addEventListener('install', (event) => {
 
 // Activate event - clean up old caches
 self.addEventListener('activate', (event) => {
-  console.log('[SW] Activating service worker...');
   event.waitUntil(
     caches.keys()
       .then((cacheNames) => {
@@ -29,7 +26,6 @@ self.addEventListener('activate', (event) => {
           cacheNames
             .filter((cacheName) => cacheName !== CACHE_NAME)
             .map((cacheName) => {
-              console.log('[SW] Deleting old cache:', cacheName);
               return caches.delete(cacheName);
             })
         );
@@ -62,7 +58,6 @@ self.addEventListener('fetch', (event) => {
         return caches.match(event.request)
           .then((cachedResponse) => {
             if (cachedResponse) {
-              console.log('[SW] Serving from cache:', event.request.url);
               return cachedResponse;
             }
             // If not in cache and network failed, return offline page or error
@@ -80,9 +75,7 @@ self.addEventListener('fetch', (event) => {
 
 // Handle notification clicks
 self.addEventListener('notificationclick', (event) => {
-  console.log('[SW] Notification clicked:', event.notification.tag);
   const jobId = event.notification.data?.jobId;
-  console.log('[SW] Job ID from notification:', jobId);
   event.notification.close();
 
   // Open or focus the app window
@@ -117,8 +110,6 @@ self.addEventListener('notificationclick', (event) => {
 
 // Handle push notifications (for future web push implementation)
 self.addEventListener('push', (event) => {
-  console.log('[SW] Push notification received:', event);
-
   if (event.data) {
     const data = event.data.json();
     const options = {

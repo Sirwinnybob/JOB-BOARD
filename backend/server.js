@@ -1,4 +1,27 @@
 require('dotenv').config();
+const crypto = require('crypto');
+
+// Security Check: Validate JWT_SECRET
+const DEFAULT_JWT_SECRETS = [
+  'change-this-to-a-secure-random-string',
+  'change-this-to-a-secure-random-string-in-production',
+  'REQUIRED_CHANGE_ME_TO_A_SECURE_RANDOM_STRING'
+];
+
+if (!process.env.JWT_SECRET || DEFAULT_JWT_SECRETS.includes(process.env.JWT_SECRET)) {
+  if (process.env.NODE_ENV === 'production') {
+    console.error('❌ CRITICAL SECURITY ERROR: JWT_SECRET is not set or is using a default value in production!');
+    console.error('   You MUST set a secure, random JWT_SECRET in your environment variables.');
+    console.error('   Example: JWT_SECRET=$(openssl rand -base64 32)');
+    process.exit(1);
+  } else {
+    console.warn('⚠️  SECURITY WARNING: JWT_SECRET is not set or is using a default value.');
+    console.warn('   Generating a temporary random secret for this session...');
+    process.env.JWT_SECRET = crypto.randomBytes(32).toString('base64');
+    console.warn('   NOTE: This will invalidate all sessions on server restart.');
+  }
+}
+
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');

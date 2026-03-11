@@ -646,37 +646,66 @@ app.get('/api/pdfs', async (req, res) => {
         return res.status(500).json({ error: 'Database error' });
       }
 
-      // Fetch labels for each PDF
-      const pdfsWithLabels = [];
-      let completed = 0;
-
       if (rows.length === 0) {
         return res.json([]);
       }
 
-      rows.forEach(pdf => {
-        db.all(
-          `SELECT l.*, pl.expires_at as label_expires_at FROM labels l
-           INNER JOIN pdf_labels pl ON l.id = pl.label_id
-           WHERE pl.pdf_id = ?
-           AND (pl.expires_at IS NULL OR datetime(pl.expires_at) > datetime('now'))`,
-          [pdf.id],
-          (err, labels) => {
-            if (err) {
-              console.error('Error fetching labels:', err);
-              labels = [];
-            }
-            pdfsWithLabels.push({ ...pdf, labels: labels || [] });
-            completed++;
+      // ⚡ Bolt Optimization: Fix N+1 query problem
+      // Instead of querying labels for each PDF individually (N queries),
+      // fetch all relevant labels in bulk queries and map them in memory.
+      // We chunk the IDs into groups of 500 to safely stay under SQLite's parameter limits.
+      const pdfIds = rows.map(pdf => pdf.id);
+      const CHUNK_SIZE = 500;
+      const chunks = [];
+      for (let i = 0; i < pdfIds.length; i += CHUNK_SIZE) {
+        chunks.push(pdfIds.slice(i, i + CHUNK_SIZE));
+      }
 
-            if (completed === rows.length) {
-              // Sort by position
-              pdfsWithLabels.sort((a, b) => a.position - b.position);
-              res.json(pdfsWithLabels);
+      const fetchLabelsForChunk = (chunkIds) => {
+        return new Promise((resolve, reject) => {
+          const placeholders = chunkIds.map(() => '?').join(',');
+          db.all(
+            `SELECT pl.pdf_id, l.*, pl.expires_at as label_expires_at FROM labels l
+             INNER JOIN pdf_labels pl ON l.id = pl.label_id
+             WHERE pl.pdf_id IN (${placeholders})
+             AND (pl.expires_at IS NULL OR datetime(pl.expires_at) > datetime('now'))`,
+            chunkIds,
+            (err, labelRows) => {
+              if (err) reject(err);
+              else resolve(labelRows);
             }
-          }
-        );
-      });
+          );
+        });
+      };
+
+      Promise.all(chunks.map(fetchLabelsForChunk))
+        .then(results => {
+          // Flatten all chunk results into a single array
+          const allLabelRows = results.flat();
+
+          // Group labels by pdf_id
+          const labelsByPdfId = {};
+          allLabelRows.forEach(row => {
+            if (!labelsByPdfId[row.pdf_id]) {
+              labelsByPdfId[row.pdf_id] = [];
+            }
+            const { pdf_id, ...labelData } = row;
+            labelsByPdfId[row.pdf_id].push(labelData);
+          });
+
+          // Attach labels to PDFs (maintains original position sort)
+          const pdfsWithLabels = rows.map(pdf => ({
+            ...pdf,
+            labels: labelsByPdfId[pdf.id] || []
+          }));
+
+          res.json(pdfsWithLabels);
+        })
+        .catch(err => {
+          console.error('Error fetching labels in bulk:', err);
+          // On error, just return PDFs without labels to fail gracefully
+          res.json(rows.map(pdf => ({ ...pdf, labels: [] })));
+        });
     });
   } catch (error) {
     console.error('Error fetching PDFs:', error);

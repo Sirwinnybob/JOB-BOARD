@@ -34,10 +34,12 @@ function PlaceholderEditModal({ placeholder, onClose, onSave }) {
 
         {/* Body */}
         <div className="px-6 py-4">
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 transition-colors">
+          <label htmlFor="placeholder-text-input" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2 transition-colors">
             Placeholder Text
           </label>
           <textarea
+            id="placeholder-text-input"
+            aria-label="Edit Placeholder Text"
             value={text}
             onChange={(e) => setText(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -54,13 +56,15 @@ function PlaceholderEditModal({ placeholder, onClose, onSave }) {
         <div className="px-6 py-4 bg-gray-50 dark:bg-gray-900/50 rounded-b-lg flex justify-end gap-3 transition-colors">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
+            aria-label="Cancel editing placeholder"
+            className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:outline-none"
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
-            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+            aria-label="Save placeholder text"
+            className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-800 focus-visible:outline-none"
           >
             Save
           </button>

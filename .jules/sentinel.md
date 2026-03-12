@@ -13,3 +13,7 @@
 **Learning:** Any dynamic values embedded in shell commands using `exec` introduce serious command injection risks. Even when values appear "safe" (like randomly generated identifiers), this approach breaks defense-in-depth principles. Furthermore, piping output inside the shell string (like `pdfinfo ... | grep ... | awk ...`) introduces complexity and increases the vulnerability surface.
 
 **Prevention:** Always use `child_process.execFile` or `child_process.spawn` instead of `exec`, passing arguments as an array rather than a single string, which avoids invoking a shell entirely. Extract data programmatically (e.g. using RegEx on stdout) instead of piping through shell utilities.
+## 2024-05-24 - [Express Payload Limits & CSP]
+**Vulnerability:** Missing explicit request payload limits and disabled Content Security Policy (CSP).
+**Learning:** Default `express.json()` limits are too large or unspecified, and `helmet`'s CSP was explicitly disabled, opening the app to DoS and XSS risks.
+**Prevention:** Always set explicit `limit` parameters on Express body parsers and enable a strict but functional CSP using `helmet`.

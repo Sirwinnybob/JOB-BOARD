@@ -441,10 +441,23 @@ app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
   crossOriginOpenerPolicy: false, // Disable COOP to avoid HTTP issues
   crossOriginEmbedderPolicy: false, // Disable COEP
-  contentSecurityPolicy: false // Disable CSP for now
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "blob:", "http:", "https:"],
+      connectSrc: ["'self'", "ws:", "wss:", "http:", "https:"],
+      fontSrc: ["'self'", "data:"],
+      objectSrc: ["'none'"],
+      mediaSrc: ["'self'"],
+      frameSrc: ["'none'"],
+    },
+  }
 }));
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '2mb' })); // Limit JSON payload size to prevent DoS
+app.use(express.urlencoded({ extended: true, limit: '2mb' })); // Limit URL-encoded payload size
 
 // Rate limiting - Increased for multiple devices on same network
 const limiter = rateLimit({

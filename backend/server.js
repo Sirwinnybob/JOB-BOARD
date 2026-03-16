@@ -258,11 +258,21 @@ wss.on('connection', (ws, req) => {
       }
       // Relay edit lock messages to all clients
       else if (data.type === 'edit_lock_acquired') {
+        // Security check: Only authenticated admins can acquire edit lock
+        if (!ws.deviceSessionId || !deviceSessions.has(ws.deviceSessionId)) {
+          console.warn(`⚠️  Unauthorized attempt to acquire edit lock from device: ${ws.deviceId}`);
+          return;
+        }
         console.log(`📢 Relaying ${data.type} from ${data.data?.sessionId?.substring(0, 10)}...`);
         // Store this connection as the editing admin
         editingAdminConnection = ws;
         broadcastUpdate(data.type, data.data);
       } else if (data.type === 'edit_lock_released') {
+        // Security check: Only authenticated admins can release edit lock
+        if (!ws.deviceSessionId || !deviceSessions.has(ws.deviceSessionId)) {
+          console.warn(`⚠️  Unauthorized attempt to release edit lock from device: ${ws.deviceId}`);
+          return;
+        }
         console.log(`📢 Relaying ${data.type} from ${data.data?.sessionId?.substring(0, 10)}...`);
         // Clear the editing admin connection
         editingAdminConnection = null;

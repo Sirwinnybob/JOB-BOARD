@@ -550,6 +550,13 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
       return res.status(400).json({ error: 'Username and password required' });
     }
 
+    // 🛡️ Security: Limit password length to prevent bcrypt DoS attacks
+    // bcrypt has a maximum length of 72 bytes anyway, but we limit to 100
+    // characters to prevent event loop blocking with extremely long strings
+    if (password.length > 100) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
     // Compare with environment variables
     if (username !== process.env.ADMIN_USERNAME) {
       return res.status(401).json({ error: 'Invalid credentials' });

@@ -161,7 +161,6 @@ function HomePage() {
     activeJobs.forEach(job => {
       if (!cachedMap.has(job.id)) {
         highlights[job.id] = 'new';
-        console.log(`[Job Board] New job detected: ${job.job_number || job.id}`);
       }
     });
 
@@ -170,12 +169,10 @@ function HomePage() {
       const cachedJob = cachedMap.get(job.id);
       if (cachedJob && cachedJob.position !== job.position && !highlights[job.id]) {
         highlights[job.id] = 'moved';
-        console.log(`[Job Board] Moved job detected: ${job.job_number || job.id} (${cachedJob.position} → ${job.position})`);
       }
     });
 
     if (Object.keys(highlights).length > 0) {
-      console.log('[Job Board] Highlighting changes:', highlights);
       setJobHighlights(highlights);
 
       // Clear highlights after duration

@@ -118,14 +118,15 @@ function extractJobNumber(text) {
   // Matches: 123, 123a, 123-2, 25-123, 25-123a, etc.
   const patterns = [
     // Direct patterns (JOB# immediately followed by number)
-    /JOB\s*#\s*:?\s*(\d+(?:-\d+)?[a-zA-Z]?)/i,
-    /JOB\s*NUMBER\s*:?\s*(\d+(?:-\d+)?[a-zA-Z]?)/i,
-    /JOB\s*NO\.?\s*:?\s*(\d+(?:-\d+)?[a-zA-Z]?)/i,
-    /JOB:\s*(\d+(?:-\d+)?[a-zA-Z]?)/i,
+    // Using word boundaries and negative lookahead for slashes to avoid matching dates
+    /JOB\s*#\s*:?\s*(\d+(?:-\d+)?[a-zA-Z]?)(?![0-9a-zA-Z\/-]*\/)(?<!\/[0-9a-zA-Z\/-]*)/i,
+    /JOB\s*NUMBER\s*:?\s*(\d+(?:-\d+)?[a-zA-Z]?)(?![0-9a-zA-Z\/-]*\/)(?<!\/[0-9a-zA-Z\/-]*)/i,
+    /JOB\s*NO\.?\s*:?\s*(\d+(?:-\d+)?[a-zA-Z]?)(?![0-9a-zA-Z\/-]*\/)(?<!\/[0-9a-zA-Z\/-]*)/i,
+    /JOB:\s*(\d+(?:-\d+)?[a-zA-Z]?)(?![0-9a-zA-Z\/-]*\/)(?<!\/[0-9a-zA-Z\/-]*)/i,
 
     // Look for standalone numbers that might be job numbers
     // Search for patterns like "25-123" or "123a" that appear near "Job" or after it
-    /JOB[^0-9]{0,20}(\d+(?:-\d+)?[a-zA-Z]?)/i,
+    /JOB[^0-9]{0,20}(\d+(?:-\d+)?[a-zA-Z]?)(?![0-9a-zA-Z\/-]*\/)(?<!\/[0-9a-zA-Z\/-]*)/i,
   ];
 
   for (const pattern of patterns) {
@@ -134,7 +135,12 @@ function extractJobNumber(text) {
       // Validate that it looks like a job number (not a date or other number)
       const potentialJobNum = match[1].trim();
       // Skip if it looks like a date (e.g., 10/13/25)
-      if (!potentialJobNum.includes('/')) {
+      // Check both the captured group and the original match for slashes
+      const fullMatch = match[0];
+      const nextChar = cleanText[match.index + fullMatch.length];
+      const prevChar = match.index > 0 ? cleanText[match.index - 1] : null;
+
+      if (!potentialJobNum.includes('/') && nextChar !== '/' && prevChar !== '/') {
         console.log(`Found job number with pattern ${pattern}:`, potentialJobNum);
         return potentialJobNum;
       }
@@ -143,7 +149,7 @@ function extractJobNumber(text) {
 
   // Also try to find any number patterns that look like job numbers in the full text
   // Look for patterns like "25-123", "123a", etc. near the word "Job"
-  const jobSectionMatch = cleanText.match(/JOB[^]*?(\d+(?:-\d+)?[a-zA-Z]?)(?=\s|$|[^0-9a-zA-Z-])/i);
+  const jobSectionMatch = cleanText.match(/JOB[^]*?(\b\d+(?:-\d+)?[a-zA-Z]?\b)(?![0-9a-zA-Z\/-]*\/)(?<!\/[0-9a-zA-Z\/-]*)/i);
   if (jobSectionMatch && jobSectionMatch[1]) {
     const potentialJobNum = jobSectionMatch[1].trim();
     if (!potentialJobNum.includes('/') && potentialJobNum.length >= 1) {

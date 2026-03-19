@@ -17,3 +17,7 @@
 ## 2026-03-11 - Performance Metrics for PDF API
 **Learning:** Lack of server-side timing for critical endpoints makes it difficult to verify the real-world impact of performance optimizations.
 **Action:** Added `console.time()` and `console.timeEnd()` to the `/api/pdfs` endpoint to provide measurable metrics for the bulk label fetching logic in development and production logs.
+
+## 2026-03-18 - N+1 Query in Push Notifications Loop
+**Learning:** Sequential `db.run()` calls for `UPDATE` (last_used_at) and `DELETE` (invalid) inside a `subscriptions.map` loop were causing an individual database query for every push notification sent. This resulted in O(N) database operations for each broadcast.
+**Action:** Refactored the loop to collect subscription IDs into arrays and perform batch updates/deletions using `WHERE id IN (...)` within a single transaction after all notifications are sent. Used chunking (500 IDs) to respect SQLite's host parameter limits.

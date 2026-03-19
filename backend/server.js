@@ -389,6 +389,9 @@ async function sendPushNotifications(type, data, adminOnly = false) {
         timestamp: Date.now()
       });
 
+      const successfulIds = [];
+      const invalidIds = [];
+
       const results = await Promise.allSettled(
         subscriptions.map(async (sub) => {
           const pushSubscription = {
@@ -401,14 +404,12 @@ async function sendPushNotifications(type, data, adminOnly = false) {
 
           try {
             await webpush.sendNotification(pushSubscription, payload);
-            // Update last_used_at
-            db.run('UPDATE push_subscriptions SET last_used_at = CURRENT_TIMESTAMP WHERE id = ?', [sub.id]);
+            successfulIds.push(sub.id);
             return { success: true };
           } catch (error) {
             // If subscription is invalid (410 Gone), remove it
             if (error.statusCode === 410 || error.statusCode === 404) {
-              console.log(`Removing invalid push subscription: ${sub.endpoint.substring(0, 50)}...`);
-              db.run('DELETE FROM push_subscriptions WHERE id = ?', [sub.id]);
+              invalidIds.push(sub.id);
             }
             return { success: false, error: error.message };
           }
@@ -418,8 +419,46 @@ async function sendPushNotifications(type, data, adminOnly = false) {
       const successful = results.filter(r => r.status === 'fulfilled' && r.value.success).length;
       const failed = results.length - successful;
 
-      console.log(`Push notifications: ${successful} sent, ${failed} failed`);
-      resolve();
+      // Batch update database after sending all notifications
+      if (successfulIds.length > 0 || invalidIds.length > 0) {
+        db.serialize(() => {
+          db.run('BEGIN TRANSACTION');
+
+          if (successfulIds.length > 0) {
+            // Update last_used_at for successful subscriptions
+            // SQLite has a limit on parameters (usually 999 or 32766),
+            // so we chunk the IDs if there are many subscriptions.
+            const CHUNK_SIZE = 500;
+            for (let i = 0; i < successfulIds.length; i += CHUNK_SIZE) {
+              const chunk = successfulIds.slice(i, i + CHUNK_SIZE);
+              const placeholders = chunk.map(() => '?').join(',');
+              db.run(`UPDATE push_subscriptions SET last_used_at = CURRENT_TIMESTAMP WHERE id IN (${placeholders})`, chunk);
+            }
+          }
+
+          if (invalidIds.length > 0) {
+            // Remove invalid subscriptions
+            const CHUNK_SIZE = 500;
+            for (let i = 0; i < invalidIds.length; i += CHUNK_SIZE) {
+              const chunk = invalidIds.slice(i, i + CHUNK_SIZE);
+              const placeholders = chunk.map(() => '?').join(',');
+              console.log(`Removing ${chunk.length} invalid push subscriptions...`);
+              db.run(`DELETE FROM push_subscriptions WHERE id IN (${placeholders})`, chunk);
+            }
+          }
+
+          db.run('COMMIT', (err) => {
+            if (err) {
+              console.error('Error committing push notification updates:', err);
+            }
+            console.log(`Push notifications: ${successful} sent, ${failed} failed`);
+            resolve();
+          });
+        });
+      } else {
+        console.log(`Push notifications: ${successful} sent, ${failed} failed`);
+        resolve();
+      }
     });
   });
 }

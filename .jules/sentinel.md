@@ -11,3 +11,8 @@
 **Vulnerability:** The login endpoint `app.post('/api/auth/login')` passed the raw, user-provided `password` string directly to `bcrypt.compare` without enforcing any length limits.
 **Learning:** Supplying extremely long strings (e.g., > 10MB) to bcrypt functions blocks the Node.js event loop due to the expensive computational cost, leading to a Denial of Service (DoS) for all users of the application.
 **Prevention:** Always implement strict length validation on input strings before hashing or comparing them with bcrypt. Bcrypt naturally truncates inputs longer than 72 bytes, so setting a reasonable upper limit (e.g., 100 characters) mitigates this risk without impacting valid authentication attempts.
+
+## 2025-03-15 - Insecure Random Number Generation
+**Vulnerability:** The application used `Math.random()` to generate unique device session IDs and file names for uploaded PDFs/images.
+**Learning:** `Math.random()` is not cryptographically secure, leading to predictable output. This could allow an attacker to guess session IDs or file names, potentially leading to unauthorized access, file overwrites, or information disclosure.
+**Prevention:** Always use `crypto.randomBytes()` (or similar cryptographically secure functions) to generate unpredictable, secure random values for session IDs, tokens, file names, or any sensitive identifiers.

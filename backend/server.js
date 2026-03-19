@@ -96,6 +96,7 @@ function getDeviceId(req) {
 
 // Generate a unique device session ID for login
 function generateDeviceSessionId() {
+  // 🛡️ Security: Use cryptographically secure random values instead of Math.random()
   return `device_${Date.now()}_${crypto.randomBytes(16).toString('hex')}`;
 }
 
@@ -507,6 +508,8 @@ const storage = multer.diskStorage({
     if (file.mimetype === 'image/png') ext = '.png';
     else if (file.mimetype === 'image/jpeg' || file.mimetype === 'image/jpg') ext = '.jpg';
 
+    // 🛡️ Security: Use cryptographically secure random values instead of Math.random()
+    // to prevent filename predictability and potential overwriting or enumeration
     const uniqueName = `${Date.now()}-${crypto.randomBytes(8).toString('hex')}${ext}`;
     cb(null, uniqueName);
   }

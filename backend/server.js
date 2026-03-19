@@ -96,7 +96,8 @@ function getDeviceId(req) {
 
 // Generate a unique device session ID for login
 function generateDeviceSessionId() {
-  return `device_${Date.now()}_${Math.random().toString(36).substr(2, 16)}`;
+  // 🛡️ Security: Use cryptographically secure random values instead of Math.random()
+  return `device_${Date.now()}_${crypto.randomBytes(16).toString('hex')}`;
 }
 
 // Calculate seconds until next Friday at 6 PM
@@ -507,7 +508,9 @@ const storage = multer.diskStorage({
     if (file.mimetype === 'image/png') ext = '.png';
     else if (file.mimetype === 'image/jpeg' || file.mimetype === 'image/jpg') ext = '.jpg';
 
-    const uniqueName = `${Date.now()}-${Math.round(Math.random() * 1E9)}${ext}`;
+    // 🛡️ Security: Use cryptographically secure random values instead of Math.random()
+    // to prevent filename predictability and potential overwriting or enumeration
+    const uniqueName = `${Date.now()}-${crypto.randomBytes(8).toString('hex')}${ext}`;
     cb(null, uniqueName);
   }
 });

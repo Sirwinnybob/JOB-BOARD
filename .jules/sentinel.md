@@ -16,3 +16,7 @@
 **Vulnerability:** The application used `Math.random()` to generate unique device session IDs and file names for uploaded PDFs/images.
 **Learning:** `Math.random()` is not cryptographically secure, leading to predictable output. This could allow an attacker to guess session IDs or file names, potentially leading to unauthorized access, file overwrites, or information disclosure.
 **Prevention:** Always use `crypto.randomBytes()` (or similar cryptographically secure functions) to generate unpredictable, secure random values for session IDs, tokens, file names, or any sensitive identifiers.
+## 2025-03-20 - Permissive CORS Configuration
+**Vulnerability:** The application used `app.use(cors())` which accepts cross-origin requests from any origin by default. This is overly permissive and can expose the API to unauthorized cross-origin requests.
+**Learning:** Default CORS configurations in Express are often wide open. This can lead to security issues if an authenticated API is accessed from malicious or untrusted domains.
+**Prevention:** Always explicitly define the `origin` option in CORS configuration, especially for production environments, to restrict access only to known and trusted domains.

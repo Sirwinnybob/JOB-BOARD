@@ -505,7 +505,17 @@ app.use(helmet({
     },
   }
 }));
-app.use(cors());
+
+// 🛡️ Security: Restrict CORS to specific origins instead of allowing all origins
+const corsOptions = {
+  origin: process.env.NODE_ENV === 'production'
+    ? (process.env.ALLOWED_ORIGINS || '').split(',').filter(Boolean)
+    : '*', // Allow all origins in non-production environments
+  credentials: true,
+  optionsSuccessStatus: 200
+};
+app.use(cors(corsOptions));
+
 app.use(express.json({ limit: '2mb' })); // Limit JSON payload size to prevent DoS
 app.use(express.urlencoded({ extended: true, limit: '2mb' })); // Limit URL-encoded payload size
 

@@ -25,3 +25,8 @@
 **Vulnerability:** Missing type validations for object injections targeting string properties (e.g. `toUpperCase()` causing TypeError crashes server-wide)
 **Learning:** `req.body` input might be populated as an object instead of string by bad actors resulting in unexpected application crashes due to implicit runtime type assumptions.
 **Prevention:** Implement strict `typeof input === 'string'` checks for inputs prior to using string-specific methods in routes.
+
+## 2026-03-25 - Default JWT Secret in Non-Production
+**Vulnerability:** The application automatically generated a random JWT secret at startup in non-production environments if the `JWT_SECRET` environment variable was missing or using a default placeholder.
+**Learning:** Relying on automatic secret generation in development creates a false sense of security and can lead to sessions being unexpectedly invalidated on server restarts. It also risks developers forgetting to set a secure, persistent secret when moving towards production-like environments or during local troubleshooting.
+**Prevention:** Enforce strict validation of critical security configuration (like `JWT_SECRET`) in all environments. The application should fail to start with a clear error message if a secure, non-default secret is not explicitly provided, ensuring consistent security posture across all stages of development.

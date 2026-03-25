@@ -9,17 +9,11 @@ const DEFAULT_JWT_SECRETS = [
 ];
 
 if (!process.env.JWT_SECRET || DEFAULT_JWT_SECRETS.includes(process.env.JWT_SECRET)) {
-  if (process.env.NODE_ENV === 'production') {
-    console.error('❌ CRITICAL SECURITY ERROR: JWT_SECRET is not set or is using a default value in production!');
-    console.error('   You MUST set a secure, random JWT_SECRET in your environment variables.');
-    console.error('   Example: JWT_SECRET=$(openssl rand -base64 32)');
-    process.exit(1);
-  } else {
-    console.warn('⚠️  SECURITY WARNING: JWT_SECRET is not set or is using a default value.');
-    console.warn('   Generating a temporary random secret for this session...');
-    process.env.JWT_SECRET = crypto.randomBytes(32).toString('base64');
-    console.warn('   NOTE: This will invalidate all sessions on server restart.');
-  }
+  console.error('❌ CRITICAL SECURITY ERROR: JWT_SECRET is not set or is using a default value!');
+  console.error('   You MUST set a secure, random JWT_SECRET in your environment variables.');
+  console.error('   Example: JWT_SECRET=$(openssl rand -base64 32)');
+  console.error('   Operation halted for security reasons.');
+  process.exit(1);
 }
 
 const express = require('express');

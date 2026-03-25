@@ -428,8 +428,8 @@ async function sendPushNotifications(type, data, adminOnly = false) {
           if (successfulIds.length > 0) {
             // Update last_used_at for successful subscriptions
             // SQLite has a limit on parameters (usually 999 or 32766),
-            // so we chunk the IDs if there are many subscriptions.
-            const CHUNK_SIZE = 500;
+            // so we chunk the IDs to stay within limits while maximizing performance.
+            const CHUNK_SIZE = 999;
             for (let i = 0; i < successfulIds.length; i += CHUNK_SIZE) {
               const chunk = successfulIds.slice(i, i + CHUNK_SIZE);
               const placeholders = chunk.map(() => '?').join(',');
@@ -439,7 +439,7 @@ async function sendPushNotifications(type, data, adminOnly = false) {
 
           if (invalidIds.length > 0) {
             // Remove invalid subscriptions
-            const CHUNK_SIZE = 500;
+            const CHUNK_SIZE = 999;
             for (let i = 0; i < invalidIds.length; i += CHUNK_SIZE) {
               const chunk = invalidIds.slice(i, i + CHUNK_SIZE);
               const placeholders = chunk.map(() => '?').join(',');

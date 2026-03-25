@@ -1367,8 +1367,9 @@ app.post('/api/labels', authMiddleware, async (req, res) => {
   try {
     const { name, color } = req.body;
 
-    if (!name || !color) {
-      return res.status(400).json({ error: 'Name and color required' });
+    // 🛡️ Sentinel: Validate input types to prevent DoS via missing string methods (e.g. .toUpperCase())
+    if (!name || !color || typeof name !== 'string' || typeof color !== 'string') {
+      return res.status(400).json({ error: 'Name and color required and must be valid strings' });
     }
 
     db.run(
@@ -1408,8 +1409,9 @@ app.put('/api/labels/:id', authMiddleware, async (req, res) => {
     const { id } = req.params;
     const { name, color } = req.body;
 
-    if (!name || !color) {
-      return res.status(400).json({ error: 'Name and color required' });
+    // 🛡️ Sentinel: Validate input types to prevent DoS via missing string methods (e.g. .toUpperCase())
+    if (!name || !color || typeof name !== 'string' || typeof color !== 'string') {
+      return res.status(400).json({ error: 'Name and color required and must be valid strings' });
     }
 
     db.run(

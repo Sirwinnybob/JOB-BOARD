@@ -20,3 +20,8 @@
 **Vulnerability:** The application used `app.use(cors())` which accepts cross-origin requests from any origin by default. This is overly permissive and can expose the API to unauthorized cross-origin requests.
 **Learning:** Default CORS configurations in Express are often wide open. This can lead to security issues if an authenticated API is accessed from malicious or untrusted domains.
 **Prevention:** Always explicitly define the `origin` option in CORS configuration, especially for production environments, to restrict access only to known and trusted domains.
+
+## 2026-03-25 - Prevent DoS via missing string methods
+**Vulnerability:** Missing type validations for object injections targeting string properties (e.g. `toUpperCase()` causing TypeError crashes server-wide)
+**Learning:** `req.body` input might be populated as an object instead of string by bad actors resulting in unexpected application crashes due to implicit runtime type assumptions.
+**Prevention:** Implement strict `typeof input === 'string'` checks for inputs prior to using string-specific methods in routes.

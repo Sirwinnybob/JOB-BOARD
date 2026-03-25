@@ -27,12 +27,12 @@ function useWebSocket(onMessage, enabled = true) {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const wsUrl = `${protocol}//${window.location.host}`;
 
-      console.log('🔌 Connecting to WebSocket:', wsUrl);
+      if (import.meta.env.DEV) console.log('🔌 Connecting to WebSocket:', wsUrl);
 
       const ws = new WebSocket(wsUrl);
 
       ws.onopen = () => {
-        console.log('✅ WebSocket connected');
+        if (import.meta.env.DEV) console.log('✅ WebSocket connected');
         reconnectAttemptsRef.current = 0;
         lastMessageTimeRef.current = Date.now();
 
@@ -56,7 +56,7 @@ function useWebSocket(onMessage, enabled = true) {
           const data = JSON.parse(event.data);
           // Only log important message types to reduce console noise
           if (!['ping', 'pong'].includes(data.type)) {
-            console.log('📨 WebSocket message:', data.type);
+            if (import.meta.env.DEV) console.log('📨 WebSocket message:', data.type);
           }
           if (onMessageRef.current) {
             onMessageRef.current(data);
@@ -86,10 +86,12 @@ function useWebSocket(onMessage, enabled = true) {
       };
 
       ws.onclose = (event) => {
-        console.log('🔌 WebSocket disconnected');
-        console.log('  Code:', event.code);
-        console.log('  Reason:', event.reason || 'No reason provided');
-        console.log('  Clean:', event.wasClean);
+        if (import.meta.env.DEV) {
+          console.log('🔌 WebSocket disconnected');
+          console.log('  Code:', event.code);
+          console.log('  Reason:', event.reason || 'No reason provided');
+          console.log('  Clean:', event.wasClean);
+        }
 
         // Log common close codes
         if (event.code === 1006) {
@@ -100,12 +102,12 @@ function useWebSocket(onMessage, enabled = true) {
             console.warn('     Run: ./test-https-wss.sh for diagnostics');
           }
         } else if (event.code === 1001) {
-          console.log('ℹ️  Close code 1001: Going away (normal closure)');
+          if (import.meta.env.DEV) console.log('ℹ️  Close code 1001: Going away (normal closure)');
         } else if (event.code === 1000) {
-          console.log('ℹ️  Close code 1000: Normal closure');
+          if (import.meta.env.DEV) console.log('ℹ️  Close code 1000: Normal closure');
           // If it's a normal closure from server (duplicate connection), don't reconnect immediately
           if (event.reason === 'New connection from same device') {
-            console.log('     Server replaced this connection with a newer one. Not reconnecting.');
+            if (import.meta.env.DEV) console.log('     Server replaced this connection with a newer one. Not reconnecting.');
             return; // Don't reconnect
           }
         }
@@ -114,7 +116,7 @@ function useWebSocket(onMessage, enabled = true) {
         if (enabled && reconnectAttemptsRef.current < 10) {
           const baseDelay = Math.max(2000, 1000 * Math.pow(2, reconnectAttemptsRef.current));
           const delay = Math.min(baseDelay, 30000);
-          console.log(`🔄 Reconnecting in ${delay}ms (attempt ${reconnectAttemptsRef.current + 1}/10)`);
+          if (import.meta.env.DEV) console.log(`🔄 Reconnecting in ${delay}ms (attempt ${reconnectAttemptsRef.current + 1}/10)`);
 
           reconnectTimeoutRef.current = setTimeout(() => {
             reconnectAttemptsRef.current++;
@@ -167,28 +169,28 @@ function useWebSocket(onMessage, enabled = true) {
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        console.log('📱 App became visible, checking WebSocket connection...');
+        if (import.meta.env.DEV) console.log('📱 App became visible, checking WebSocket connection...');
 
         // Reset reconnection attempts when app comes to foreground
         reconnectAttemptsRef.current = 0;
 
         // If connection is closed or not connected, reconnect immediately
         if (!wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) {
-          console.log('🔄 Reconnecting after app became visible...');
+          if (import.meta.env.DEV) console.log('🔄 Reconnecting after app became visible...');
           connect();
         } else {
           // Connection appears open, check if it's actually alive
           const timeSinceLastMessage = Date.now() - lastMessageTimeRef.current;
           if (timeSinceLastMessage > 60000) {
-            console.log('🔄 Connection may be stale, reconnecting...');
+            if (import.meta.env.DEV) console.log('🔄 Connection may be stale, reconnecting...');
             wsRef.current.close();
             connect();
           } else {
-            console.log('✅ WebSocket still connected');
+            if (import.meta.env.DEV) console.log('✅ WebSocket still connected');
           }
         }
       } else if (document.visibilityState === 'hidden') {
-        console.log('📱 App went to background');
+        if (import.meta.env.DEV) console.log('📱 App went to background');
       }
     };
 

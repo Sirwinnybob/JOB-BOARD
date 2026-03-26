@@ -30,3 +30,8 @@
 **Vulnerability:** The application automatically generated a random JWT secret at startup in non-production environments if the `JWT_SECRET` environment variable was missing or using a default placeholder.
 **Learning:** Relying on automatic secret generation in development creates a false sense of security and can lead to sessions being unexpectedly invalidated on server restarts. It also risks developers forgetting to set a secure, persistent secret when moving towards production-like environments or during local troubleshooting.
 **Prevention:** Enforce strict validation of critical security configuration (like `JWT_SECRET`) in all environments. The application should fail to start with a clear error message if a secure, non-default secret is not explicitly provided, ensuring consistent security posture across all stages of development.
+
+## 2026-03-26 - NaN Bound Checking Bypass
+**Vulnerability:** Numerical bounds checks like `rows < 1 || rows > 20` evaluated to false when `rows` parsed as `NaN` (via invalid string input to `parseInt()` or `parseFloat()`), bypassing validation entirely and leading to data pollution.
+**Learning:** Relational comparisons against `NaN` in JavaScript evaluate to `false`. Without explicit `isNaN()` checks, invalid data can bypass constraints intended to block out-of-bounds numbers and be stored in dynamically typed databases like SQLite.
+**Prevention:** Always use `isNaN()` to check the result of `parseInt()` or `parseFloat()` *before* evaluating relational bounds or saving values.

@@ -1682,20 +1682,20 @@ app.put('/api/settings', authMiddleware, async (req, res) => {
     const aspectHeight = aspect_ratio_height ? parseFloat(aspect_ratio_height) : null;
     const deliveryRows = delivery_board_rows !== undefined ? parseInt(delivery_board_rows) : null;
 
-    if (rows < 1 || rows > 20 || cols < 1 || cols > 20) {
-      return res.status(400).json({ error: 'Rows and columns must be between 1 and 20' });
+    if (isNaN(rows) || isNaN(cols) || rows < 1 || rows > 20 || cols < 1 || cols > 20) {
+      return res.status(400).json({ error: 'Rows and columns must be valid numbers between 1 and 20' });
     }
 
-    if (deliveryRows !== null && (deliveryRows < 1 || deliveryRows > 20)) {
-      return res.status(400).json({ error: 'Delivery board rows must be between 1 and 20' });
+    if (deliveryRows !== null && (isNaN(deliveryRows) || deliveryRows < 1 || deliveryRows > 20)) {
+      return res.status(400).json({ error: 'Delivery board rows must be a valid number between 1 and 20' });
     }
 
-    if (aspectWidth !== null && (aspectWidth < 1 || aspectWidth > 50)) {
-      return res.status(400).json({ error: 'Aspect ratio width must be between 1 and 50' });
+    if (aspectWidth !== null && (isNaN(aspectWidth) || aspectWidth < 1 || aspectWidth > 50)) {
+      return res.status(400).json({ error: 'Aspect ratio width must be a valid number between 1 and 50' });
     }
 
-    if (aspectHeight !== null && (aspectHeight < 1 || aspectHeight > 50)) {
-      return res.status(400).json({ error: 'Aspect ratio height must be between 1 and 50' });
+    if (aspectHeight !== null && (isNaN(aspectHeight) || aspectHeight < 1 || aspectHeight > 50)) {
+      return res.status(400).json({ error: 'Aspect ratio height must be a valid number between 1 and 50' });
     }
 
     const updates = [];
@@ -1786,9 +1786,18 @@ app.put('/api/ocr-regions/:field_name', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'x, y, width, and height required' });
     }
 
+    const parsedX = parseInt(x);
+    const parsedY = parseInt(y);
+    const parsedWidth = parseInt(width);
+    const parsedHeight = parseInt(height);
+
+    if (isNaN(parsedX) || isNaN(parsedY) || isNaN(parsedWidth) || isNaN(parsedHeight)) {
+      return res.status(400).json({ error: 'x, y, width, and height must be valid numbers' });
+    }
+
     db.run(
       'UPDATE ocr_regions SET x = ?, y = ?, width = ?, height = ?, description = ?, updated_at = CURRENT_TIMESTAMP WHERE field_name = ?',
-      [parseInt(x), parseInt(y), parseInt(width), parseInt(height), description || null, field_name],
+      [parsedX, parsedY, parsedWidth, parsedHeight, description || null, field_name],
       function (err) {
         if (err) {
           console.error('Database error:', err);

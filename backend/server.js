@@ -833,6 +833,11 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
     const targetPosition = req.body.position !== undefined ? parseInt(req.body.position) : null;
     const skipOcr = req.body.skip_ocr === '1' || req.body.skip_ocr === 'true';
 
+    // 🛡️ Sentinel: Validate parsed integers to prevent NaN bypassing constraints and entering SQLite
+    if (isNaN(isPending) || isNaN(boardSection) || (targetPosition !== null && isNaN(targetPosition))) {
+      return res.status(400).json({ error: 'is_pending, board_section, and position must be valid numbers' });
+    }
+
     // Generate thumbnail (fast)
     const thumbnailName = await generateThumbnail(filePath, thumbnailDir, baseFilename, isImage);
 
@@ -1408,9 +1413,14 @@ app.put('/api/labels/:id', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'Name and color required and must be valid strings' });
     }
 
+    const parsedId = parseInt(id);
+    if (isNaN(parsedId)) {
+      return res.status(400).json({ error: 'Invalid label ID' });
+    }
+
     db.run(
       'UPDATE labels SET name = ?, color = ? WHERE id = ?',
-      [name.toUpperCase(), color, id],
+      [name.toUpperCase(), color, parsedId],
       function (err) {
         if (err) {
           if (err.message.includes('UNIQUE')) {
@@ -1426,13 +1436,13 @@ app.put('/api/labels/:id', authMiddleware, async (req, res) => {
 
         // Broadcast update to all clients
         broadcastUpdate('label_updated', {
-          id: parseInt(id),
+          id: parsedId,
           name: name.toUpperCase(),
           color
         });
 
         res.json({
-          id: parseInt(id),
+          id: parsedId,
           name: name.toUpperCase(),
           color
         });

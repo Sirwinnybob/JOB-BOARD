@@ -35,3 +35,8 @@
 **Vulnerability:** Numerical bounds checks like `rows < 1 || rows > 20` evaluated to false when `rows` parsed as `NaN` (via invalid string input to `parseInt()` or `parseFloat()`), bypassing validation entirely and leading to data pollution.
 **Learning:** Relational comparisons against `NaN` in JavaScript evaluate to `false`. Without explicit `isNaN()` checks, invalid data can bypass constraints intended to block out-of-bounds numbers and be stored in dynamically typed databases like SQLite.
 **Prevention:** Always use `isNaN()` to check the result of `parseInt()` or `parseFloat()` *before* evaluating relational bounds or saving values.
+
+## 2026-03-26 - Bcrypt Length Check and SQLite Object Injection Bypass
+**Vulnerability:** The length check `password.length > 100` before `bcrypt.compare` in the login endpoint could be bypassed if an object with a large `length` property was passed instead of a string. Additionally, SQLite string fields in metadata updates could accept `[object Object]` if non-string types were not validated.
+**Learning:** Checking `.length` on `req.body` properties without first verifying `typeof input === 'string'` leaves endpoints vulnerable to object injection. This can lead to unhandled exceptions or DoS vectors when invalid inputs reach downstream libraries (like `bcrypt.compare`).
+**Prevention:** Always validate that inputs are strictly strings (`typeof input === 'string'`) before invoking string-specific properties like `.length` or passing them to database operations that expect primitive values.

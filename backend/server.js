@@ -592,8 +592,9 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
   try {
     const { username, password } = req.body;
 
-    if (!username || !password) {
-      return res.status(400).json({ error: 'Username and password required' });
+    // 🛡️ Sentinel: Validate input types to prevent DoS via object injection
+    if (!username || !password || typeof username !== 'string' || typeof password !== 'string') {
+      return res.status(400).json({ error: 'Username and password required and must be valid strings' });
     }
 
     // 🛡️ Security: Limit password length to prevent bcrypt DoS attacks
@@ -1277,16 +1278,26 @@ app.put('/api/pdfs/:id/metadata', authMiddleware, async (req, res) => {
     const values = [];
 
     if (job_number !== undefined) {
+      if (typeof job_number !== 'string' && typeof job_number !== 'number' && job_number !== null) {
+        return res.status(400).json({ error: 'job_number must be a string, number, or null' });
+      }
       updates.push('job_number = ?');
-      values.push(job_number);
+      // Ensure we store it as a string to match DB expectations and frontend display
+      values.push(job_number !== null ? String(job_number) : null);
     }
 
     if (construction_method !== undefined) {
+      if (typeof construction_method !== 'string' && construction_method !== null) {
+        return res.status(400).json({ error: 'construction_method must be a string or null' });
+      }
       updates.push('construction_method = ?');
       values.push(construction_method);
     }
 
     if (placeholder_text !== undefined) {
+      if (typeof placeholder_text !== 'string' && placeholder_text !== null) {
+        return res.status(400).json({ error: 'placeholder_text must be a string or null' });
+      }
       updates.push('placeholder_text = ?');
       values.push(placeholder_text);
     }

@@ -596,6 +596,12 @@ app.post('/api/auth/login', loginLimiter, async (req, res) => {
       return res.status(400).json({ error: 'Username and password required' });
     }
 
+    // 🛡️ Security: Validate input types to prevent object injection bypasses
+    // (e.g. bypassing .length checks or crashing bcrypt with non-string arguments)
+    if (typeof username !== 'string' || typeof password !== 'string') {
+      return res.status(400).json({ error: 'Username and password must be valid strings' });
+    }
+
     // 🛡️ Security: Limit password length to prevent bcrypt DoS attacks
     // bcrypt has a maximum length of 72 bytes anyway, but we limit to 100
     // characters to prevent event loop blocking with extremely long strings

@@ -40,3 +40,8 @@
 **Vulnerability:** The login endpoint `app.post('/api/auth/login')` checked `password.length` without validating that `username` and `password` were strings.
 **Learning:** Supplying an object or array (e.g., `{"password": {"length": 100}}`) allows an attacker to bypass length validation checks. Furthermore, passing non-string arguments to `bcrypt.compare` can cause the application to crash, leading to a Denial of Service.
 **Prevention:** Always explicitly validate that user inputs are of the expected type (e.g., `typeof input === 'string'`) before performing type-specific operations like `.length` checks or passing them to sensitive functions like `bcrypt`.
+
+## 2026-03-30 - NaN Bound Checking Bypass in PDF Upload
+**Vulnerability:** The PDF upload endpoint `app.post('/api/pdfs')` parsed `is_pending`, `board_section`, and `position` using `parseInt()` but failed to check if the result was `NaN` before saving to the database.
+**Learning:** Bypassing `NaN` validation can lead to data pollution in the SQLite database because invalid string inputs parsed as `NaN` are stored as null or strings, potentially breaking application logic.
+**Prevention:** Always use `Number.isNaN()` to validate the result of `parseInt()` or `parseFloat()` before using the values in database operations.

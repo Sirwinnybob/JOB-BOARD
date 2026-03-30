@@ -839,6 +839,11 @@ app.post('/api/pdfs', authMiddleware, upload.single('pdf'), async (req, res) => 
     const targetPosition = req.body.position !== undefined ? parseInt(req.body.position) : null;
     const skipOcr = req.body.skip_ocr === '1' || req.body.skip_ocr === 'true';
 
+    // 🛡️ Sentinel: Validate input numbers to prevent NaN database pollution
+    if (Number.isNaN(isPending) || Number.isNaN(boardSection) || (targetPosition !== null && Number.isNaN(targetPosition))) {
+      return res.status(400).json({ error: 'is_pending, board_section, and position must be valid numbers' });
+    }
+
     // Generate thumbnail (fast)
     const thumbnailName = await generateThumbnail(filePath, thumbnailDir, baseFilename, isImage);
 

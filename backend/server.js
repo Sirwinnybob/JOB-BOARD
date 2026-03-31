@@ -1587,6 +1587,16 @@ app.post('/api/push/subscribe', async (req, res) => {
     const { endpoint, keys } = subscription;
     const userAgent = req.headers['user-agent'] || 'Unknown';
 
+    // 🛡️ Security: SSRF Prevention
+    try {
+      const endpointUrl = new URL(endpoint);
+      if (endpointUrl.protocol !== 'https:') {
+        return res.status(400).json({ error: 'Invalid subscription endpoint protocol' });
+      }
+    } catch (urlError) {
+      return res.status(400).json({ error: 'Invalid subscription endpoint URL' });
+    }
+
     // Determine if user is admin by checking for valid auth token
     let isAdmin = 0;
     try {
@@ -1634,8 +1644,8 @@ app.post('/api/push/unsubscribe', async (req, res) => {
   try {
     const { endpoint } = req.body;
 
-    if (!endpoint) {
-      return res.status(400).json({ error: 'Endpoint is required' });
+    if (!endpoint || typeof endpoint !== 'string') {
+      return res.status(400).json({ error: 'Endpoint is required and must be a string' });
     }
 
     db.run('DELETE FROM push_subscriptions WHERE endpoint = ?', [endpoint], (err) => {
@@ -1693,19 +1703,19 @@ app.put('/api/settings', authMiddleware, async (req, res) => {
     const aspectHeight = aspect_ratio_height ? parseFloat(aspect_ratio_height) : null;
     const deliveryRows = delivery_board_rows !== undefined ? parseInt(delivery_board_rows) : null;
 
-    if (isNaN(rows) || isNaN(cols) || rows < 1 || rows > 20 || cols < 1 || cols > 20) {
+    if (Number.isNaN(rows) || Number.isNaN(cols) || rows < 1 || rows > 20 || cols < 1 || cols > 20) {
       return res.status(400).json({ error: 'Rows and columns must be valid numbers between 1 and 20' });
     }
 
-    if (deliveryRows !== null && (isNaN(deliveryRows) || deliveryRows < 1 || deliveryRows > 20)) {
+    if (deliveryRows !== null && (Number.isNaN(deliveryRows) || deliveryRows < 1 || deliveryRows > 20)) {
       return res.status(400).json({ error: 'Delivery board rows must be a valid number between 1 and 20' });
     }
 
-    if (aspectWidth !== null && (isNaN(aspectWidth) || aspectWidth < 1 || aspectWidth > 50)) {
+    if (aspectWidth !== null && (Number.isNaN(aspectWidth) || aspectWidth < 1 || aspectWidth > 50)) {
       return res.status(400).json({ error: 'Aspect ratio width must be a valid number between 1 and 50' });
     }
 
-    if (aspectHeight !== null && (isNaN(aspectHeight) || aspectHeight < 1 || aspectHeight > 50)) {
+    if (aspectHeight !== null && (Number.isNaN(aspectHeight) || aspectHeight < 1 || aspectHeight > 50)) {
       return res.status(400).json({ error: 'Aspect ratio height must be a valid number between 1 and 50' });
     }
 
@@ -1802,7 +1812,7 @@ app.put('/api/ocr-regions/:field_name', authMiddleware, async (req, res) => {
     const parsedWidth = parseInt(width);
     const parsedHeight = parseInt(height);
 
-    if (isNaN(parsedX) || isNaN(parsedY) || isNaN(parsedWidth) || isNaN(parsedHeight)) {
+    if (Number.isNaN(parsedX) || Number.isNaN(parsedY) || Number.isNaN(parsedWidth) || Number.isNaN(parsedHeight)) {
       return res.status(400).json({ error: 'x, y, width, and height must be valid numbers' });
     }
 

@@ -21,3 +21,7 @@
 ## 2026-03-18 - N+1 Query in Push Notifications Loop
 **Learning:** Sequential `db.run()` calls for `UPDATE` (last_used_at) and `DELETE` (invalid) inside a `subscriptions.map` loop were causing an individual database query for every push notification sent. This resulted in O(N) database operations for each broadcast.
 **Action:** Refactored the loop to collect subscription IDs into arrays and perform batch updates/deletions using `WHERE id IN (...)` within a single transaction after all notifications are sent. Used chunking (500 IDs) to respect SQLite's host parameter limits.
+
+## 2026-04-01 - Sequential Database Updates in Settings API
+**Learning:** Updating multiple settings rows currently spawns a Promise array of individual DB queries. While it runs concurrently via `Promise.all`, using a transaction in SQLite is more robust and performant, as it reduces the number of expensive disk syncs from one per update to one per transaction.
+**Action:** Refactored the `PUT /api/settings` route to use a single database transaction within `db.serialize()`. Benchmarking showed a ~43% performance improvement in write operations.

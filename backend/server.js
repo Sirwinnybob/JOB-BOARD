@@ -1141,6 +1141,19 @@ app.put('/api/pdfs/reorder', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'Invalid data format' });
     }
 
+    // 🛡️ Sentinel: Validate array elements to prevent NaN database pollution via object injection
+    const isValid = pdfs.every(p =>
+      p &&
+      typeof p === 'object' &&
+      !Number.isNaN(parseInt(p.id)) &&
+      !Number.isNaN(parseInt(p.position)) &&
+      (p.board_section === undefined || !Number.isNaN(parseInt(p.board_section)))
+    );
+
+    if (!isValid) {
+      return res.status(400).json({ error: 'Invalid PDF data format in array' });
+    }
+
     db.serialize(() => {
       db.run('BEGIN TRANSACTION');
       const stmt = db.prepare('UPDATE pdfs SET position = ?, board_section = COALESCE(?, board_section) WHERE id = ?');
@@ -1227,6 +1240,11 @@ app.put('/api/pdfs/:id/status', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'is_pending is required' });
     }
 
+    // 🛡️ Sentinel: Validate board_section is a valid number to prevent NaN database pollution
+    if (board_section !== undefined && Number.isNaN(parseInt(board_section))) {
+      return res.status(400).json({ error: 'board_section must be a valid number' });
+    }
+
     // First, get the current status to check if we're activating a pending job
     db.get('SELECT is_pending FROM pdfs WHERE id = ?', [id], (err, row) => {
       if (err) {
@@ -1282,6 +1300,13 @@ app.put('/api/pdfs/:id/metadata', authMiddleware, async (req, res) => {
   try {
     const { id } = req.params;
     const { job_number, construction_method, placeholder_text } = req.body;
+
+    // 🛡️ Sentinel: Validate input types to prevent object injection bypassing string constraints
+    if ((job_number !== undefined && typeof job_number !== 'string' && job_number !== null) ||
+        (construction_method !== undefined && typeof construction_method !== 'string' && construction_method !== null) ||
+        (placeholder_text !== undefined && typeof placeholder_text !== 'string' && placeholder_text !== null)) {
+      return res.status(400).json({ error: 'Metadata fields must be strings or null' });
+    }
 
     // Build dynamic update query based on provided fields
     const updates = [];
@@ -1989,6 +2014,15 @@ app.put('/api/delivery-schedule', authMiddleware, async (req, res) => {
 
   if (!slot || !data) {
     return res.status(400).json({ error: 'Slot and data are required' });
+  }
+
+  // 🛡️ Sentinel: Validate input types to prevent injection and massive payloads
+  if (typeof slot !== 'string' || slot.length > 50) {
+    return res.status(400).json({ error: 'Invalid slot format' });
+  }
+
+  if (typeof data !== 'object' || Array.isArray(data) || data === null) {
+    return res.status(400).json({ error: 'Data must be a valid object' });
   }
 
   // Get current schedule

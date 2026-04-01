@@ -1744,54 +1744,39 @@ app.put('/api/settings', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'Aspect ratio height must be a valid number between 1 and 50' });
     }
 
-    const updates = [];
     const responseData = { grid_rows: rows, grid_cols: cols };
 
-    updates.push(new Promise((resolve, reject) => {
-      db.run('UPDATE settings SET value = ? WHERE key = ?', [rows, 'grid_rows'], (err) => {
-        if (err) reject(err);
-        else resolve();
+    new Promise((resolve, reject) => {
+      db.serialize(() => {
+        db.run('BEGIN TRANSACTION');
+        db.run('UPDATE settings SET value = ? WHERE key = ?', [rows, 'grid_rows']);
+        db.run('UPDATE settings SET value = ? WHERE key = ?', [cols, 'grid_cols']);
+
+        if (aspectWidth !== null) {
+          db.run('UPDATE settings SET value = ? WHERE key = ?', [aspectWidth, 'aspect_ratio_width']);
+          responseData.aspect_ratio_width = aspectWidth;
+        }
+
+        if (aspectHeight !== null) {
+          db.run('UPDATE settings SET value = ? WHERE key = ?', [aspectHeight, 'aspect_ratio_height']);
+          responseData.aspect_ratio_height = aspectHeight;
+        }
+
+        if (deliveryRows !== null) {
+          db.run('UPDATE settings SET value = ? WHERE key = ?', [deliveryRows, 'delivery_board_rows']);
+          responseData.delivery_board_rows = deliveryRows;
+        }
+
+        db.run('COMMIT', (err) => {
+          if (err) {
+            db.run('ROLLBACK');
+            reject(err);
+          } else {
+            resolve();
+          }
+        });
       });
-    }));
-
-    updates.push(new Promise((resolve, reject) => {
-      db.run('UPDATE settings SET value = ? WHERE key = ?', [cols, 'grid_cols'], (err) => {
-        if (err) reject(err);
-        else resolve();
-      });
-    }));
-
-    if (aspectWidth !== null) {
-      updates.push(new Promise((resolve, reject) => {
-        db.run('UPDATE settings SET value = ? WHERE key = ?', [aspectWidth, 'aspect_ratio_width'], (err) => {
-          if (err) reject(err);
-          else resolve();
-        });
-      }));
-      responseData.aspect_ratio_width = aspectWidth;
-    }
-
-    if (aspectHeight !== null) {
-      updates.push(new Promise((resolve, reject) => {
-        db.run('UPDATE settings SET value = ? WHERE key = ?', [aspectHeight, 'aspect_ratio_height'], (err) => {
-          if (err) reject(err);
-          else resolve();
-        });
-      }));
-      responseData.aspect_ratio_height = aspectHeight;
-    }
-
-    if (deliveryRows !== null) {
-      updates.push(new Promise((resolve, reject) => {
-        db.run('UPDATE settings SET value = ? WHERE key = ?', [deliveryRows, 'delivery_board_rows'], (err) => {
-          if (err) reject(err);
-          else resolve();
-        });
-      }));
-      responseData.delivery_board_rows = deliveryRows;
-    }
-
-    Promise.all(updates)
+    })
       .then(() => {
         // Broadcast update to all clients
         broadcastUpdate('settings_updated', responseData);

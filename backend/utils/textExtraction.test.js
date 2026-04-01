@@ -1,4 +1,4 @@
-// Mock the database to avoid sqlite3 dependency and initialization
+// Mock dependencies to avoid side effects and external tool requirements
 jest.mock('../db', () => ({
   all: jest.fn(),
   run: jest.fn(),
@@ -7,7 +7,21 @@ jest.mock('../db', () => ({
   configure: jest.fn(),
 }));
 
-const { extractJobNumber } = require('./textExtraction');
+jest.mock('child_process', () => ({
+  execFile: jest.fn(),
+}));
+
+jest.mock('fs', () => ({
+  promises: {
+    unlink: jest.fn(),
+    rename: jest.fn(),
+  },
+}));
+
+const { extractJobNumber, extractMetadata } = require('./textExtraction');
+const db = require('../db');
+const { execFile } = require('child_process');
+const fs = require('fs').promises;
 
 describe('extractJobNumber', () => {
   // Mock console.log to keep test output clean
@@ -76,5 +90,53 @@ describe('extractJobNumber', () => {
 
   test('should return null when no job number is found', () => {
     expect(extractJobNumber('No information here')).toBe(null);
+  });
+});
+
+describe('extractMetadata', () => {
+  let consoleErrorSpy;
+  let consoleLogSpy;
+
+  beforeEach(() => {
+    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    consoleLogSpy = jest.spyOn(console, 'log').mockImplementation(() => {});
+    jest.clearAllMocks();
+  });
+
+  afterEach(() => {
+    consoleErrorSpy.mockRestore();
+    consoleLogSpy.mockRestore();
+  });
+
+  test('should log an error when failing to delete cropped image during region OCR', async () => {
+    // 1. Mock db.all to return a job_number region
+    db.all.mockImplementation((query, params, callback) => {
+      callback(null, [{ field_name: 'job_number', x: 10, y: 10, width: 100, height: 100 }]);
+    });
+
+    // 2. Mock child_process.execFile to succeed for magick and tesseract
+    execFile.mockImplementation((cmd, args, callback) => {
+      callback(null, { stdout: 'JOB# 123', stderr: '' });
+    });
+
+    // 3. Mock fs.unlink to throw an error when called for a path containing 'ocr-crop-'
+    fs.unlink.mockImplementation((filePath) => {
+      if (filePath.includes('ocr-crop-')) {
+        return Promise.reject(new Error('Unlink failed'));
+      }
+      return Promise.resolve();
+    });
+
+    // 4. Mock fs.rename to succeed (needed for extractTextWithOCR if no existing image)
+    fs.rename.mockResolvedValue();
+
+    const result = await extractMetadata('test.pdf', 'test-image.png');
+
+    // 5. Assertions
+    expect(consoleErrorSpy).toHaveBeenCalledWith('Error deleting cropped image:', expect.any(Error));
+    expect(result).toEqual({
+      job_number: '123',
+      construction_method: null
+    });
   });
 });

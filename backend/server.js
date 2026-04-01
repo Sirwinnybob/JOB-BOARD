@@ -37,6 +37,15 @@ const { extractMetadata } = require('./utils/textExtraction');
 
 const execFileAsync = promisify(execFile);
 
+// Valid slots for delivery schedule
+const VALID_DELIVERY_SLOTS = [
+  'monday_am', 'monday_pm',
+  'tuesday_am', 'tuesday_pm',
+  'wednesday_am', 'wednesday_pm',
+  'thursday_am', 'thursday_pm',
+  'friday_am', 'friday_pm'
+];
+
 // Configure Web Push with VAPID keys
 if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY && process.env.VAPID_SUBJECT) {
   webpush.setVapidDetails(
@@ -2017,13 +2026,54 @@ app.put('/api/delivery-schedule', authMiddleware, async (req, res) => {
   }
 
   // 🛡️ Sentinel: Validate input types to prevent injection and massive payloads
-  if (typeof slot !== 'string' || slot.length > 50) {
-    return res.status(400).json({ error: 'Invalid slot format' });
+  if (!VALID_DELIVERY_SLOTS.includes(slot)) {
+    return res.status(400).json({ error: 'Invalid slot identifier' });
   }
 
   if (typeof data !== 'object' || Array.isArray(data) || data === null) {
     return res.status(400).json({ error: 'Data must be a valid object' });
   }
+
+  // Validate internal structure of data
+  if (!Array.isArray(data.jobs)) {
+    return res.status(400).json({ error: 'Data must contain a jobs array' });
+  }
+
+  if (data.jobs.length > 10) {
+    return res.status(400).json({ error: 'Maximum 10 jobs allowed per slot' });
+  }
+
+  // Sanitize data object to prevent storage of arbitrary extra fields
+  const sanitizedJobs = [];
+
+  for (const job of data.jobs) {
+    if (typeof job !== 'object' || job === null) {
+      return res.status(400).json({ error: 'Each job must be an object' });
+    }
+
+    const { jobNumber, description, address } = job;
+
+    if (typeof jobNumber !== 'string' || jobNumber.length > 50) {
+      return res.status(400).json({ error: 'Job number must be a string up to 50 characters' });
+    }
+
+    if (typeof description !== 'string' || description.length > 200) {
+      return res.status(400).json({ error: 'Description must be a string up to 200 characters' });
+    }
+
+    if (address !== undefined && address !== null && (typeof address !== 'string' || address.length > 500)) {
+      return res.status(400).json({ error: 'Address must be a string up to 500 characters' });
+    }
+
+    // Only include expected fields in the sanitized object
+    sanitizedJobs.push({
+      jobNumber: jobNumber.trim(),
+      description: description.trim(),
+      address: address ? address.trim() : ''
+    });
+  }
+
+  const sanitizedData = { jobs: sanitizedJobs };
 
   // Get current schedule
   db.get('SELECT schedule_data FROM delivery_schedule ORDER BY id DESC LIMIT 1', (err, row) => {
@@ -2033,7 +2083,7 @@ app.put('/api/delivery-schedule', authMiddleware, async (req, res) => {
     }
 
     const currentSchedule = row ? JSON.parse(row.schedule_data) : {};
-    currentSchedule[slot] = data;
+    currentSchedule[slot] = sanitizedData;
 
     // Update schedule
     db.run(

@@ -1203,11 +1203,19 @@ app.post('/api/pdfs/placeholder', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'Position is required' });
     }
 
-    const boardSection = board_section !== undefined ? board_section : 0;
+    const parsedPosition = parseInt(position);
+    if (Number.isNaN(parsedPosition)) {
+      return res.status(400).json({ error: 'Position must be a valid number' });
+    }
+
+    const parsedBoardSection = board_section !== undefined ? parseInt(board_section) : 0;
+    if (board_section !== undefined && Number.isNaN(parsedBoardSection)) {
+      return res.status(400).json({ error: 'board_section must be a valid number' });
+    }
 
     db.run(
       'INSERT INTO pdfs (filename, original_name, thumbnail, position, is_placeholder, is_pending, placeholder_text, board_section) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [null, null, null, position, 1, 0, 'PLACEHOLDER', boardSection],
+      [null, null, null, parsedPosition, 1, 0, 'PLACEHOLDER', parsedBoardSection],
       function (err) {
         if (err) {
           console.error('Database error:', err);
@@ -1219,11 +1227,11 @@ app.post('/api/pdfs/placeholder', authMiddleware, async (req, res) => {
           filename: null,
           original_name: null,
           thumbnail: null,
-          position: position,
+          position: parsedPosition,
           is_placeholder: 1,
           is_pending: 0,
           placeholder_text: 'PLACEHOLDER',
-          board_section: boardSection
+          board_section: parsedBoardSection
         };
 
         // Broadcast update to all clients (skip if in edit mode)
@@ -1518,6 +1526,18 @@ app.put('/api/pdfs/:id/labels', authMiddleware, async (req, res) => {
 
     if (!Array.isArray(labels)) {
       return res.status(400).json({ error: 'labels must be an array' });
+    }
+
+    // 🛡️ Sentinel: Validate label elements to prevent NaN database pollution via object injection
+    const isValid = labels.every(l =>
+      l &&
+      typeof l === 'object' &&
+      !Number.isNaN(parseInt(l.labelId)) &&
+      (l.expiresAt === undefined || l.expiresAt === null || typeof l.expiresAt === 'string')
+    );
+
+    if (!isValid) {
+      return res.status(400).json({ error: 'Invalid label data format in array' });
     }
 
     db.serialize(() => {

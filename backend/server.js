@@ -1199,8 +1199,12 @@ app.post('/api/pdfs/placeholder', authMiddleware, async (req, res) => {
   try {
     const { position, board_section, skipBroadcast } = req.body;
 
-    if (position === undefined || position === null) {
-      return res.status(400).json({ error: 'Position is required' });
+    if (position === undefined || position === null || Number.isNaN(parseInt(position))) {
+      return res.status(400).json({ error: 'Position must be a valid number' });
+    }
+
+    if (board_section !== undefined && Number.isNaN(parseInt(board_section))) {
+      return res.status(400).json({ error: 'board_section must be a valid number' });
     }
 
     const boardSection = board_section !== undefined ? board_section : 0;
@@ -1518,6 +1522,18 @@ app.put('/api/pdfs/:id/labels', authMiddleware, async (req, res) => {
 
     if (!Array.isArray(labels)) {
       return res.status(400).json({ error: 'labels must be an array' });
+    }
+
+    // 🛡️ Sentinel: Validate array elements to prevent NaN database pollution via object injection
+    const isValid = labels.every(label =>
+      label &&
+      typeof label === 'object' &&
+      !Number.isNaN(parseInt(label.labelId)) &&
+      (label.expiresAt === undefined || label.expiresAt === null || typeof label.expiresAt === 'string')
+    );
+
+    if (!isValid) {
+      return res.status(400).json({ error: 'Invalid label data format in array' });
     }
 
     db.serialize(() => {

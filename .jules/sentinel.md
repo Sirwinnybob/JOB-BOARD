@@ -11,3 +11,8 @@
 **Vulnerability:** The `PUT /api/delivery-schedule` endpoint allowed storing arbitrary JSON objects of any size (up to the Express payload limit) with any keys. It also allowed arbitrary slot identifiers, leading to potential database exhaustion and denial of service.
 **Learning:** Storing user-provided JSON directly into a database without schema enforcement or sanitization is dangerous. Whitelisting keys and enforcing strict length limits on values is essential for data integrity and resource protection.
 **Prevention:** Always sanitize JSON inputs before storage. Create a new object containing only explicitly validated and whitelisted fields. Implement size limits for arrays and character limits for strings. Use whitelists for key-like parameters (e.g., slot identifiers).
+
+## 2026-04-01 - Input Validation Missing in Placeholder and Label Endpoints (Defense in Depth)
+**Vulnerability:** The `/api/pdfs/:id/labels` endpoint allowed objects instead of arrays of correctly formatted object payloads, which could lead to NaN values or object injection in the `db.run` statements. Additionally, the `/api/pdfs/placeholder` endpoint failed to check if `position` and `board_section` values were valid numbers, similarly allowing DB pollution.
+**Learning:** Object arrays and individual numeric fields in internal-facing endpoints must be fully validated. Missing type validation for numerical parameters opens the application to silent database pollution and Denial of Service (DoS).
+**Prevention:** Iteratively validate every element inside input arrays and consistently check `!Number.isNaN(parseInt(input))` for all numeric inputs before applying database operations. Ensure strict type checking across all endpoints.

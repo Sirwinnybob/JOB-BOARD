@@ -1520,6 +1520,18 @@ app.put('/api/pdfs/:id/labels', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'labels must be an array' });
     }
 
+    // 🛡️ Sentinel: Validate array elements to prevent unhandled exceptions inside db.serialize
+    // which would bypass ROLLBACK and leave the SQLite database permanently locked
+    const isValid = labels.every(l =>
+      l &&
+      typeof l === 'object' &&
+      !Number.isNaN(parseInt(l.labelId))
+    );
+
+    if (!isValid) {
+      return res.status(400).json({ error: 'Invalid label data format in array' });
+    }
+
     db.serialize(() => {
       db.run('BEGIN TRANSACTION');
 

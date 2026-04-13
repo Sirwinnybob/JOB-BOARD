@@ -45,16 +45,16 @@ async function generateThumbnail(filePath, outputDir, baseFilename, isImage = fa
 
     if (isImage) {
       // For images, just copy/convert to PNG using ImageMagick
-      const args = [filePath, '-resize', '800x800>', finalPath];
+      const args = [filePath, '-resize', '400x400>', finalPath];
       await execFileAsync('magick', args);
     } else {
       // Use pdftocairo for PDFs
       // -png: output as PNG
       // -f 1 -l 1: first page to last page (page 1 only)
       // -singlefile: don't add page numbers to filename
-      // -r 200: resolution 200 DPI for better thumbnail quality
+      // -r 72: resolution 72 DPI for faster, lighter thumbnails
       const outputBase = finalPath.replace('.png', '');
-      const args = ['-png', '-f', '1', '-l', '1', '-singlefile', '-r', '200', filePath, outputBase];
+      const args = ['-png', '-f', '1', '-l', '1', '-singlefile', '-r', '72', filePath, outputBase];
       await execFileAsync('pdftocairo', args);
     }
 

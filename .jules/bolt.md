@@ -28,3 +28,9 @@
 ## 2024-04-14 - Slideshow Virtualization
  **Learning:** Animating large numbers of complex DOM nodes (like a long list of high-res PDF thumbnails) using `translate3d` and `scale` on a common ancestor completely tanks rendering performance.
  **Action:** Always virtualize/window content during heavy transitions. For slideshow expansions, conditional rendering of *only* the single active slide's inner contents during the transition (and leaving a bounding box for the others to preserve flex layouts) keeps 60FPS.
+## 2024-XX-XX - Thumbnail Resolution Optimization
+ **Learning:** High-resolution thumbnails (200 DPI, 800x800) generated for the minimized view of the job board consume excessive memory and network bandwidth when rendering a large number of jobs simultaneously on the frontend.
+ **Action:** Reduced the DPI and resolution for generated thumbnails to 72 DPI and 400x400 to significantly decrease thumbnail file size and improve loading performance of the minimized job board view.
+## 2024-XX-XX - Client Cache Invalidations
+ **Learning:** When optimizing static asset generation on the backend (like reducing thumbnail resolution), relying on HTTP cache headers alone might not immediately force active clients to download the new assets if they have long-lived local caches.
+ **Action:** To force an immediate update across all clients, use cache-busting query strings (e.g., appending `?v=2`) to the asset URLs on the frontend, ensuring browsers treat them as new requests while still allowing future caching.

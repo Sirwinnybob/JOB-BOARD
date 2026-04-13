@@ -25,3 +25,6 @@
 ## 2026-04-01 - Sequential Database Updates in Settings API
 **Learning:** Updating multiple settings rows currently spawns a Promise array of individual DB queries. While it runs concurrently via `Promise.all`, using a transaction in SQLite is more robust and performant, as it reduces the number of expensive disk syncs from one per update to one per transaction.
 **Action:** Refactored the `PUT /api/settings` route to use a single database transaction within `db.serialize()`. Benchmarking showed a ~43% performance improvement in write operations.
+## 2024-04-14 - Slideshow Virtualization
+ **Learning:** Animating large numbers of complex DOM nodes (like a long list of high-res PDF thumbnails) using `translate3d` and `scale` on a common ancestor completely tanks rendering performance.
+ **Action:** Always virtualize/window content during heavy transitions. For slideshow expansions, conditional rendering of *only* the single active slide's inner contents during the transition (and leaving a bounding box for the others to preserve flex layouts) keeps 60FPS.

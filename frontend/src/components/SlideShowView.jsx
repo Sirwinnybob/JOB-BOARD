@@ -475,6 +475,11 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
           const imagesBase = (isDarkMode && pdf.dark_mode_images_base) ? pdf.dark_mode_images_base : pdf.images_base;
           const imageSrc = imagesBase ? `/thumbnails/${imagesBase}-1.png` : `/thumbnails/${pdf.thumbnail}`;
 
+          // Performance optimization: Only render the current slide and its immediate neighbors
+          // During zoom/fade animations, only render the absolute active slide to maximize framerate
+          const isAnimating = animationState !== 'none';
+          const isVisible = isAnimating ? index === currentIndex : Math.abs(index - currentIndex) <= 2;
+
           return (
             <div
               key={pdf.id}
@@ -482,7 +487,7 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
             >
               {/* Image Container - flex-1 to fill available height */}
               <div className="relative flex-1 max-w-6xl w-full mx-auto flex items-center justify-center overflow-hidden">
-                {pdf.is_placeholder ? (
+                {!isVisible ? null : pdf.is_placeholder ? (
                   (() => {
                     return (
                       <div className="relative w-full h-full flex items-center justify-center">
@@ -536,7 +541,7 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
                 )}
 
                 {/* Labels - Top Left (Bigger) */}
-                {pdf.labels && pdf.labels.length > 0 && (
+                {isVisible && pdf.labels && pdf.labels.length > 0 && (
                   <div className="absolute top-4 left-4 flex flex-wrap gap-2">
                     {pdf.labels.map((label) => (
                       <span

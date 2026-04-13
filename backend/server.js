@@ -319,6 +319,11 @@ async function broadcastUpdate(type, data = {}, adminOnly = false) {
   // Send via WebSocket to active connections
   wss.clients.forEach((client) => {
     if (client.readyState === WebSocket.OPEN) {
+      // 🛡️ Security: If adminOnly is true, skip sending to clients without a valid admin session
+      if (adminOnly && (!client.deviceSessionId || !deviceSessions.has(client.deviceSessionId))) {
+        return;
+      }
+
       try {
         client.send(message);
         wsSuccessCount++;

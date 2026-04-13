@@ -46,7 +46,7 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
 
     const isDarkMode = darkMode || (document.documentElement.classList.contains('dark') && !darkMode);
     const imagesBase = (isDarkMode && referencePdf.dark_mode_images_base) ? referencePdf.dark_mode_images_base : referencePdf.images_base;
-    const imageSrc = imagesBase ? `/thumbnails/${imagesBase}-1.png` : `/thumbnails/${referencePdf.thumbnail}`;
+    const imageSrc = imagesBase ? `/thumbnails/${imagesBase}-1.png?v=2` : `/thumbnails/${referencePdf.thumbnail}?v=2`;
 
     const img = new Image();
     img.onload = () => {
@@ -473,7 +473,7 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
           // Determine which image to show based on dark mode
           const isDarkMode = darkMode || (document.documentElement.classList.contains('dark') && !darkMode);
           const imagesBase = (isDarkMode && pdf.dark_mode_images_base) ? pdf.dark_mode_images_base : pdf.images_base;
-          const imageSrc = imagesBase ? `/thumbnails/${imagesBase}-1.png` : `/thumbnails/${pdf.thumbnail}`;
+          const imageSrc = imagesBase ? `/thumbnails/${imagesBase}-1.png?v=2` : `/thumbnails/${pdf.thumbnail}?v=2`;
 
           // Performance optimization: Only render the current slide and its immediate neighbors
           // During zoom/fade animations, only render the absolute active slide to maximize framerate
@@ -534,7 +534,7 @@ function SlideShowView({ pdfs, initialIndex = 0, onClose = null, enteredViaClick
                     onError={(e) => {
                       // Fallback to regular image if dark mode image fails
                       if (isDarkMode && pdf.dark_mode_images_base && e.target.src.includes('-dark-')) {
-                        e.target.src = `/thumbnails/${pdf.images_base}-1.png`;
+                        e.target.src = `/thumbnails/${pdf.images_base}-1.png?v=2`;
                       }
                     }}
                   />

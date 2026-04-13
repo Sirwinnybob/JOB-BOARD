@@ -177,14 +177,14 @@ function DraggablePendingItem({ pdf, index, onMovePdfToBoard, onDelete, editMode
           <div className="relative w-full h-full">
             {/* Light mode image */}
             <img
-              src={pdf.images_base ? `/thumbnails/${pdf.images_base}-1.png` : `/thumbnails/${pdf.thumbnail}`}
+              src={pdf.images_base ? `/thumbnails/${pdf.images_base}-1.png?v=2` : `/thumbnails/${pdf.thumbnail}?v=2`}
               alt={pdf.original_name}
               className="absolute inset-0 w-full h-full object-cover transition-opacity duration-200"
               style={{ opacity: darkMode ? 0 : 1 }}
             />
             {/* Dark mode image */}
             <img
-              src={pdf.dark_mode_images_base ? `/thumbnails/${pdf.dark_mode_images_base}-1.png` : (pdf.images_base ? `/thumbnails/${pdf.images_base}-1.png` : `/thumbnails/${pdf.thumbnail}`)}
+              src={pdf.dark_mode_images_base ? `/thumbnails/${pdf.dark_mode_images_base}-1.png?v=2` : (pdf.images_base ? `/thumbnails/${pdf.images_base}-1.png?v=2` : `/thumbnails/${pdf.thumbnail}?v=2`)}
               alt={pdf.original_name}
               className="absolute inset-0 w-full h-full object-cover transition-opacity duration-200"
               style={{ opacity: darkMode ? 1 : 0 }}

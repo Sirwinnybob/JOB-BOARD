@@ -59,8 +59,8 @@ function DraggableCoverSheetCard({
   const darkImageBase = pdf.dark_mode_images_base;
 
   // Generate both image sources for cross-fade
-  const lightImageSrc = lightImageBase ? `/thumbnails/${lightImageBase}-1.png` : `/thumbnails/${pdf.thumbnail}`;
-  const darkImageSrc = darkImageBase ? `/thumbnails/${darkImageBase}-1.png` : lightImageSrc;
+  const lightImageSrc = lightImageBase ? `/thumbnails/${lightImageBase}-1.png?v=2` : `/thumbnails/${pdf.thumbnail}?v=2`;
+  const darkImageSrc = darkImageBase ? `/thumbnails/${darkImageBase}-1.png?v=2` : lightImageSrc;
 
   // For backward compatibility with single image
   const imageSrc = delayedDarkMode && darkImageBase ? darkImageSrc : lightImageSrc;

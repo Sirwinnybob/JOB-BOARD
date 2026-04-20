@@ -1208,11 +1208,19 @@ app.post('/api/pdfs/placeholder', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'Position is required' });
     }
 
-    const boardSection = board_section !== undefined ? board_section : 0;
+    const parsedPosition = parseInt(position);
+    const parsedBoardSection = board_section !== undefined ? parseInt(board_section) : 0;
+
+    // 🛡️ Sentinel: Validate input numbers to prevent NaN database pollution
+    if (Number.isNaN(parsedPosition) || Number.isNaN(parsedBoardSection)) {
+      return res.status(400).json({ error: 'Position and board_section must be valid numbers' });
+    }
+
+    const boardSection = parsedBoardSection;
 
     db.run(
       'INSERT INTO pdfs (filename, original_name, thumbnail, position, is_placeholder, is_pending, placeholder_text, board_section) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-      [null, null, null, position, 1, 0, 'PLACEHOLDER', boardSection],
+      [null, null, null, parsedPosition, 1, 0, 'PLACEHOLDER', boardSection],
       function (err) {
         if (err) {
           console.error('Database error:', err);
@@ -1224,7 +1232,7 @@ app.post('/api/pdfs/placeholder', authMiddleware, async (req, res) => {
           filename: null,
           original_name: null,
           thumbnail: null,
-          position: position,
+          position: parsedPosition,
           is_placeholder: 1,
           is_pending: 0,
           placeholder_text: 'PLACEHOLDER',

@@ -21,3 +21,8 @@
 **Vulnerability:** The `broadcastUpdate` function in `backend/server.js` was ignoring the `adminOnly` flag when broadcasting events via WebSockets. It sent all events, including sensitive admin-specific notifications, to all connected WebSocket clients regardless of their authentication status or whether they were an admin.
 **Learning:** Functions that accept an `adminOnly` flag must explicitly enforce that condition across all communication channels (both Push notifications and WebSockets). Failing to check authorization during a broadcast leads to unauthenticated information disclosure to viewers.
 **Prevention:** Always validate authorization against the active `deviceSessions` map or session object for each individual client connection within the WebSocket broadcast loop before calling `client.send()`.
+
+## 2026-04-12 - Missing Input Validation on Minor Endpoints (Placeholder PDF)
+**Vulnerability:** The `POST /api/pdfs/placeholder` endpoint lacked strict number type validation on `position` and `board_section`. While it checked for `undefined` or `null`, it did not `parseInt` and check `!Number.isNaN`, opening a small potential for database pollution.
+**Learning:** Even minor or internal endpoints creating "placeholder" items need strict input sanitization to ensure data integrity. An attacker or unexpected frontend state could theoretically send string or object inputs to numeric fields.
+**Prevention:** Ensure all Express endpoints that write to SQLite parse numeric inputs using `parseInt` (or `parseFloat`) and explicitly check for `Number.isNaN()` before using them in database queries.

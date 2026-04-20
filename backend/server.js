@@ -1980,7 +1980,7 @@ app.post('/api/ocr-test-image', authMiddleware, ocrTestUpload.single('image'), a
   }
 });
 
-app.get('/api/ocr-test-image', async (req, res) => {
+app.get('/api/ocr-test-image', authMiddleware, async (req, res) => {
   try {
     // Check if test image exists
     try {

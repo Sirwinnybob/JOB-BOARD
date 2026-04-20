@@ -21,3 +21,8 @@
 **Vulnerability:** The `broadcastUpdate` function in `backend/server.js` was ignoring the `adminOnly` flag when broadcasting events via WebSockets. It sent all events, including sensitive admin-specific notifications, to all connected WebSocket clients regardless of their authentication status or whether they were an admin.
 **Learning:** Functions that accept an `adminOnly` flag must explicitly enforce that condition across all communication channels (both Push notifications and WebSockets). Failing to check authorization during a broadcast leads to unauthenticated information disclosure to viewers.
 **Prevention:** Always validate authorization against the active `deviceSessions` map or session object for each individual client connection within the WebSocket broadcast loop before calling `client.send()`.
+
+## 2026-04-19 - Information Disclosure in OCR Test Endpoint
+**Vulnerability:** The GET endpoint `/api/ocr-test-image` was missing authentication middleware, allowing any unauthenticated user to fetch the OCR test image. This image is generated from user-uploaded PDFs, which could contain sensitive job or personal information.
+**Learning:** While the POST (upload) and DELETE operations for a resource might be secured with authentication, it's easy to overlook securing the corresponding GET (read) operation, especially for temporary or test files. All CRUD operations on sensitive data must be consistently authenticated.
+**Prevention:** When creating endpoints for testing or temporary files, always apply the same authentication and authorization checks as the primary resource. Conduct a review of all routes associated with a feature to ensure complete coverage.

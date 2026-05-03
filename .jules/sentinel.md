@@ -30,3 +30,8 @@
 **Vulnerability:** The `POST /api/pdfs/placeholder` endpoint lacked strict number type validation on `position` and `board_section`. While it checked for `undefined` or `null`, it did not `parseInt` and check `!Number.isNaN`, opening a small potential for database pollution.
 **Learning:** Even minor or internal endpoints creating "placeholder" items need strict input sanitization to ensure data integrity. An attacker or unexpected frontend state could theoretically send string or object inputs to numeric fields.
 **Prevention:** Ensure all Express endpoints that write to SQLite parse numeric inputs using `parseInt` (or `parseFloat`) and explicitly check for `Number.isNaN()` before using them in database queries.
+
+## 2026-04-20 - Predictable PRNG used for Frontend Session ID
+**Vulnerability:** The `frontend/src/pages/HomePage.jsx` component used `Math.random().toString(36).substr(2, 9)` to generate its frontend `sessionId`. Since `Math.random()` is not a cryptographically secure PRNG, its output is theoretically predictable, potentially allowing an attacker to guess active session IDs or edit locks if they knew the timestamp and PRNG state.
+**Learning:** Frontend security tokens, even for seemingly low-impact uses like UI state locking or analytics tracking, should always be generated using cryptographically secure methods. Predictable tokens can lead to logic bypasses or minor race-condition exploits.
+**Prevention:** Always use `window.crypto.randomUUID()` or `window.crypto.getRandomValues()` instead of `Math.random()` when generating identifiers, tokens, or any value that requires uniqueness and unpredictability in a browser environment.

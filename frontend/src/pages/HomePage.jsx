@@ -76,7 +76,7 @@ function HomePage() {
   const [currentSlideshowIndex, setCurrentSlideshowIndex] = useState(0);
   const [pullToRefresh, setPullToRefresh] = useState({ pulling: false, distance: 0, refreshing: false });
   const [editLock, setEditLock] = useState(null); // { lockedBy: sessionId, lockedAt: timestamp }
-  const [sessionId] = useState(() => `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`);
+  const [sessionId] = useState(() => `session_${Date.now()}_${window.crypto.randomUUID()}`);
   const lastActivityRef = useRef(Date.now());
   const inactivityTimerRef = useRef(null);
   const [highlightedJobId, setHighlightedJobId] = useState(null);
